@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>立项问题梳理 — 循迹之境</title>
+<style>
+  :root {
+    --bg: #faf9f7;
+    --bg-card: #ffffff;
+    --bg-nav: #1a1a2e;
+    --text: #1a1a2e;
+    --text-muted: #6b7280;
+    --accent: #c084fc;
+    --accent2: #60a5fa;
+    --border: #e5e7eb;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --info: #60a5fa;
+    --purple: #9333ea;
+    --green: #059669;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+    font-size: 15px;
+  }
+
+  .topbar { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--bg); z-index: 100; }
+  #readProgress { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.1s; }
+
+  .sidebar {
+    position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
+    background: var(--bg-nav); overflow-y: auto; z-index: 90; padding: 24px 0 40px;
+  }
+  .sidebar-brand { padding: 0 24px 24px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px; }
+  .sidebar-brand-title { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 4px; cursor: pointer; }
+  .sidebar-brand-sub { font-size: 12px; color: rgba(255,255,255,0.4); }
+  .sidebar-brand-ver { font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 4px; }
+  .nav-section { padding: 0 12px 16px; }
+  .nav-section-label {
+    font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.3);
+    letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 12px 4px;
+  }
+  .nav-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; color: rgba(255,255,255,0.55); text-decoration: none;
+    font-size: 13.5px; border-radius: 8px; transition: background 0.15s, color 0.15s;
+    margin-bottom: 1px; cursor: pointer;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+  .nav-item.active { background: rgba(192,132,252,0.15); color: #c084fc; }
+  .nav-item-badge { font-size: 10px; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 10px; color: rgba(255,255,255,0.3); }
+  .nav-item.active .nav-item-badge { background: rgba(192,132,252,0.2); color: rgba(192,132,252,0.7); }
+
+  .main {
+    margin-left: 260px; min-height: 100vh; padding: 60px 48px 80px;
+    max-width: 1200px;
+  }
+  .section { margin-bottom: 64px; padding-top: 48px; border-top: 1px solid var(--border); scroll-margin-top: 80px; }
+  .section-label {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 20px;
+  }
+  .section h2 { font-size: 22px; font-weight: 700; margin: 32px 0 16px; }
+  .section h3 { font-size: 17px; font-weight: 600; margin: 28px 0 12px; }
+  .section h4 { font-size: 15px; font-weight: 600; margin: 20px 0 8px; }
+  .section p { margin-bottom: 12px; }
+  .section ul, .section ol { padding-left: 20px; margin-bottom: 12px; }
+  .section li { margin-bottom: 6px; }
+  .intro-text {
+    color: var(--text-muted); font-size: 14px; margin-bottom: 24px;
+    padding: 12px 16px; background: rgba(192,132,252,0.06);
+    border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0;
+  }
+
+  .callout { border-radius: 10px; padding: 16px 20px; margin: 20px 0; }
+  .callout-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+  .callout.info { background: rgba(96,165,250,0.1); border-left: 4px solid var(--info); }
+  .callout.info .callout-label { color: var(--info); }
+  .callout.success { background: rgba(52,211,153,0.1); border-left: 4px solid var(--success); }
+  .callout.success .callout-label { color: var(--success); }
+  .callout.warning { background: rgba(251,191,36,0.1); border-left: 4px solid var(--warning); }
+  .callout.warning .callout-label { color: var(--warning); }
+  .callout.critical { background: rgba(248,113,113,0.1); border-left: 4px solid var(--danger); }
+  .callout.critical .callout-label { color: var(--danger); }
+  .callout-content ul { margin: 0; padding-left: 18px; }
+  .callout-content li { margin-bottom: 4px; }
+
+  .user-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; margin: 20px 0; overflow: hidden; transition: border-color 0.2s; }
+  .user-card:hover { border-color: rgba(192,132,252,0.4); }
+  .user-card.accent-a { border-left: 4px solid var(--accent); }
+  .user-card.accent-b1 { border-left: 4px solid var(--info); }
+  .user-card.accent-b2 { border-left: 4px solid var(--warning); }
+  .user-card-header { display: flex; align-items: center; gap: 16px; padding: 16px 20px; }
+  .user-card-letter { width: 40px; height: 40px; color: #fff; font-size: 18px; font-weight: 700; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .accent-a .user-card-letter { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+  .accent-b1 .user-card-letter { background: linear-gradient(135deg, var(--info), #818cf8); }
+  .accent-b2 .user-card-letter { background: linear-gradient(135deg, var(--warning), #f97316); }
+  .user-card-title { font-size: 16px; font-weight: 700; }
+  .user-card-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .user-card-body { padding: 16px 20px; }
+  .user-card-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; margin-right: 6px; margin-bottom: 8px; }
+  .tag-ratio { background: rgba(192,132,252,0.1); color: var(--purple); }
+  .tag-ratio-warn { background: rgba(251,191,36,0.1); color: #d97706; }
+  .tag-risk { background: rgba(248,113,113,0.1); color: var(--danger); }
+  .user-row { display: flex; gap: 16px; margin-bottom: 12px; }
+  .user-row:last-child { margin-bottom: 0; }
+  .user-row-label { flex-shrink: 0; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); padding-top: 2px; width: 70px; }
+  .user-row-content { font-size: 14px; }
+
+  .loop-block {
+    background: #1e1e2e; border-radius: 12px; padding: 20px 24px; margin: 20px 0;
+    font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace; font-size: 13px;
+    line-height: 2; color: rgba(255,255,255,0.85);
+  }
+  .loop-step { color: rgba(192,132,252,0.9); }
+  .loop-arrow { color: rgba(96,165,250,0.5); margin: 0 8px; }
+
+  .table-wrapper { overflow-x: auto; margin: 20px 0; border-radius: 10px; border: 1px solid var(--border); min-width: 600px; }
+  table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: 14px; }
+  thead { background: #f8f8f8; }
+  th { text-align: left; padding: 10px 14px; font-weight: 600; font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(192,132,252,0.03); }
+  .highlight-cell { background: rgba(192,132,252,0.06); }
+  .tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+  .tag-green { background: rgba(52,211,153,0.15); color: #34d399; }
+  .tag-yellow { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .tag-red { background: rgba(248,113,113,0.15); color: #f87171; }
+  .tag-blue { background: rgba(96,165,250,0.15); color: #60a5fa; }
+  .tag-purple { background: rgba(192,132,252,0.15); color: #9333ea; }
+
+  .principle-item { display: flex; gap: 16px; align-items: flex-start; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+  .principle-num { flex-shrink: 0; width: 28px; height: 28px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: 13px; font-weight: 700; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .principle-text { font-size: 14px; }
+  .principle-text strong { color: var(--text); }
+
+  .decision-item { display: flex; gap: 16px; align-items: flex-start; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+  .decision-id { flex-shrink: 0; font-size: 11px; font-weight: 700; background: rgba(192,132,252,0.1); color: var(--accent); padding: 3px 10px; border-radius: 6px; }
+  .decision-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .decision-desc { font-size: 14px; color: var(--text-muted); }
+
+  .stat-bar { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+  .stat-bar-label { font-size: 13px; font-weight: 600; width: 120px; flex-shrink: 0; }
+  .stat-bar-track { flex: 1; height: 10px; background: rgba(0,0,0,0.06); border-radius: 5px; overflow: hidden; }
+  .stat-bar-fill { height: 100%; border-radius: 5px; transition: width 0.8s ease; }
+  .stat-bar-fill.green { background: linear-gradient(90deg, #34d399, #10b981); }
+  .stat-bar-fill.yellow { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+  .stat-bar-fill.red { background: linear-gradient(90deg, #f87171, #ef4444); }
+  .stat-bar-fill.blue { background: linear-gradient(90deg, #60a5fa, #3b82f6); }
+  .stat-bar-fill.purple { background: linear-gradient(90deg, #c084fc, #9333ea); }
+  .stat-bar-value { font-size: 12px; font-weight: 700; color: var(--text-muted); width: 50px; text-align: right; flex-shrink: 0; }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin: 20px 0; }
+  .summary-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .summary-card-title { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .summary-card-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+  .summary-card-desc { font-size: 13px; color: var(--text-muted); }
+  .summary-card.green { border-left: 4px solid var(--success); }
+  .summary-card.green .summary-card-value { color: var(--success); }
+  .summary-card.yellow { border-left: 4px solid var(--warning); }
+  .summary-card.yellow .summary-card-value { color: var(--warning); }
+  .summary-card.red { border-left: 4px solid var(--danger); }
+  .summary-card.red .summary-card-value { color: var(--danger); }
+  .summary-card.blue { border-left: 4px solid var(--info); }
+  .summary-card.blue .summary-card-value { color: var(--info); }
+
+  .tier-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; margin: 16px 0; overflow: hidden; }
+  .tier-header { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--border); }
+  .tier-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .tier-dot.high { background: var(--success); box-shadow: 0 0 8px rgba(52,211,153,0.4); }
+  .tier-dot.mid { background: var(--warning); box-shadow: 0 0 8px rgba(251,191,36,0.4); }
+  .tier-dot.low { background: var(--danger); box-shadow: 0 0 8px rgba(248,113,113,0.4); }
+  .tier-name { font-size: 15px; font-weight: 600; }
+  .tier-body { padding: 16px 20px; }
+  .tier-item { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.04); }
+  .tier-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .tier-item:first-child { padding-top: 0; }
+  .tier-item-name { font-size: 14px; font-weight: 600; width: 160px; flex-shrink: 0; }
+  .tier-item-ranges { font-size: 13px; color: var(--text-muted); }
+  .tier-item-ratio { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-left: auto; flex-shrink: 0; align-self: center; }
+
+  .doc-footer { margin-top: 60px; padding-top: 32px; border-top: 1px solid var(--border); }
+  .footer-meta { display: flex; flex-wrap: wrap; gap: 24px; }
+  .footer-meta-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 2px; }
+  .footer-meta-value { font-size: 13px; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
+
+  @media (max-width: 900px) { .sidebar { display: none; } .main { margin-left: 0; padding: 40px 24px 60px; } }
+  @media print { .sidebar, .topbar { display: none; } .main { margin-left: 0; } .section { break-inside: avoid; } }
+</style>
+</head>
+<body>
+
+<div class="topbar"><div id="readProgress"></div></div>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-brand-title">循迹之境</div>
+    <div class="sidebar-brand-sub">立项问题梳理</div>
+    <div class="sidebar-brand-ver">v1.0 · 2026-05-22</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">目录</div>
+    <a data-target="core" class="nav-item active">核心切入点 <span class="nav-item-badge">一</span></a>
+    <a data-target="rootcause" class="nav-item">战斗参考图 <span class="nav-item-badge">二</span></a>
+    <a data-target="users" class="nav-item">用户分层 <span class="nav-item-badge">三</span></a>
+    <a data-target="resource" class="nav-item">资源分配框架 <span class="nav-item-badge">四</span></a>
+    <a data-target="principle" class="nav-item">设计原则总结 <span class="nav-item-badge">五</span></a>
+    <a data-target="secondary" class="nav-item">还需要回答的问题 <span class="nav-item-badge">六</span></a>
+  </div>
+</nav>
+
+<main class="main">
+
+<!-- 一、核心问题 -->
+<section id="core" class="section">
+  <span class="section-label">一、观察与思考</span>
+
+  <div class="callout critical">
+    <div class="callout-label">品类背景</div>
+    <div class="callout-content">
+      <p>洛克王国世界（2026年3月公测）是中国大陆市场回合制宠物收集战斗品类表现最好的产品，上线首月DAU均值<strong>1300万</strong>（腾讯2026年Q1财报披露），前10天iOS收入约<strong>1.03亿元</strong>（第三方数据平台估算）。</p>
+    </div>
+  </div>
+
+  <div class="callout warning">
+    <div class="callout-label">PVE内容观察</div>
+    <div class="callout-content">
+      <ul>
+        <li>游戏基础PVE关卡难度偏低——属性克制+速通组合（如"迪莫，罗隐"）可快速通关，缺乏持续挑战压力</li>
+        <li>官方后续补了高难PVE（如"领地试炼"、"星光对决"），但整体仍未形成支撑长线的PVE生态闭环（领地试炼难度过高，普通人没有抄作业的地方，星光对决只是一个相对简单的周长，没有技巧只有数值）</li>
+        <li>PVE内容设计空洞：核心循环只有清体力+抓异色，S1、S2赛季都存在这个问题；S1靠新鲜感+大量主线+图鉴任务掩盖了问题，S1到S2内容重复单调，战斗无聊；缺乏目标感——无论是内在动机还是外在动机都没有分层设计（短期/中期/长期）；唯一的外在动机是极低概率的野生炫彩，由于概率太低对收集党/外观党来说动机也很弱</li>
+        <li>抓异色是游戏最重要的玩法，但设计粗糙：
+          <ul>
+            <li>S1赛季"污染"机制和S2赛季"惊喜盒子"都存在严重问题</li>
+            <li>以S2盒子为例：玩家通过互动可提前确定盒子内是否有异色，打开盒子进入战斗变成0收益环节——违反"悬念留到最后"的设计原则</li>
+            <li>长达1000+只的抓捕过程中没有任何收益分层，只有获得异色时才会获得1次强烈的正反馈，其他时间就是纯粹的坐牢（重复劳动）</li>
+            <li>优化方向：收益分层设计——每50只左右给L1收益、200只给L2收益、1000只给L3（异色），且消除悬念提前等问题</li>
+          </ul>
+        </li>
+        <li>洛克王国世界的社交是自发式的、有温度但无目的的社交——没有实质的多人玩法，只有玩家间的松散互动。可以引入实质的多人玩法（区域暴君等高强度PVE目标），让战斗策略空间得以扩展、挑战上限得以提升；同时也让外观党有了一个展示战果的舞台。</li>
+        <li>生物生态做得非常好，已经是行业天花板。这是巨大工程量累积的成果。</li>
+        <li>剧情偏子供向，部分玩家觉得无聊且节奏被拖慢；剧情冗长且不可跳过，中后期跳过按钮消失</li>
+        <li>支线任务几乎都是跑图/点击流程，有明显赶工痕迹</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-label">PVP内容观察</div>
+    <div class="callout-content">
+      <ul>
+        <li>PVP的深层问题在于机制设计：1V1轮换+猜拳+属性克制，理解门槛高；需要持续掌握属性克制关系和大量宠物的技能组；环境变化快，信息差持续存在；1V1无数值碾压、无随机性，失败几乎都源于决策，挫折感直接且强烈——PVP注定是非主流的硬核内容</li>
+        <li>PVP目前做得好的地方在于猜拳博弈成功的正反馈很足，靠智力战胜对手的体验感也很棒（虽然双方队伍构建极大影响胜负关系）。喜欢PVP的玩家可以连续几个小时进行对战；另外PVP战斗有一定观赏性，B站上有大量相关视频</li>
+        <li>平衡性问题严重：强势精灵（如独角兽）一回合启动、两回合推队</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-label">相关思考</div>
+    <div class="callout-content">
+      <ul>
+        <li>官方重点放在了IP与生态构建，社交与PVP，PVE堆积了大量问题。从这些问题出发寻找适合的切入点。</li>
+        <li>以赛季作为更新周期，持续提供有趣+有深度的PVE战斗内容。以有趣的战斗为载体，外在目标为驱动，用户分层+目标分层的方式设计内容。（这里的主要问题包含2个：战斗系统本身质量，赛季内容制作周期与设计质量）</li>
+        <li>抓捕异色玩法的游戏体验完全可以做得更好。不依赖团队规模，只和设计框架，细节与执行落地有关。</li>
+        <li>不考虑生态构建，开放世界（考虑英勇之地手游的箱庭式探索地图）。采取错位竞争而不是正面对决，找到自身在该品类的生态位。</li>
+        <li>设计偏成年人（18-35）的剧情，叙事。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-label">重点解决问题</div>
+    <div class="callout-content">
+      <p style="font-size:14px;color:var(--text-muted);margin-top:8px;">持续提供有趣+有深度的PVE战斗内容：<strong>3Vn多对多战斗结构 + 意图可视化 + 芳香剂借用机制</strong>。战斗系统既是核心体验，也是差异化卖点。</p>
+      <ul style="font-size:13px;color:var(--text-muted);margin-top:8px;padding-left:20px;line-height:1.9;">
+        <li><strong>3Vn多对多战斗</strong>：相比宝可梦1V1，带来"集火谁、如何站位"的多目标决策维度——不是更多的宠，而是完全不同的博弈结构</li>
+        <li><strong>意图可视化</strong>：将敌人的行动意图透明化，让推理过程可见可交互，降低推理门槛的同时保留了推理本身的乐趣</li>
+        <li><strong>芳香剂借用机制</strong>：玩家可以接管敌人（尤其是BOSS）的行动权，借用其强力技能为我所用。在首领战中尤其有趣：BOSS拥有罕见的强力技能（无敌、复活等），通过芳香剂可以让这些技能作用于我方——这是正常对战里不可能获得的能力，同时也是"接管体验"趣味性的来源</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 二、战斗参考图 -->
+<section id="rootcause" class="section">
+  <span class="section-label">二、战斗参考图</span>
+
+  <img src="../引用图片/以太术士.png" alt="以太术士战斗参考图" style="max-width:100%;border-radius:12px;border:1px solid var(--border);">
+</section>
+
+<!-- 三、用户分层 -->
+<section id="users" class="section">
+  <span class="section-label">三、用户分层</span>
+
+  <p style="font-size:13px;color:var(--text);font-weight:700;margin-bottom:16px;padding:10px 14px;background:rgba(251,191,36,0.1);border-radius:8px;border-left:3px solid var(--warning);">以有趣+有深度的PVE战斗玩法锚定用户，分析可以抓住哪些玩家</p>
+
+  <div class="callout warning">
+    <div class="callout-label">⚠ 假设前提（待上线后验证）</div>
+    <div class="callout-content">
+      <ul>
+        <li>本节采用<strong>三分法分层</strong>（A/B1/B2），以"第一核心驱动力"为分类维度，各群之间<strong>互斥</strong>，便于分析和资源分配</li>
+        <li>B2外观党本质上是横跨多群的行为特征，但在本节中<strong>作为独立群处理</strong>，便于推导外观系统的优先级——实为估算假设，需上线后数据验证</li>
+        <li>所有百分比数字为<strong>参考洛克王国世界大盘的估算值</strong>，非实测数据，不代表真实用户结构</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- A群 -->
+  <div class="user-card accent-a">
+    <div class="user-card-header">
+      <div class="user-card-letter">A</div>
+      <div>
+        <div class="user-card-title">策略型PVE用户</div>
+        <div class="user-card-subtitle">战斗即推理的成就感</div>
+      </div>
+    </div>
+    <div class="user-card-body">
+      <div>
+        <span class="user-card-tag tag-ratio">占PVE用户 15%</span>
+        <span class="user-card-tag tag-ratio-warn">占总用户 12%</span>
+        <span class="user-card-tag tag-risk">待上线后验证</span>
+      </div>
+      <div class="user-row">
+        <div class="user-row-label">核心诉求</div>
+        <div class="user-row-content">战斗即推理的成就感</div>
+      </div>
+      <div class="user-row">
+        <div class="user-row-label">行为特征</div>
+        <div class="user-row-content">以宠物养成为乐趣本身，愿意研究构筑；战斗是核心乐趣，不玩PVP</div>
+      </div>
+      <div class="user-row">
+        <div class="user-row-label">重要修正</div>
+        <div class="user-row-content">生态/陪伴/收集是加分项，<strong>不是必要前提</strong>——投入过多资源在非战斗系统上会稀释战斗深度的资源</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B1群 -->
+  <div class="user-card accent-b1">
+    <div class="user-card-header">
+      <div class="user-card-letter">B1</div>
+      <div>
+        <div class="user-card-title">休闲陪伴型PVE用户</div>
+        <div class="user-card-subtitle">收集陪伴 + 情感满足</div>
+      </div>
+    </div>
+    <div class="user-card-body">
+      <div>
+        <span class="user-card-tag tag-ratio">占PVE用户 60%</span>
+        <span class="user-card-tag tag-ratio-warn">占总用户 48%</span>
+      </div>
+      <div class="user-row">
+        <div class="user-row-label">核心诉求</div>
+        <div class="user-row-content">收集陪伴 + 情感满足</div>
+      </div>
+      <div class="user-row">
+        <div class="user-row-label">行为特征</div>
+        <div class="user-row-content">战斗是消耗品，不是目的；被洛克王国的"生态互动+弱社交"吸引；战斗只要"不太无聊"就行</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout warning">
+    <div class="callout-label">核心风险</div>
+    <div class="callout-content">
+      <p>B1群与循迹之境的"战斗即推理"定位存在<strong>天然矛盾</strong>。循迹之境的战斗系统（意图可视化、属性克制、气味干扰）本质上是<strong>提高认知门槛</strong>，对于纯B1群来说不是"有趣"而是"复杂"。典型的B1群用户想的是"我的小火猴好可爱"而不是"对面意图是强化还是输出"。</p>
+      <p style="margin-top:8px;">但B1群中确实存在有战斗兴趣的用户——他们可以通过意图可视化等设计降低门槛、实现转化。不能因为B1群占50-60%就试图讨好所有人。</p>
+    </div>
+  </div>
+
+  <!-- B2群 -->
+  <div class="user-card accent-b2">
+    <div class="user-card-header">
+      <div class="user-card-letter">B2</div>
+      <div>
+        <div class="user-card-title">外观党PVE用户</div>
+        <div class="user-card-subtitle">收集、收藏、外观展示</div>
+      </div>
+    </div>
+    <div class="user-card-body">
+      <div>
+        <span class="user-card-tag tag-ratio">占PVE用户 25%</span>
+        <span class="user-card-tag tag-ratio-warn">占总用户 20%</span>
+      </div>
+      <div class="user-row">
+        <div class="user-row-label">核心诉求</div>
+        <div class="user-row-content">收集完成度 + 外观稀缺性</div>
+      </div>
+      <div class="user-row">
+        <div class="user-row-label">行为特征</div>
+        <div class="user-row-content">愿意为炫彩外观投入大量时间（蹲守、反复捕获）；比策略型用户规模更大、付费意愿更高</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 能抓住谁/放弃谁 -->
+  <h3>"战斗即推理"能抓住谁、放弃谁</h3>
+
+  <div class="tier-card">
+    <div class="tier-header">
+      <div class="tier-dot high"></div>
+      <div class="tier-name">核心用户</div>
+    </div>
+    <div class="tier-body">
+      <div class="tier-item">
+        <div class="tier-item-name">A群（策略型PVE）</div>
+        <div class="tier-item-ranges">PVE 15% · 总用户 12%</div>
+        <div class="tier-item-ratio" style="background:rgba(52,211,153,0.15);color:#059669;">天然对齐</div>
+      </div>
+      <div class="tier-item">
+        <div class="tier-item-name">B1战斗兴趣者</div>
+        <div class="tier-item-ranges">PVE 12% · 总用户 9.6%（B1群的20%转化）</div>
+        <div class="tier-item-ratio" style="background:rgba(96,165,250,0.15);color:#2563eb;">B1转化</div>
+      </div>
+      <div class="tier-item">
+        <div class="tier-item-name">B2深度玩家</div>
+        <div class="tier-item-ranges">PVE 7.5% · 总用户 6%（B2群的30%转化）</div>
+        <div class="tier-item-ratio" style="background:rgba(192,132,252,0.15);color:#9333ea;">B2转化</div>
+      </div>
+      <div class="tier-item" style="border-top:2px solid rgba(0,0,0,0.08);padding-top:12px;margin-top:4px;">
+        <div class="tier-item-name" style="font-weight:800;color:var(--text);">核心用户合计</div>
+        <div class="tier-item-ranges">PVE <strong>34.5%</strong> · 总用户 <strong>27.6%</strong></div>
+        <div class="tier-item-ratio" style="background:rgba(52,211,153,0.15);color:#059669;font-size:12px;">核心目标</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tier-card">
+    <div class="tier-header">
+      <div class="tier-dot low"></div>
+      <div class="tier-name">非核心用户</div>
+    </div>
+    <div class="tier-body">
+      <div class="tier-item">
+        <div class="tier-item-name">纯B1群（休闲陪伴型）</div>
+        <div class="tier-item-ranges">PVE 48% · 总用户 38.4%（B1群的80%不转化）</div>
+        <div class="tier-item-ratio" style="background:rgba(248,113,113,0.15);color:#dc2626;">天然排斥</div>
+      </div>
+      <div class="tier-item">
+        <div class="tier-item-name">纯B2外观党</div>
+        <div class="tier-item-ranges">PVE 17.5% · 总用户 14%（B2群的70%不转化）</div>
+        <div class="tier-item-ratio" style="background:rgba(248,113,113,0.15);color:#dc2626;">绕过战斗</div>
+      </div>
+      <div class="tier-item" style="border-top:2px solid rgba(0,0,0,0.08);padding-top:12px;margin-top:4px;">
+        <div class="tier-item-name" style="font-weight:800;color:var(--text);">非目标合计</div>
+        <div class="tier-item-ranges">PVE <strong>65.5%</strong> · 总用户 <strong>52.4%</strong></div>
+        <div class="tier-item-ratio" style="background:rgba(248,113,113,0.15);color:#dc2626;font-size:12px;">不能强求</div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- 四、资源分配框架 -->
+<section id="resource" class="section">
+  <span class="section-label">四、资源分配框架</span>
+
+  <p style="display:block;padding:8px 16px;background:#fef9c3;color:#1a1a2e;font-size:14px;font-weight:600;border-radius:6px;margin-bottom:20px;">基于锚定玩家画像，推导最应该投入制作的游戏内容（60/25/15为估算参考，需结合实际开发资源调整）</p>
+
+  <div class="summary-grid">
+    <div class="summary-card green">
+      <div class="summary-card-title">核心投入</div>
+      <div class="summary-card-value">60%</div>
+      <div class="summary-card-desc">战斗系统（战斗即推理） + 养成系统 + 外观系统 + 多人玩法（区域暴君）</div>
+    </div>
+    <div class="summary-card yellow">
+      <div class="summary-card-title">中等投入</div>
+      <div class="summary-card-value">25%</div>
+      <div class="summary-card-desc">赛季系统 + 探索系统（动态事件） + 叙事系统（碎片化叙事）</div>
+    </div>
+    <div class="summary-card yellow">
+      <div class="summary-card-title">视情况而定</div>
+      <div class="summary-card-value">15%</div>
+      <div class="summary-card-desc">巢穴副本（组队）+ 独立家园</div>
+    </div>
+  </div>
+
+
+</section>
+
+<!-- 五、设计原则 -->
+<section id="principle" class="section">
+  <span class="section-label">五、设计原则总结</span>
+
+  <div class="intro-text">设计原则不是功能清单，而是<strong>约束规则</strong>——规定"做什么、不做什么"，在具体决策时给出判断依据。</div>
+
+  <div class="principle-item">
+    <div class="principle-num">一</div>
+    <div class="principle-text"><strong>悬念留到最后</strong><br><span style="color:var(--text-muted);font-size:13px;">关键奖励或体验的揭晓时机必须在最后。在玩家确认结果之前，所有信息泄露都会消解行动的意义。</span><br><span style="font-size:12px;color:var(--accent);">→ 收益节点可以提前告知（让玩家有目标），但结果揭晓不能提前（让过程有悬念）。</span></div>
+  </div>
+
+  <div class="principle-item">
+    <div class="principle-num">二</div>
+    <div class="principle-text"><strong>长线行为必须有多个收益节点</strong><br><span style="color:var(--text-muted);font-size:13px;">任何需要重复N次才能完成的行为，每隔N/10~N/5次就必须给出次级收益，让玩家在过程中有盼头。</span><br><span style="font-size:12px;color:var(--accent);">→ 异色是L3终极大奖，但L1（小惊喜）和L2（大期待）必须穿插其中，让1000次捕获变成一段有起伏的旅程。</span></div>
+  </div>
+
+  <div class="principle-item">
+    <div class="principle-num">三</div>
+    <div class="principle-text"><strong>不讨好所有人</strong><br><span style="color:var(--text-muted);font-size:13px;">设计必须有明确取舍。试图满足所有人，结果是所有人都只能得到"还可以"而不是"很满意"。</span><br><span style="font-size:12px;color:var(--accent);">→ 循迹之境的核心是战斗推理，主打中重度用户。B1群中的战斗兴趣者可转化，但不能为此稀释核心体验。</span></div>
+  </div>
+
+  <div class="principle-item">
+    <div class="principle-num">四</div>
+    <div class="principle-text"><strong>承认硬核内容的天花板</strong><br><span style="color:var(--text-muted);font-size:13px;">某些内容天然只适合小众。不要试图扩大受众，而是服务好核心受众，让他们愿意长期留存。</span><br><span style="font-size:12px;color:var(--accent);">→ PVP可以存在，但资源投入要与受众规模匹配；区域暴君等高强度PVE目标同理。</span></div>
+  </div>
+
+  <div class="principle-item">
+    <div class="principle-num">五</div>
+    <div class="principle-text"><strong>外在动机与内在动机必须同时存在</strong><br><span style="color:var(--text-muted);font-size:13px;">每个内容层都要同时提供两种动机：外在动机（奖励/成就）告诉玩家"值不值得做"，内在动机（过程体验）告诉玩家"做起来好不好玩"。</span><br><span style="font-size:12px;color:var(--accent);">→ 只有奖励没有体验=上班打卡；只有体验没有奖励=没有目标感。</span></div>
+  </div>
+
+  <div class="principle-item">
+    <div class="principle-num">六</div>
+    <div class="principle-text"><strong>错位竞争，不正面对决</strong><br><span style="color:var(--text-muted);font-size:13px;">找到自己的生态位，在竞品的痛点上建立优势，而不是在竞品的强项上追赶。</span><br><span style="font-size:12px;color:var(--accent);">→ 循迹之境的竞争维度是"战斗深度"，不是"生态丰富度"。箱庭探索而非开放世界，战斗即推理而非1V1猜拳。</span></div>
+  </div>
+
+  <div class="principle-item">
+    <div class="principle-num">七</div>
+    <div class="principle-text"><strong>宠物是情感载体，不是数值工具</strong><br><span style="color:var(--text-muted);font-size:13px;">宠物不只是一个战斗力数值，要让玩家和宠物建立情感连接。数值可以成长，但情感连接才决定留存。</span><br><span style="font-size:12px;color:var(--accent);">→ 外观系统（炫彩、异色）不只是审美满足，更是"我的宠物与众不同"的情感锚点。</span></div>
+  </div>
+
+  <h3 style="margin-top:40px;">快速决策清单</h3>
+  <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">面对任何设计决策时，用这些问题快速判断：</p>
+
+  <div class="table-wrapper" style="min-width:0;">
+    <table style="min-width:0;font-size:13px;">
+      <thead>
+        <tr>
+          <th style="width:60%;">问题</th>
+          <th style="width:20%;">是</th>
+          <th style="width:20%;">否</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>这个奖励的结果是提前揭晓还是留到最后？</td>
+          <td><span style="color:var(--danger);font-weight:600;">⚠️ 违反原则一</span></td>
+          <td><span style="color:var(--success);font-weight:600;">✅ 通过</span></td>
+        </tr>
+        <tr>
+          <td>这个重复行为有多少个次级收益节点？</td>
+          <td><span style="color:var(--danger);font-weight:600;">太少→违反原则二</span></td>
+          <td><span style="color:var(--success);font-weight:600;">✅ 通过</span></td>
+        </tr>
+        <tr>
+          <td>我们是为了讨好某个大用户群而妥协核心体验吗？</td>
+          <td><span style="color:var(--danger);font-weight:600;">是→违反原则三</span></td>
+          <td><span style="color:var(--success);font-weight:600;">✅ 通过</span></td>
+        </tr>
+        <tr>
+          <td>这个硬核内容的受众规模是否与投入资源匹配？</td>
+          <td><span style="color:var(--danger);font-weight:600;">不匹配→违反原则四</span></td>
+          <td><span style="color:var(--success);font-weight:600;">✅ 通过</span></td>
+        </tr>
+        <tr>
+          <td>这个内容有外在动机吗？有内在动机吗？</td>
+          <td><span style="color:var(--danger);font-weight:600;">缺任何一个→违反原则五</span></td>
+          <td><span style="color:var(--success);font-weight:600;">✅ 通过</span></td>
+        </tr>
+        <tr>
+          <td>我们是在竞品的强项上竞争还是痛点上建立优势？</td>
+          <td><span style="color:var(--danger);font-weight:600;">强项竞争→违反原则六</span></td>
+          <td><span style="color:var(--success);font-weight:600;">✅ 通过</span></td>
+        </tr>
+        <tr>
+          <td>这个设计让宠物更像数值工具还是更像情感载体？</td>
+          <td><span style="color:var(--danger);font-weight:600;">数值工具→违反原则七</span></td>
+          <td><span style="color:var(--success);font-weight:600;">✅ 通过</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 还需要回答的问题 -->
+<section id="secondary" class="section">
+  <span class="section-label">六、还需要回答的问题</span>
+
+  <h3>问题一：如何在前期留住玩家？（前15分钟）</h3>
+
+  <div class="callout warning">
+    <div class="callout-label">核心设计思路</div>
+    <div class="callout-content">
+      <p>以<strong>追踪气味的剧情线</strong>作为前期叙事主轴，将"理解战斗机制"包装为"追踪猎物的本能"。</p>
+      <p style="margin-top:8px;">玩家不是"在学习游戏"，而是"在追踪一个特别的气味"——战斗操作是追踪的手段，捕获是追踪的结果。</p>
+    </div>
+  </div>
+
+  <h4>1. 前15分钟的叙事锚点：追踪</h4>
+
+  <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px;">整个前期内容以<strong>一个特别的气味</strong>作为叙事锚点驱动：</p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>时间</th><th>叙事节点</th><th>游戏内容</th><th>核心体验</th></tr></thead>
+      <tbody>
+        <tr><td>0-2分钟</td><td><strong>嗅到异常气味并追踪</strong></td><td>玩家在野外追踪 → 发现气味源</td><td>建立"气味=线索"的直觉</td></tr>
+        <tr><td>2-5分钟</td><td><strong>遭遇同样被气味吸引的生物</strong></td><td>遭遇第一场战斗（普通野兽）</td><td>理解基础操作（攻击、技能）</td></tr>
+        <tr><td>5-8分钟</td><td><strong>发现气味来源</strong></td><td>追踪途中发现一枚<strong>特殊花纹的宠物蛋</strong></td><td>发现惊喜 + 情感锚点植入</td></tr>
+        <tr><td>8-11分钟</td><td><strong>偷取并逃跑</strong></td><td>引导玩家偷蛋 → 偷蛋成功</td><td>悬念留到最后（蛋的价值揭晓在孵化时）</td></tr>
+        <tr><td>11-15分钟</td><td><strong>遭遇愤怒的巢穴主人</strong></td><td>巢穴主人返回 → <strong>精英战斗</strong></td><td>意图可视化顿悟时刻</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>2. 以追踪气味为线索的内容链</h4>
+
+  <div class="loop-block">
+    <span class="loop-step">进入游戏</span> → 玩家本能地追踪气味<br>
+    <span class="loop-arrow">↓</span> 【气味线索：地上有新鲜的痕迹】<br>
+    遭遇同样被气味吸引的生物（战斗教学）<br>
+    <span class="loop-arrow">↓</span> 【气味线索：气味汇聚在巢穴方向】<br>
+    发现气味来源——一枚特殊花纹的宠物蛋（惊喜植入）<br>
+    <span class="loop-arrow">↓</span> 【气味线索：趁主人不在拿走它】<br>
+    偷取并逃跑（获得第一只宠物的伏笔）<br>
+    <span class="loop-arrow">↓</span> 【气味线索：愤怒的气息正在逼近】<br>
+    <span class="loop-step">遭遇愤怒的巢穴主人</span> → 精英战斗（需要理解意图）<br>
+    <span class="loop-arrow">↓</span><br>
+    击败/击退巢穴主人 → 悬念钩子（"蛋里是什么？"）
+  </div>
+
+  <h4>3. 每个节点的"钩子"设计</h4>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>节点</th><th>玩家此刻的疑问</th><th>设计给出的答案</th></tr></thead>
+      <tbody>
+        <tr><td>追踪气味</td><td>"这个气味是什么？"</td><td>地上有可视化的气味痕迹，引导玩家跟随</td></tr>
+        <tr><td>遭遇被气味吸引的生物</td><td>"有什么东西也在追踪这个气味？"</td><td>触发第一场战斗教学</td></tr>
+        <tr><td>发现宠物蛋</td><td>"这个蛋有什么特别的？"</td><td>特殊花纹（非教学蛋，是惊喜蛋）</td></tr>
+        <tr><td>偷取并逃跑</td><td>"我能拿到！"</td><td>悬念保留——蛋的价值在孵化时揭晓，不提前告知</td></tr>
+        <tr><td>巢穴主人登场</td><td>"完了，这下要打了"</td><td>精英敌人 → 意图展示利用得好，短回合获胜；利用差战斗回合拉长，但都是胜利</td></tr>
+        <tr><td>精英战后</td><td>"我能赢是因为我理解了它的意图"</td><td>成长感 + 成就感 → 掉落一个新情报（暗示新内容）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>4. 前15分钟的"甜蜜点"设计</h4>
+
+  <div class="callout info">
+    <div class="callout-label">第一场战斗（被气味吸引的生物）</div>
+    <div class="callout-content">
+      <ul>
+        <li><strong>难度</strong>：极低，2-3回合内可击败</li>
+        <li><strong>教学目标</strong>：让玩家学会"点击攻击"和"释放技能"</li>
+        <li><strong>叙事包装</strong>：另一个生物也在追踪同一气味，双方因竞争气味源而发生冲突</li>
+        <li><strong>意图设计</strong>：生物有一个意图清晰的技能（如"爪击，造成15点物理伤害"），让玩家体验"我能读懂意图"的感觉</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-label">精英战斗（巢穴主人）</div>
+    <div class="callout-content">
+      <ul>
+        <li><strong>难度</strong>：普通，4-8回合结束战斗</li>
+        <li><strong>教学目标</strong>：验证玩家是否理解"读取意图→选择对策"的战斗逻辑</li>
+        <li><strong>结果设计</strong>：意图展示利用得好，短回合获胜；利用差战斗回合拉长，但都是胜利</li>
+        <li><strong>战利品</strong>：获得一个新区域的位置情报（地图上解锁一个问号标记）</li>
+      </ul>
+    </div>
+  </div>
+
+  <h4>5. 第一只宠物的情感锚点设计</h4>
+
+  <div class="principle-item">
+    <div class="principle-num">→</div>
+    <div class="principle-text"><strong>关键设计</strong>：玩家获得的第一只宠物<strong>不是教学赠送</strong>，而是通过<strong>偷蛋获得的惊喜</strong>。<br><br>
+    <span style="font-size:13px;"><strong>蛋的出现时机</strong>：追踪气味的途中，不是主动送上门</span><br>
+    <span style="font-size:13px;"><strong>蛋的稀有度暗示</strong>：纹路特别（但不明说价值）</span><br>
+    <span style="font-size:13px;"><strong>蛋的揭晓时机</strong>：孵化时才看到宠物全貌</span><br>
+    <span style="font-size:13px;"><strong>情感连接</strong>：玩家"偷"来的蛋比"送"来的蛋更有情感价值</span>
+    </div>
+  </div>
+
+  <h4>6. 防止前期流失的关键</h4>
+
+  <div class="principle-item">
+    <div class="principle-num">1</div>
+    <div class="principle-text"><strong>叙事驱动 > 机制教学</strong><br><span style="color:var(--text-muted);font-size:13px;">玩家不是在"学战斗"，而是在"追踪气味"的过程中自然学会战斗。</span></div>
+  </div>
+  <div class="principle-item">
+    <div class="principle-num">2</div>
+    <div class="principle-text"><strong>惊喜必须出现</strong><br><span style="color:var(--text-muted);font-size:13px;">宠物蛋的发现是情感锚点，必须在前15分钟内触发。</span></div>
+  </div>
+  <div class="principle-item">
+    <div class="principle-num">3</div>
+    <div class="principle-text"><strong>精英战斗必须可赢</strong><br><span style="color:var(--text-muted);font-size:13px;">难度要落在甜蜜点，需要理解意图但不至于劝退。</span></div>
+  </div>
+  <div class="principle-item">
+    <div class="principle-num">4</div>
+    <div class="principle-text"><strong>悬念保留到最后</strong><br><span style="color:var(--text-muted);font-size:13px;">蛋的价值不提前揭晓，让玩家带着"里面是什么？"的好奇心继续。</span></div>
+  </div>
+
+  <h4>7. 常见失败模式（来自竞品教训）</h4>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>失败模式</th><th>后果</th></tr></thead>
+      <tbody>
+        <tr><td>强制引导打断叙事</td><td>玩家"被动学习"而非"主动探索"</td></tr>
+        <tr><td>教学道具直接赠送</td><td>宠物没有情感价值，玩家记不住</td></tr>
+        <tr><td>精英战斗难度失衡</td><td>失败即劝退，没有2-3次尝试的空间</td></tr>
+        <tr><td>奖励提前揭晓</td><td>"偷蛋成功=获得稀有宠物"破坏悬念</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout critical">
+    <div class="callout-label">核心原则</div>
+    <div class="callout-content">
+      <p><strong>塞尔达设计的核心是"相信玩家的好奇心"——不要用强制引导消耗耐心，用精心设计的"甜蜜点"让玩家自己顿悟。"战斗即推理"的前期设计天然适合这个哲学：意图可视化本身就是一个值得"发现"的机制，而非需要"学习"的系统。</strong></p>
+    </div>
+  </div>
+
+  
+
+<footer class="doc-footer">
+  <div class="footer-meta">
+    <div class="footer-meta-item">
+      <div class="footer-meta-label">文档版本</div>
+      <div class="footer-meta-value">v1.0</div>
+    </div>
+    <div class="footer-meta-item">
+      <div class="footer-meta-label">来源文档</div>
+      <div class="footer-meta-value">立项问题梳理.md</div>
+    </div>
+    <div class="footer-meta-item">
+      <div class="footer-meta-label">生成日期</div>
+      <div class="footer-meta-value">2026-05-22</div>
+    </div>
+    <div class="footer-meta-item">
+      <div class="footer-meta-label">最后更新</div>
+      <div class="footer-meta-value">2026-05-22（用户分层准确性评估结论已整合；品类问题数据来源标注；差异化卖点深化论证；竞品分析章节新增）</div>
+    </div>
+  </div>
+</footer>
+
+</main>
+
+<script>
+// Reading Progress
+var readProgress = document.getElementById('readProgress');
+var lastProgressScrollTop = -1;
+function updateProgress() {
+  var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+  if (scrollTop === lastProgressScrollTop) return;
+  lastProgressScrollTop = scrollTop;
+  var docHeight = document.body.scrollHeight || document.documentElement.scrollHeight;
+  var docHeightVal = docHeight - window.innerHeight;
+  var progress = docHeightVal > 0 ? (scrollTop / docHeightVal) * 100 : 0;
+  if (readProgress) readProgress.style.width = Math.min(progress, 100) + '%';
+}
+(function progressLoop() { updateProgress(); requestAnimationFrame(progressLoop); })();
+
+// Active Navigation — scroll-position based
+var navItems = document.querySelectorAll('.nav-item');
+var sectionIds = ['core','rootcause','users','resource','principle','secondary'];
+var sectionEls = sectionIds.map(function(id) { return document.getElementById(id); });
+var lastActiveId = null;
+var isSmoothScrolling = false;
+var smoothScrollTimer = null;
+
+function setActiveNav(bestId) {
+  if (!bestId || bestId === lastActiveId) return;
+  lastActiveId = bestId;
+  navItems.forEach(function(item) {
+    if (item.getAttribute('data-target') === bestId) item.classList.add('active');
+    else item.classList.remove('active');
+  });
+}
+
+function detectActiveByScroll() {
+  if (isSmoothScrolling) return;
+  var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+  var viewportTop = scrollTop + 120;
+  var bestId = null;
+  var bestTop = -Infinity;
+  sectionEls.forEach(function(el, i) {
+    if (!el) return;
+    var top = el.offsetTop;
+    if (top <= viewportTop && top > bestTop) {
+      bestTop = top;
+      bestId = sectionIds[i];
+    }
+  });
+  if (bestId) setActiveNav(bestId);
+}
+
+// Smooth Scroll for Nav
+navItems.forEach(function(item) {
+  item.addEventListener('click', function(e) {
+    e.preventDefault();
+    var targetId = this.getAttribute('data-target');
+    var target = document.getElementById(targetId);
+    if (target) {
+      navItems.forEach(function(nav) { nav.classList.remove('active'); });
+      this.classList.add('active');
+      lastActiveId = targetId;
+      isSmoothScrolling = true;
+      if (smoothScrollTimer) clearTimeout(smoothScrollTimer);
+      smoothScrollTimer = setTimeout(function() {
+        isSmoothScrolling = false;
+        detectActiveByScroll();
+      }, 700);
+      var top = target.getBoundingClientRect().top + (document.documentElement.scrollTop || document.body.scrollTop);
+      window.scrollTo({ top: top - 80, behavior: 'smooth' });
+    }
+  });
+});
+
+// Brand title click → scroll to top
+var brandTitle = document.querySelector('.sidebar-brand-title');
+if (brandTitle) {
+  brandTitle.addEventListener('click', function(e) {
+    e.preventDefault();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navItems.forEach(function(nav) { nav.classList.remove('active'); });
+    lastActiveId = null;
+  });
+}
+
+// Scroll listener for active state
+var scrollTimer = null;
+window.addEventListener('scroll', function() {
+  if (scrollTimer) return;
+  scrollTimer = setTimeout(function() {
+    scrollTimer = null;
+    detectActiveByScroll();
+  }, 50);
+}, { passive: true });
+</script>
+
+</body>
+</html>

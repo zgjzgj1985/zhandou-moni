@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>战斗模拟</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #000; color: #fff; overflow: hidden; }
+    .battle-container { width: 100vw; height: 100vh; background: #000; position: relative; }
+
+    .turn-info { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); text-align: center; }
+    .turn-number { font-size: 18px; font-weight: 600; }
+    .phase-text { font-size: 12px; color: #8e8e93; margin-top: 4px; }
+
+    .battlefield { display: flex; padding: 100px 40px; height: 100vh; }
+    .player-side { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 40px; }
+    .enemy-side { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 40px; }
+
+    .unit { position: relative; cursor: pointer; }
+    .target-indicator { display: none; }
+    .unit.selected .target-indicator { display: block; position: absolute; inset: -4px; border: 2px solid #007aff; border-radius: 12px; }
+    .unit.targetable .target-indicator { display: block; position: absolute; inset: -4px; border: 2px dashed #ff453a; border-radius: 12px; }
+
+    .unit-avatar { width: 64px; height: 64px; background: #1c1c1e; border-radius: 14px; display: flex; align-items: center; justify-content: center; }
+    .unit-avatar.dead { opacity: 0.3; filter: grayscale(1); }
+    .unit.has-command .unit-avatar { box-shadow: 0 0 0 2px #30d158; }
+    .unit.has-command .unit-name::after { content: ' ✓'; color: #30d158; font-size: 10px; }
+    .player-icon, .enemy-icon { width: 36px; height: 36px; background: #2c2c2e; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .player-icon svg, .enemy-icon svg { width: 18px; height: 18px; fill: #fff; }
+    .enemy-icon { border-radius: 8px; }
+
+    .unit-info { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 6px; }
+    .unit-name { font-size: 12px; font-weight: 500; }
+    .unit-level { font-size: 10px; color: #8e8e93; }
+    .hp-bar-container { width: 56px; height: 3px; background: #3a3a3c; border-radius: 2px; overflow: hidden; margin-top: 4px; }
+    .hp-bar { height: 100%; background: #30d158; transition: width 0.3s; }
+    .hp-bar.low { background: #ff9f0a; }
+    .hp-bar.critical { background: #ff453a; }
+    .hp-text { font-size: 9px; color: #8e8e93; margin-top: 2px; }
+
+    .intent-display { position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .intent-icon { width: 12px; height: 12px; }
+    .intent-attack { background: #ff453a; }
+    .intent-buff { background: #30d158; }
+    .intent-heal { background: #0a84ff; }
+    .intent-defend { background: #8e8e93; }
+
+    .skill-panel { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; padding: 14px 20px; background: rgba(30, 30, 30, 0.95); border-radius: 14px; opacity: 0; visibility: hidden; z-index: 100; }
+    .skill-panel.visible { opacity: 1; visibility: visible; }
+    .skill-card { width: 60px; height: 76px; background: #3a3a3c; border-radius: 10px; padding: 6px; cursor: grab; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .skill-card:hover { transform: scale(1.03); }
+    .skill-card.no-pp { opacity: 0.4; cursor: not-allowed; }
+    .skill-card.no-pp:hover { transform: none; }
+    .skill-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .skill-icon.fire { background: #ff453a; }
+    .skill-icon.psychic { background: #bf5af2; }
+    .skill-icon.heal { background: #30d158; }
+    .skill-icon.shield { background: #0a84ff; }
+    .skill-icon svg { width: 16px; height: 16px; fill: #fff; }
+    .skill-name { font-size: 10px; font-weight: 500; color: #fff; text-align: center; }
+    .skill-pp { font-size: 9px; color: #8e8e93; text-align: center; }
+
+    .battle-log { position: fixed; top: 80px; right: 12px; width: 140px; background: rgba(30, 30, 30, 0.9); border-radius: 10px; padding: 10px; }
+    .log-title { font-size: 10px; font-weight: 600; color: #8e8e93; margin-bottom: 6px; }
+    .log-entry { font-size: 10px; color: #fff; padding: 3px 0; }
+    .log-entry.damage { color: #ff453a; }
+    .log-entry.heal { color: #30d158; }
+
+    .damage-number { position: absolute; font-size: 22px; font-weight: 700; pointer-events: none; animation: float-up 0.8s ease-out forwards; z-index: 1000; }
+    .damage-number.damage { color: #ff453a; }
+    .damage-number.heal { color: #30d158; }
+    .damage-number.critical { color: #ff9f0a; font-size: 28px; }
+    @keyframes float-up { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-30px); } }
+
+    .battle-end-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.9); display: flex; align-items: center; justify-content: center; z-index: 200; opacity: 0; visibility: hidden; }
+    .battle-end-overlay.visible { opacity: 1; visibility: visible; }
+    .end-title { font-size: 44px; font-weight: 700; margin-bottom: 24px; }
+    .end-title.victory { color: #30d158; }
+    .end-title.defeat { color: #ff453a; }
+    .restart-btn { padding: 12px 28px; font-size: 14px; font-weight: 600; color: #fff; background: #007aff; border: none; border-radius: 10px; cursor: pointer; }
+
+    .action-hint { font-size: 11px; color: #8e8e93; text-align: center; }
+
+    .command-list { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); background: rgba(30, 30, 30, 0.95); border-radius: 12px; padding: 12px 16px; min-width: 280px; max-width: 320px; z-index: 50; max-height: 60vh; overflow-y: auto; }
+    .command-title { font-size: 11px; font-weight: 600; color: #8e8e93; margin-bottom: 8px; text-align: center; }
+    .command-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #3a3a3c; }
+    .command-item:last-child { border-bottom: none; }
+    .command-status { font-size: 14px; width: 18px; text-align: center; }
+    .command-status.ready { color: #30d158; }
+    .command-status.pending { color: #ff9f0a; }
+    .command-caster { font-size: 12px; color: #fff; min-width: 60px; }
+    .command-arrow { color: #8e8e93; font-size: 12px; }
+    .command-skill { font-size: 12px; color: #bf5af2; }
+    .command-target { font-size: 12px; color: #ff9f0a; }
+    .command-cancel { margin-left: auto; background: none; border: none; color: #ff453a; cursor: pointer; font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+    .command-cancel:hover { background: rgba(255, 69, 58, 0.2); }
+
+    .action-order-display { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); background: rgba(30, 30, 30, 0.95); border-radius: 10px; padding: 10px 16px; z-index: 50; display: none; }
+    .action-order-display.visible { display: block; }
+    .action-order-title { font-size: 10px; color: #8e8e93; margin-bottom: 6px; text-align: center; }
+    .action-order-list { display: flex; flex-direction: column; gap: 4px; }
+    .action-order-item { font-size: 11px; color: #fff; display: flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 4px; }
+    .action-order-item.current { background: rgba(0, 122, 255, 0.3); }
+    .action-order-item.executed { opacity: 0.5; text-decoration: line-through; }
+    .action-order-item.skipped { opacity: 0.3; color: #8e8e93; }
+    .action-order-speed { color: #8e8e93; font-size: 10px; }
+    .action-order-icon { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+    .action-order-icon.player { background: #0a84ff; }
+    .action-order-icon.enemy { background: #ff453a; }
+
+    .skill-tooltip { position: fixed; background: rgba(30, 30, 30, 0.98); border-radius: 10px; padding: 12px 16px; color: #fff; font-size: 12px; z-index: 10001; pointer-events: none; min-width: 140px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    .skill-tooltip .skill-tooltip-name { font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+    .skill-tooltip .skill-tooltip-info { color: #8e8e93; font-size: 11px; margin-bottom: 4px; }
+    .skill-tooltip .skill-tooltip-power { color: #ff6b6b; font-weight: 600; }
+    .skill-tooltip .skill-tooltip-pp { color: #30d158; }
+
+    .drag-preview { position: fixed; pointer-events: none; z-index: 10000; opacity: 0.9; background: #3a3a3c; border-radius: 10px; padding: 8px; width: 60px; height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; box-shadow: 0 8px 25px rgba(0,0,0,0.5); }
+    .drag-preview .skill-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .drag-preview .skill-icon.fire { background: #ff453a; }
+    .drag-preview .skill-icon.psychic { background: #bf5af2; }
+    .drag-preview .skill-icon.heal { background: #30d158; }
+    .drag-preview .skill-icon.shield { background: #0a84ff; }
+    .drag-preview .skill-icon svg { width: 16px; height: 16px; fill: #fff; }
+  </style>
+</head>
+<body>
+  <div class="battle-container">
+    <div class="turn-info">
+      <div class="turn-number" id="turnNumber">第 1 回合</div>
+      <div class="phase-text" id="phaseText">准备阶段 (0/3)</div>
+    </div>
+
+    <div class="action-order-display" id="actionOrderDisplay">
+      <div class="action-order-title">行动顺序</div>
+      <div class="action-order-list" id="actionOrderList"></div>
+    </div>
+
+    <div class="battle-log">
+      <div class="log-title">战斗记录</div>
+      <div id="logContent"></div>
+    </div>
+
+    <div class="battlefield">
+      <div class="player-side" id="playerSide"></div>
+      <div class="enemy-side" id="enemySide"></div>
+    </div>
+
+    <div class="skill-panel" id="skillPanel">
+      <div class="action-hint" id="actionHint">点击左侧伙伴选择技能</div>
+    </div>
+
+    <div class="command-list" id="commandList">
+      <div class="command-title">指令列表</div>
+      <div id="commandItems"></div>
+    </div>
+
+    <div class="battle-end-overlay" id="battleEndOverlay">
+      <div class="end-content">
+        <div class="end-title" id="endTitle">胜利</div>
+        <button class="restart-btn" onclick="restartBattle()">重新开始</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==================== 玩家单位数据 ====================
+    const playerUnits = [
+      {
+        id: 'wind_sparrow',
+        name: '风语雀',
+        level: 10,
+        maxHp: 85,
+        currentHp: 85,
+        speed: 95,
+        element: 'grass',
+        skills: [
+          { id: 'gale_seed', name: '疾风种子', type: 'fire', pp: 15, ppMax: 15, target: 'single_enemy', power: 60, element: 'grass',
+            strategy: 'counter_first' },
+          { id: 'parasitic_seed', name: '寄生之种', type: 'heal', pp: 10, ppMax: 10, target: 'ally', power: 20, effect: 'drain',
+            strategy: 'lowest_hp' }
+        ]
+      },
+      {
+        id: 'thunder_stag',
+        name: '雷角鹿',
+        level: 10,
+        maxHp: 95,
+        currentHp: 95,
+        speed: 120,
+        element: 'electric',
+        skills: [
+          { id: 'thunder_strike', name: '雷霆万钧', type: 'fire', pp: 15, ppMax: 15, target: 'single_enemy', power: 90, element: 'electric',
+            strategy: 'counter_first' },
+          { id: 'static_shield', name: '静电护体', type: 'shield', pp: 12, ppMax: 12, target: 'ally', power: 50,
+            strategy: 'lowest_hp' }
+        ]
+      },
+      {
+        id: 'frost_crane',
+        name: '霜羽鹤',
+        level: 10,
+        maxHp: 80,
+        currentHp: 80,
+        speed: 85,
+        element: 'ice',
+        skills: [
+          { id: 'frost_feather', name: '寒冰羽刃', type: 'fire', pp: 15, ppMax: 15, target: 'single_enemy', power: 50, element: 'ice',
+            strategy: 'counter_first' },
+          { id: 'frost_bloom', name: '霜华绽放', type: 'fire', pp: 10, ppMax: 10, target: 'single_enemy', power: 70, element: 'ice',
+            strategy: 'counter_first' }
+        ]
+      }
+    ];
+
+    // ==================== 敌人单位数据 ====================
+    const enemyUnits = [
+      {
+        id: 'flame_salamander',
+        name: '焰心蜥',
+        level: 8,
+        maxHp: 100,
+        currentHp: 100,
+        speed: 80,
+        element: 'fire',
+        intent: { type: 'attack', power: 80, targetId: 'frost_crane' }
+      },
+      {
+        id: 'venom_spider',
+        name: '毒液蛛',
+        level: 6,
+        maxHp: 70,
+        currentHp: 70,
+        speed: 110,
+        element: 'poison',
+        intent: { type: 'attack', power: 50, targetId: 'thunder_stag' }
+      },
+      {
+        id: 'frost_wolf',
+        name: '寒霜狼',
+        level: 10,
+        maxHp: 110,
+        currentHp: 110,
+        speed: 130,
+        element: 'ice',
+        intent: { type: 'attack', power: 70, targetId: 'wind_sparrow' }
+      }
+    ];
+
+    // ==================== 状态变量 ====================
+    let selectedPlayer = null;
+    let selectedUnitId = null;
+    let currentTurn = 1;
+    let isPlayerTurn = true;
+    let isDragging = false;
+    let draggedSkill = null;
+    let battleEnded = false;
+    let playerCommands = [];  // 玩家指令列表
+    let isPreparing = true;  // 是否处于准备阶段
+    let isExecuting = false; // 是否正在执行战斗结算
+
+    // ==================== 工具函数 ====================
+
+    // 属性克制表
+    const typeChart = {
+      grass: { fire: 0.5, water: 2, grass: 0.5, electric: 1, ice: 1, poison: 0.5 },
+      fire: { fire: 0.5, water: 0.5, grass: 2, electric: 1, ice: 2, rock: 0.5 },
+      water: { fire: 2, water: 0.5, grass: 0.5, electric: 0.5, ice: 1, rock: 2 },
+      electric: { fire: 1, water: 2, grass: 0.5, electric: 0.5, ice: 1, rock: 1 },
+      ice: { fire: 0.5, water: 0.5, grass: 2, electric: 1, ice: 0.5, rock: 1 },
+      poison: { fire: 1, water: 1, grass: 2, electric: 1, ice: 1, poison: 0.5 }
+    };
+
+    // 检查属性克制
+    function isCounter(attackElement, defenseElement) {
+      const multiplier = typeChart[attackElement]?.[defenseElement];
+      return multiplier === 2;
+    }
+
+    // 策略系统
+    const strategies = {
+      // 攻击技能策略：优先克制属性，次选血量最低
+      counter_first: (skill, enemies) => {
+        const alive = enemies.filter(e => e.currentHp > 0);
+        if (alive.length === 0) return null;
+        // 1. 优先克制属性
+        const counter = alive.filter(e => isCounter(skill.element, e.element));
+        if (counter.length > 0) {
+          return counter[Math.floor(Math.random() * counter.length)].id;
+        }
+        // 2. 血量最低
+        alive.sort((a, b) => a.currentHp - b.currentHp);
+        return alive[0].id;
+      },
+
+      // 治疗技能策略：优先血量百分比最低
+      lowest_hp: (skill, allies) => {
+        const wounded = allies.filter(a => a.currentHp > 0 && a.currentHp < a.maxHp);
+        if (wounded.length === 0) wounded = allies.filter(a => a.currentHp > 0);
+        if (wounded.length === 0) return null;
+        // 优先血量百分比最低
+        wounded.sort((a, b) => (a.currentHp / a.maxHp) - (b.currentHp / b.maxHp));
+        return wounded[0].id;
+      },
+
+      // 护盾策略：优先低血量百分比友方
+      shield_lowest: (skill, allies) => {
+        const alive = allies.filter(a => a.currentHp > 0);
+        if (alive.length === 0) return null;
+        alive.sort((a, b) => (a.currentHp / a.maxHp) - (b.currentHp / b.maxHp));
+        return alive[0].id;
+      },
+
+      // 默认策略：随机选择
+      random: (skill, targets) => {
+        const alive = targets.filter(t => t.currentHp > 0);
+        if (alive.length === 0) return null;
+        return alive[Math.floor(Math.random() * alive.length)].id;
+      }
+    };
+
+    // 根据策略获取目标
+    function resolveTarget(skill, validTargets) {
+      const strategyName = skill.strategy || 'random';
+      const strategyFn = strategies[strategyName] || strategies.random;
+      return strategyFn(skill, validTargets);
+    }
+
+    // 渲染指令列表
+    function renderCommandList() {
+      const container = document.getElementById('commandItems');
+      const alivePlayers = playerUnits.filter(u => u.currentHp > 0);
+
+      if (alivePlayers.length === 0) {
+        container.innerHTML = '<div style="font-size: 11px; color: #8e8e93; text-align: center; padding: 8px;">无存活的伙伴</div>';
+        return;
+      }
+
+      container.innerHTML = alivePlayers.map(unit => {
+        const cmd = playerCommands.find(c => c.casterId === unit.id && c.status === 'pending');
+        if (cmd) {
+          const skill = unit.skills.find(s => s.id === cmd.skillId);
+          const target = [...enemyUnits, ...playerUnits].find(u => u.id === cmd.targetId);
+          const targetName = target ? target.name : '未知';
+          return `
+            <div class="command-item">
+              <span class="command-status ready">✓</span>
+              <span class="command-caster">${unit.name}</span>
+              <span class="command-arrow">→</span>
+              <span class="command-skill">${skill ? skill.name : cmd.skillId}</span>
+              <span class="command-arrow">→</span>
+              <span class="command-target">${targetName}</span>
+              <button class="command-cancel" onclick="cancelCommand('${unit.id}')">取消</button>
+            </div>
+          `;
+        } else {
+          return `
+            <div class="command-item">
+              <span class="command-status pending">○</span>
+              <span class="command-caster">${unit.name}</span>
+              <span class="command-arrow">→</span>
+              <span style="font-size: 12px; color: #8e8e93;">待选择...</span>
+            </div>
+          `;
+        }
+      }).join('');
+
+      // 检查是否所有存活伙伴都已下达指令
+      checkAllReady();
+    }
+
+    // 取消指令
+    function cancelCommand(casterId) {
+      playerCommands = playerCommands.filter(c => c.casterId !== casterId);
+      renderCommandList();
+      updateTurnDisplay();
+    }
+
+    // 检查是否所有存活伙伴都已下达指令
+    function checkAllReady() {
+      const alivePlayers = playerUnits.filter(u => u.currentHp > 0);
+      const readyCount = playerCommands.filter(c => {
+        const unit = playerUnits.find(p => p.id === c.casterId);
+        return unit && unit.currentHp > 0;
+      }).length;
+
+      if (alivePlayers.length > 0 && readyCount === alivePlayers.length) {
+        // 所有存活伙伴都已下达指令，自动开始战斗结算
+        setTimeout(() => startCombatPhase(), 500);
+      }
+    }
+
+    function getIntentText(type) {
+      const map = { attack: '攻击', buff: '强化', heal: '治疗', defend: '防御' };
+      return map[type] || type;
+    }
+
+    function addLog(text, type = '') {
+      const content = document.getElementById('logContent');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry ' + type;
+      entry.textContent = text;
+      content.insertBefore(entry, content.firstChild);
+      if (content.children.length > 20) content.removeChild(content.lastChild);
+    }
+
+    function updateHpBar(unit) {
+      const el = document.getElementById(unit.id);
+      if (!el) return;
+      const bar = el.querySelector('.hp-bar');
+      const text = el.querySelector('.hp-text');
+      const percent = (unit.currentHp / unit.maxHp) * 100;
+      bar.style.width = percent + '%';
+      text.textContent = unit.currentHp + ' / ' + unit.maxHp;
+      bar.classList.remove('low', 'critical');
+      if (percent <= 25) bar.classList.add('critical');
+      else if (percent <= 50) bar.classList.add('low');
+    }
+
+    function updateTurnDisplay() {
+      document.getElementById('turnNumber').textContent = '第 ' + currentTurn + ' 回合';
+      if (isExecuting) {
+        document.getElementById('phaseText').textContent = '战斗结算';
+      } else if (isPreparing) {
+        const alivePlayers = playerUnits.filter(u => u.currentHp > 0);
+        const readyCount = playerCommands.filter(c => {
+          const unit = playerUnits.find(p => p.id === c.casterId);
+          return unit && unit.currentHp > 0;
+        }).length;
+        document.getElementById('phaseText').textContent = `准备阶段 (${readyCount}/${alivePlayers.length})`;
+      } else {
+        document.getElementById('phaseText').textContent = '敌人回合';
+      }
+    }
+
+    function showDamageNumber(targetId, amount, type) {
+      const el = document.getElementById(targetId);
+      if (!el) return;
+      const num = document.createElement('div');
+      num.className = 'damage-number ' + type;
+      num.textContent = (type === 'heal' ? '+' : '-') + amount;
+      num.style.left = '50%';
+      num.style.top = '20%';
+      num.style.transform = 'translateX(-50%)';
+      el.appendChild(num);
+      setTimeout(() => num.remove(), 800);
+    }
+
+    // ==================== 渲染函数 ====================
+    function renderPlayerUnits() {
+      const container = document.getElementById('playerSide');
+      container.innerHTML = '';
+      playerUnits.forEach(unit => {
+        const div = document.createElement('div');
+        div.id = unit.id;
+        div.className = 'unit player';
+        if (selectedPlayer && selectedPlayer.id === unit.id) div.classList.add('selected');
+        // 检查是否有指令
+        const hasCommand = playerCommands.find(c => c.casterId === unit.id && c.status === 'pending');
+        if (hasCommand) div.classList.add('has-command');
+
+        const isDead = unit.currentHp <= 0;
+        div.innerHTML = `
+          <div class="target-indicator"></div>
+          <div class="unit-avatar ${isDead ? 'dead' : ''}">
+            <div class="player-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+            </div>
+          </div>
+          <div class="unit-info">
+            <div class="unit-name">${unit.name}</div>
+            <div class="unit-level">Lv.${unit.level} <span style="color: #30d158; margin-left: 4px;">速:${unit.speed}</span></div>
+            <div class="hp-bar-container"><div class="hp-bar ${isDead ? 'critical' : ''}" style="width:${isDead ? 0 : (unit.currentHp/unit.maxHp)*100}%"></div></div>
+            <div class="hp-text">${isDead ? '倒下' : `${unit.currentHp} / ${unit.maxHp}`}</div>
+          </div>
+        `;
+        div.onclick = () => onPlayerClick(unit);
+        if (!isDead) container.appendChild(div);
+      });
+    }
+
+    function renderEnemyUnits() {
+      const container = document.getElementById('enemySide');
+      container.innerHTML = '';
+      enemyUnits.forEach(unit => {
+        const div = document.createElement('div');
+        div.id = unit.id;
+        div.className = 'unit enemy';
+        const isDead = unit.currentHp <= 0;
+
+        div.innerHTML = `
+          <div class="intent-display intent-${unit.intent.type}" data-intent='${JSON.stringify(unit.intent)}'>
+            <svg class="intent-icon" viewBox="0 0 24 24" fill="#fff">
+              ${unit.intent.type === 'attack' ? '<path d="M7 2v11h3v9l7-12h-4l4-8z"/>' : '<path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>'}
+            </svg>
+          </div>
+          <div class="unit-avatar enemy-avatar ${isDead ? 'dead' : ''}">
+            <div class="enemy-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+          </div>
+          <div class="unit-info">
+            <div class="unit-name">${unit.name}</div>
+            <div class="unit-level">Lv.${unit.level} <span style="color: #ff453a; margin-left: 4px;">速:${unit.speed}</span></div>
+            <div class="hp-bar-container"><div class="hp-bar ${isDead ? 'critical' : ''}" style="width:${isDead ? 0 : (unit.currentHp/unit.maxHp)*100}%"></div></div>
+            <div class="hp-text">${isDead ? '倒下' : `${unit.currentHp} / ${unit.maxHp}`}</div>
+          </div>
+        `;
+        if (!isDead) {
+          div.onclick = () => onEnemyClick(unit);
+          setupIntentTooltip(div, unit);
+        }
+        container.appendChild(div);
+      });
+    }
+
+    function setupIntentTooltip(el, unit) {
+      const icon = el.querySelector('.intent-display');
+      icon.onmouseenter = (e) => {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'intent-tooltip';
+        const target = playerUnits.find(p => p.id === unit.intent.targetId);
+        tooltip.innerHTML = `<strong>${getIntentText(unit.intent.type)}</strong><br>威力: ${unit.intent.power}${target ? '<br>目标: ' + target.name : ''}`;
+        document.body.appendChild(tooltip);
+        const rect = icon.getBoundingClientRect();
+        tooltip.style.left = (rect.right + 10) + 'px';
+        tooltip.style.top = rect.top + 'px';
+        icon._tooltip = tooltip;
+      };
+      icon.onmouseleave = () => {
+        if (icon._tooltip) { icon._tooltip.remove(); delete icon._tooltip; }
+      };
+    }
+
+    // ==================== 技能卡悬停提示 ====================
+    let skillTooltip = null;
+
+    function showSkillTooltip(e, skill, card) {
+      hideSkillTooltip();
+      skillTooltip = document.createElement('div');
+      skillTooltip.className = 'skill-tooltip';
+      const targetText = skill.target === 'single_enemy' ? '单体敌人' : skill.target === 'ally' ? '单体队友' : '全体敌人';
+      const typeText = skill.type === 'fire' ? '攻击' : skill.type === 'heal' ? '治疗' : skill.type === 'shield' ? '护盾' : '特殊';
+      skillTooltip.innerHTML = `
+        <div class="skill-tooltip-name">${skill.name}</div>
+        <div class="skill-tooltip-info">类型: ${typeText}</div>
+        <div class="skill-tooltip-power">威力: ${skill.power || '-'}</div>
+        <div class="skill-tooltip-info">目标: ${targetText}</div>
+        <div class="skill-tooltip-pp">PP: ${skill.pp}/${skill.ppMax}</div>
+      `;
+      document.body.appendChild(skillTooltip);
+      const rect = card.getBoundingClientRect();
+      skillTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+      skillTooltip.style.top = (rect.top - 10) + 'px';
+      skillTooltip.style.transform = 'translate(-50%, -100%)';
+    }
+
+    function hideSkillTooltip() {
+      if (skillTooltip) { skillTooltip.remove(); skillTooltip = null; }
+    }
+
+    function renderSkillPanel(unit) {
+      const panel = document.getElementById('skillPanel');
+      const hint = document.getElementById('actionHint');
+      if (!unit) {
+        panel.classList.remove('visible');
+        panel.innerHTML = '<div class="action-hint" id="actionHint">点击左侧伙伴选择技能</div>';
+        return;
+      }
+      panel.innerHTML = unit.skills.map(skill => `
+        <div class="skill-card ${skill.pp <= 0 ? 'no-pp' : ''}" data-skill-id="${skill.id}">
+          <div class="skill-icon ${skill.type}">
+            <svg viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
+          </div>
+          <div class="skill-name">${skill.name}</div>
+          <div class="skill-pp">${skill.pp}/${skill.ppMax}</div>
+        </div>
+      `).join('') + '<div class="action-hint" id="actionHint">拖动技能到目标</div>';
+      panel.classList.add('visible');
+
+      let dragPreview = null;
+
+      panel.querySelectorAll('.skill-card').forEach(card => {
+        const skillId = card.dataset.skillId;
+        const skill = unit.skills.find(s => s.id === skillId);
+
+        // 悬停显示提示
+        card.onmouseenter = (e) => { if (skill) showSkillTooltip(e, skill, card); };
+        card.onmouseleave = hideSkillTooltip;
+
+        // 拖拽开始
+        card.onmousedown = (e) => {
+          if (!skill || skill.pp <= 0) return;
+          e.preventDefault();
+
+          draggedSkill = skillId;
+          updateTargetIndicators(skill);
+
+          // 创建拖拽预览
+          dragPreview = document.createElement('div');
+          dragPreview.className = 'drag-preview';
+          dragPreview.innerHTML = card.innerHTML;
+          document.body.appendChild(dragPreview);
+
+          const moveHandler = (e) => {
+            if (dragPreview) {
+              dragPreview.style.left = e.clientX - 30 + 'px';
+              dragPreview.style.top = e.clientY - 38 + 'px';
+            }
+          };
+
+          const upHandler = (e) => {
+            document.removeEventListener('mousemove', moveHandler);
+            document.removeEventListener('mouseup', upHandler);
+            if (dragPreview) { dragPreview.remove(); dragPreview = null; }
+
+            // 检查是否在目标上释放
+            const target = document.elementFromPoint(e.clientX, e.clientY);
+            const targetUnit = target?.closest('.unit.enemy.targetable') || target?.closest('.unit.player.targetable');
+            if (targetUnit) {
+              const targetId = targetUnit.id;
+              addCommand(unit, skill, targetId);
+            }
+            draggedSkill = null;
+            deselectPlayer();
+          };
+
+          document.addEventListener('mousemove', moveHandler);
+          document.addEventListener('mouseup', upHandler);
+        };
+
+        // 点击选择技能
+        card.onclick = (e) => {
+          if (skill) updateTargetIndicators(skill);
+        };
+      });
+    }
+
+    function updateTargetIndicators(skill) {
+      document.querySelectorAll('.unit').forEach(el => el.classList.remove('targetable'));
+      if (skill.target === 'single_enemy') {
+        enemyUnits.filter(e => e.currentHp > 0).forEach(e => {
+          document.getElementById(e.id)?.classList.add('targetable');
+        });
+      } else if (skill.target === 'ally') {
+        playerUnits.filter(p => p.currentHp > 0).forEach(p => {
+          document.getElementById(p.id)?.classList.add('targetable');
+        });
+      } else if (skill.target === 'all_enemy') {
+        enemyUnits.filter(e => e.currentHp > 0).forEach(e => {
+          document.getElementById(e.id)?.classList.add('targetable');
+        });
+      }
+    }
+
+    // ==================== 事件处理 ====================
+    function onPlayerClick(unit) {
+      if (battleEnded || isExecuting) return;
+      // 如果该伙伴已有指令，允许查看技能状态（显示但不打开技能面板）
+      if (playerCommands.find(c => c.casterId === unit.id && c.status === 'pending')) {
+        // 只高亮显示，不打开技能面板
+        selectedPlayer = unit;
+        document.querySelectorAll('.unit').forEach(el => el.classList.remove('selected'));
+        document.getElementById(unit.id)?.classList.add('selected');
+        return;
+      }
+      if (selectedPlayer && selectedPlayer.id === unit.id) {
+        selectedPlayer = null;
+        renderSkillPanel(null);
+      } else {
+        selectedPlayer = unit;
+        renderSkillPanel(unit);
+      }
+      renderPlayerUnits();
+    }
+
+    function onEnemyClick(unit) {
+      // 点击敌人不执行任何操作，拖拽时在dragPreview的mouseup中处理
+    }
+
+    function deselectPlayer() {
+      selectedPlayer = null;
+      draggedSkill = null;
+      document.querySelectorAll('.unit').forEach(el => el.classList.remove('targetable', 'selected'));
+      renderPlayerUnits();
+      renderSkillPanel(null);
+    }
+
+    // ==================== 指令系统 ====================
+    function addCommand(caster, skill, targetId) {
+      // 消耗 PP
+      skill.pp--;
+
+      // 添加指令
+      playerCommands.push({
+        casterId: caster.id,
+        skillId: skill.id,
+        targetId: targetId,
+        status: 'pending'
+      });
+
+      addLog(`${caster.name} 下达指令：${skill.name}`);
+      renderCommandList();
+      renderSkillPanel(caster);
+      updateTurnDisplay();
+    }
+
+    // ==================== 战斗结算阶段 ====================
+
+    // 获取所有行动单位的行动队列
+    function buildActionQueue() {
+      const actions = [];
+
+      // 添加玩家指令
+      for (const cmd of playerCommands) {
+        if (cmd.status !== 'pending') continue;
+        const caster = playerUnits.find(p => p.id === cmd.casterId);
+        if (!caster || caster.currentHp <= 0) continue;
+
+        const skill = caster.skills.find(s => s.id === cmd.skillId);
+        if (!skill) continue;
+
+        actions.push({
+          id: cmd.casterId,
+          type: 'player',
+          caster: caster,
+          skill: skill,
+          targetId: cmd.targetId,
+          speed: caster.speed,
+          command: cmd
+        });
+      }
+
+      // 添加敌人行动
+      for (const enemy of enemyUnits) {
+        if (enemy.currentHp <= 0) continue;
+        actions.push({
+          id: enemy.id,
+          type: 'enemy',
+          caster: enemy,
+          speed: enemy.speed,
+          intent: enemy.intent
+        });
+      }
+
+      // 按速度排序，同速随机
+      actions.sort((a, b) => {
+        if (a.speed !== b.speed) return b.speed - a.speed;
+        return Math.random() - 0.5;
+      });
+
+      return actions;
+    }
+
+    // 显示行动顺序预览
+    function showActionOrder(queue) {
+      const display = document.getElementById('actionOrderDisplay');
+      const list = document.getElementById('actionOrderList');
+
+      list.innerHTML = queue.map((action, index) => {
+        const isPlayer = action.type === 'player';
+        const name = action.caster.name;
+        const iconClass = isPlayer ? 'player' : 'enemy';
+        const icon = isPlayer ? 'P' : 'E';
+        return `
+          <div class="action-order-item" data-index="${index}">
+            <span class="action-order-icon ${iconClass}">${icon}</span>
+            <span>${name}</span>
+            <span class="action-order-speed">(${action.speed})</span>
+          </div>
+        `;
+      }).join('');
+
+      display.classList.add('visible');
+    }
+
+    // 更新行动顺序显示
+    function updateActionOrderDisplay(currentIndex, status = 'current') {
+      const items = document.querySelectorAll('.action-order-item');
+      items.forEach((item, index) => {
+        item.classList.remove('current', 'executed', 'skipped');
+        if (index < currentIndex) {
+          item.classList.add('executed');
+        } else if (index === currentIndex) {
+          item.classList.add('current');
+        }
+      });
+    }
+
+    // 隐藏行动顺序显示
+    function hideActionOrder() {
+      document.getElementById('actionOrderDisplay').classList.remove('visible');
+    }
+
+    // 解析目标（根据策略）
+    function resolveActionTarget(action) {
+      if (action.targetId) {
+        const target = [...enemyUnits, ...playerUnits].find(u => u.id === action.targetId);
+        if (target && target.currentHp > 0) return target;
+      }
+
+      // 需要重新解析目标
+      const validTargets = action.skill.target === 'single_enemy' ? enemyUnits : playerUnits;
+      return resolveTarget(action.skill, validTargets);
+    }
+
+    // 执行单个行动
+    async function executeAction(action, actionIndex, totalActions) {
+      // 高亮当前行动单位
+      updateActionOrderDisplay(actionIndex, 'current');
+      const el = document.getElementById(action.id);
+      if (el) el.classList.add('selected');
+
+      await delay(400);
+
+      if (action.type === 'player') {
+        // 玩家指令执行
+        const targetId = action.targetId;
+        const target = [...enemyUnits, ...playerUnits].find(u => u.id === targetId);
+
+        // 检查目标是否有效
+        if (!target || target.currentHp <= 0) {
+          // 目标死亡，重新解析
+          const newTargetId = resolveActionTarget(action);
+          if (!newTargetId) {
+            addLog(`${action.caster.name} 的行动目标无效，跳过`);
+            action.command.status = 'skipped';
+          } else {
+            action.targetId = newTargetId;
+          }
+        }
+
+        if (action.command.status !== 'skipped') {
+          await executePlayerCommand(action.caster, action.skill, action.targetId);
+        }
+      } else {
+        // 敌人行动执行
+        await executeEnemyAction(action.caster);
+      }
+
+      // 清除高亮
+      if (el) el.classList.remove('selected');
+    }
+
+    // 执行玩家命令
+    async function executePlayerCommand(caster, skill, targetId) {
+      const target = [...enemyUnits, ...playerUnits].find(u => u.id === targetId);
+      if (!target || target.currentHp <= 0) return;
+
+      if (skill.target === 'single_enemy') {
+        const damage = Math.floor(skill.power * (0.8 + Math.random() * 0.4));
+        target.currentHp = Math.max(0, target.currentHp - damage);
+        showDamageNumber(target.id, damage, 'damage');
+        updateHpBar(target);
+        addLog(`${caster.name} 使用 ${skill.name}，对 ${target.name} 造成 ${damage} 伤害`, 'damage');
+        if (target.currentHp <= 0) addLog(`${target.name} 倒下了！`);
+      } else if (skill.target === 'ally') {
+        const heal = Math.floor(skill.power * (0.8 + Math.random() * 0.4));
+        target.currentHp = Math.min(target.maxHp, target.currentHp + heal);
+        showDamageNumber(target.id, heal, 'heal');
+        updateHpBar(target);
+        addLog(`${caster.name} 使用 ${skill.name}，恢复 ${target.name} ${heal} HP`, 'heal');
+      }
+
+      await delay(300);
+    }
+
+    // 执行敌人行动
+    async function executeEnemyAction(enemy) {
+      const target = playerUnits.find(p => p.id === enemy.intent.targetId);
+
+      // 检查目标是否有效
+      let actualTarget = target;
+      if (!target || target.currentHp <= 0) {
+        // 目标无效，重新选择
+        const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
+        if (alivePlayers.length > 0) {
+          actualTarget = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+        } else {
+          addLog(`${enemy.name} 无法选择目标，跳过`);
+          return;
+        }
+      }
+
+      if (enemy.intent.type === 'attack') {
+        const damage = Math.floor(enemy.intent.power * (0.8 + Math.random() * 0.4));
+        actualTarget.currentHp = Math.max(0, actualTarget.currentHp - damage);
+        showDamageNumber(actualTarget.id, damage, 'damage');
+        updateHpBar(actualTarget);
+        addLog(`${enemy.name} 攻击 ${actualTarget.name}，造成 ${damage} 伤害`, 'damage');
+        if (actualTarget.currentHp <= 0) addLog(`${actualTarget.name} 倒下了！`);
+        updateEnemyIntent(enemy);
+      }
+    }
+
+    // 开始战斗结算阶段
+    async function startCombatPhase() {
+      isPreparing = false;
+      isExecuting = true;
+      updateTurnDisplay();
+
+      // 隐藏技能面板和指令列表
+      document.getElementById('skillPanel').classList.remove('visible');
+      document.getElementById('commandList').style.display = 'none';
+
+      addLog('===== 战斗结算开始 =====');
+
+      // 构建行动队列
+      const actionQueue = buildActionQueue();
+      showActionOrder(actionQueue);
+
+      await delay(800);
+
+      // 依次执行每个行动
+      for (let i = 0; i < actionQueue.length; i++) {
+        if (checkBattleEnd()) break;
+        await executeAction(actionQueue[i], i, actionQueue.length);
+        await delay(200);
+      }
+
+      // 标记所有指令为已执行
+      playerCommands.forEach(cmd => {
+        if (cmd.status === 'pending') cmd.status = 'executed';
+      });
+
+      hideActionOrder();
+
+      // 回合结束
+      await delay(500);
+
+      if (!checkBattleEnd()) {
+        // 更新敌人意图
+        for (const enemy of enemyUnits) {
+          if (enemy.currentHp > 0) {
+            updateEnemyIntent(enemy);
+          }
+        }
+
+        // 进入下一回合
+        currentTurn++;
+        playerCommands = []; // 清空指令
+        isPreparing = true;
+        isExecuting = false;
+
+        renderEnemyUnits();
+        document.getElementById('commandList').style.display = 'block';
+        renderCommandList();
+        updateTurnDisplay();
+        addLog(`===== 第 ${currentTurn} 回合开始 =====`);
+      }
+    }
+
+    function updateEnemyIntent(enemy) {
+      const intents = ['attack', 'attack', 'attack', 'buff', 'heal'];
+      const intent = intents[Math.floor(Math.random() * intents.length)];
+      const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
+      const target = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+      if (!target) return;
+      enemy.intent = {
+        type: intent === 'heal' ? 'heal' : intent === 'buff' ? 'buff' : 'attack',
+        power: intent === 'attack' ? 40 + Math.floor(Math.random() * 50) : 20 + Math.floor(Math.random() * 20),
+        targetId: intent === 'heal' ? enemy.id : target.id
+      };
+      renderEnemyUnits();
+    }
+
+    function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+    // ==================== 战斗结束检查 ====================
+    function checkBattleEnd() {
+      const playersAlive = playerUnits.filter(u => u.currentHp > 0).length;
+      const enemiesAlive = enemyUnits.filter(u => u.currentHp > 0).length;
+      if (playersAlive === 0) {
+        battleEnded = true;
+        showBattleEnd(false);
+        return true;
+      }
+      if (enemiesAlive === 0) {
+        battleEnded = true;
+        showBattleEnd(true);
+        return true;
+      }
+      return false;
+    }
+
+    function showBattleEnd(victory) {
+      const overlay = document.getElementById('battleEndOverlay');
+      const title = document.getElementById('endTitle');
+      title.textContent = victory ? '胜利' : '失败';
+      title.className = 'end-title ' + (victory ? 'victory' : 'defeat');
+      overlay.classList.add('visible');
+    }
+
+    function restartBattle() {
+      playerUnits.forEach(u => { u.currentHp = u.maxHp; u.skills.forEach(s => s.pp = s.ppMax); });
+      enemyUnits.forEach((u, i) => {
+        u.currentHp = u.maxHp;
+        u.intent = { type: 'attack', power: 50 + i * 15, targetId: playerUnits[i % playerUnits.length].id };
+      });
+      currentTurn = 1;
+      isPlayerTurn = true;
+      battleEnded = false;
+      selectedPlayer = null;
+      playerCommands = [];
+      isPreparing = true;
+      isExecuting = false;
+      document.getElementById('battleEndOverlay').classList.remove('visible');
+      document.getElementById('commandList').style.display = 'block';
+      document.getElementById('logContent').innerHTML = '';
+      renderPlayerUnits();
+      renderEnemyUnits();
+      renderSkillPanel(null);
+      renderCommandList();
+      updateTurnDisplay();
+      addLog('战斗开始！');
+    }
+
+    // ==================== 初始化 ====================
+    function init() {
+      renderPlayerUnits();
+      renderEnemyUnits();
+      renderCommandList();
+      updateTurnDisplay();
+      addLog('战斗开始！');
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.unit.player') && !e.target.closest('.skill-panel') && !e.target.closest('.skill-card')) {
+          if (!isDragging) deselectPlayer();
+        }
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,2788 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>卡牌游戏流派设计百科</title>
+    <style>
+        :root {
+            --primary: #007AFF;
+            --bg: #F2F2F7;
+            --card-bg: #FFFFFF;
+            --text-primary: #000000;
+            --text-secondary: #3C3C43;
+            --text-tertiary: #8E8E93;
+            --border: #E5E5EA;
+            --success: #34C759;
+            --warning: #FF9500;
+            --danger: #FF3B30;
+            --code-bg: #1E1E1E;
+            --code-text: #D4D4D4;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* 顶部导航 */
+        .nav-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            border-bottom: 0.5px solid var(--border);
+        }
+
+        .nav-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* 主容器 */
+        .container {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 60px 20px 40px;
+        }
+
+        /* 标题样式 */
+        .hero {
+            text-align: center;
+            padding: 40px 0 50px;
+        }
+
+        .hero h1 {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--primary), #5856D6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero .subtitle {
+            font-size: 15px;
+            color: var(--text-tertiary);
+            font-weight: 400;
+        }
+
+        /* 目录 */
+        .toc {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .toc-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+            padding-left: 4px;
+        }
+
+        .toc-list {
+            list-style: none;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+        }
+
+        .toc-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 10px;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        .toc-item:hover {
+            background: rgba(0, 122, 255, 0.08);
+        }
+
+        .toc-num {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, var(--primary), #5856D6);
+            color: white;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        .toc-text {
+            font-size: 14px;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 卡片通用样式 */
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        /* 流派卡片 */
+        .archetype {
+            padding: 28px 24px;
+            margin-bottom: 20px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .archetype[id="combo"]::before { background: linear-gradient(90deg, #007AFF, #5856D6); }
+        .archetype[id="aggro"]::before { background: linear-gradient(90deg, #FF3B30, #FF6B6B); }
+        .archetype[id="deathrattle"]::before { background: linear-gradient(90deg, #34C759, #30D158); }
+        .archetype[id="control"]::before { background: linear-gradient(90deg, #5856D6, #AF52DE); }
+        .archetype[id="otk"]::before { background: linear-gradient(90deg, #FF9500, #FFCC00); }
+        .archetype[id="defense"]::before { background: linear-gradient(90deg, #007AFF, #5AC8FA); }
+        .archetype[id="secret"]::before { background: linear-gradient(90deg, #AF52DE, #FF2D55); }
+        .archetype[id="midrange"]::before { background: linear-gradient(90deg, #5AC8FA, #34C759); }
+        .archetype[id="infinite"]::before { background: linear-gradient(90deg, #FF2D55, #FF9500); }
+        .archetype[id="aura"]::before { background: linear-gradient(90deg, #FFCC00, #FF3B30); }
+        .archetype[id="attrition"]::before { background: linear-gradient(90deg, #64D2FF, #5856D6); }
+        .archetype[id="metamorphosis"]::before { background: linear-gradient(90deg, #BF5AF2, #FF375F); }
+        .archetype[id="zone"]::before { background: linear-gradient(90deg, #30D158, #34C759); }
+
+        .archetype::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .archetype-header {
+            margin-bottom: 20px;
+        }
+
+        .archetype-num {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+            background: rgba(0, 122, 255, 0.1);
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        .archetype-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
+        }
+
+        .archetype-tagline {
+            font-size: 15px;
+            color: var(--text-secondary);
+            font-style: italic;
+            padding-left: 12px;
+            border-left: 3px solid var(--primary);
+            margin-top: 12px;
+        }
+
+        .archetype-desc {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }
+
+        /* 标签组 */
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            background: rgba(0, 122, 255, 0.08);
+            color: var(--primary);
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* 列表样式 */
+        .feature-list {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+
+        .feature-list li {
+            padding: 10px 0;
+            border-bottom: 0.5px solid var(--border);
+            display: flex;
+            align-items: flex-start;
+            font-size: 15px;
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-list li::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: var(--primary);
+            border-radius: 50%;
+            margin-right: 12px;
+            margin-top: 8px;
+            flex-shrink: 0;
+        }
+
+        .feature-list li strong {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        /* 代码块 */
+        .code-block {
+            background: var(--code-bg);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+            overflow-x: auto;
+        }
+
+        .code-block pre {
+            font-family: "SF Mono", "Fira Code", "Menlo", monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--code-text);
+            margin: 0;
+            white-space: pre;
+        }
+
+        .code-block .comment {
+            color: #6A9955;
+        }
+
+        .code-block .string {
+            color: #CE9178;
+        }
+
+        .code-block .keyword {
+            color: #569CD6;
+        }
+
+        .code-block .property {
+            color: #9CDCFE;
+        }
+
+        .code-block .value {
+            color: #B5CEA8;
+        }
+
+        /* 表格 */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            background: rgba(0, 122, 255, 0.06);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 0.5px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* 章节标题 */
+        .section-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 24px 0 16px;
+            padding-top: 8px;
+        }
+
+        /* 总览卡片 */
+        .overview-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .overview-item {
+            background: rgba(0, 122, 255, 0.04);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .overview-label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .overview-row {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 14px;
+        }
+
+        .overview-key {
+            color: var(--text-secondary);
+            min-width: 70px;
+        }
+
+        .overview-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* 适配度星级 */
+        .stars {
+            color: #FF9500;
+            letter-spacing: -1px;
+        }
+
+        .stars-empty {
+            color: var(--border);
+        }
+
+        /* 优先级标签 */
+        .priority {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .priority-p0 {
+            background: #FF3B30;
+            color: white;
+        }
+
+        .priority-p1 {
+            background: #FF9500;
+            color: white;
+        }
+
+        .priority-p2 {
+            background: #34C759;
+            color: white;
+        }
+
+        .priority-p3 {
+            background: #8E8E93;
+            color: white;
+        }
+
+        /* 页脚 */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-tertiary);
+            font-size: 13px;
+        }
+
+        /* 返回顶部 */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: var(--primary);
+            color: white;
+            border-radius: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 16px rgba(0, 122, 255, 0.4);
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .back-to-top:hover {
+            transform: scale(1.1);
+        }
+
+        /* 响应式 */
+        @media (min-width: 768px) {
+            .toc-list {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* 分类标题 */
+        .category-header {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 30px 0 16px;
+            display: flex;
+            align-items: center;
+        }
+
+        .category-header::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+            margin-left: 16px;
+        }
+
+        /* 游戏标签 */
+        .game-tag {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #F2F2F7;
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        /* 引用块 */
+        blockquote {
+            margin: 16px 0;
+            padding: 16px 20px;
+            background: rgba(0, 122, 255, 0.06);
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+            font-size: 15px;
+            color: var(--text-secondary);
+        }
+
+        /* 禁止按钮 */
+        .prohibit-list {
+            list-style: none;
+        }
+
+        .prohibit-list li {
+            padding: 8px 0;
+            font-size: 14px;
+            color: var(--danger);
+            display: flex;
+            align-items: center;
+        }
+
+        .prohibit-list li::before {
+            content: '\2717';
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        /* Combo示例 */
+        .combo-example {
+            background: rgba(255, 149, 0, 0.08);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .combo-step {
+            display: flex;
+            align-items: flex-start;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+
+        .step-num {
+            width: 24px;
+            height: 24px;
+            background: #FF9500;
+            color: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 12px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            color: var(--text-primary);
+            line-height: 24px;
+        }
+
+        /* 流程时间线 */
+        .timeline {
+            background: rgba(0, 122, 255, 0.06);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .timeline-item {
+            display: flex;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+
+        .timeline-time {
+            color: var(--primary);
+            font-weight: 600;
+            min-width: 90px;
+        }
+
+        .timeline-desc {
+            color: var(--text-secondary);
+        }
+
+        /* 核心技能表格 */
+        .skill-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin: 16px 0;
+        }
+
+        .skill-table th {
+            background: rgba(0, 122, 255, 0.06);
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .skill-table td {
+            padding: 10px 12px;
+            border-bottom: 0.5px solid var(--border);
+            font-size: 13px;
+        }
+
+        .skill-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .skill-type {
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .skill-example {
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        /* 变体标签 */
+        .variant-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .variant-tag {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #F2F2F7;
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .counter-list {
+            margin-top: 12px;
+        }
+
+        .counter-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 13px;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .counter-arrow {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .counter-target {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .counter-desc {
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar">
+        <span class="nav-title">流派设计百科</span>
+    </nav>
+
+    <main class="container">
+        <header class="hero">
+            <h1>回合制卡牌游戏流派设计百科</h1>
+            <p class="subtitle">系统整理常见流派设计风格，涵盖核心机制与技能设计</p>
+        </header>
+
+        <!-- 目录 -->
+        <nav class="toc card">
+            <div class="toc-title">流派目录</div>
+            <ul class="toc-list">
+                <li class="toc-item" onclick="scrollToSection('combo')">
+                    <span class="toc-num">1</span>
+                    <span class="toc-text">连击流</span>
+                </li>
+                <li class="toc-item" onclick="scrollToSection('aggro')">
+                    <span class="toc-num">2</span>
+                    <span class="toc-text">快攻流</span>
+                </li>
+                <li class="toc-item" onclick="scrollToSection('deathrattle')">
+                    <span class="toc-num">3</span>
+                    <span class="toc-text">亡语流</span>
+                </li>
+                <li class="toc-item" onclick="scrollToSection('control')">
+                    <span class="toc-num">4</span>
+                    <span class="toc-text">控制流</span>
+                </li>
+                <li class="toc-item" onclick="scrollToSection('otk')">
+                    <span class="toc-num">5</span>
+                    <span class="toc-text">爆发流</span>
+                </li>
+                <li class="toc-item" onclick="scrollToSection('defense')">
+                    <span class="toc-num">6</span>
+                    <span class="toc-text">防御流</span>
+                </li>
+                <li class="toc-item" onclick="scrollToSection('secret')">
+                    <span class="toc-num">7</span>
+                    <span class="toc-text">奥秘流</span>
+                </li>
+                <li class="toc-item" onclick="scrollToSection('midrange')">
+                    <span class="toc-num">8</span>
+                    <span class="toc-text">中速流</span>
+                </li>
+                <li class="toc-item" onclick="scrollToSection('infinite')">
+                    <span class="toc-num">9</span>
+                    <span class="toc-text">无限流</span>
+                </li>
+                <li class="toc-item" onclick="scrollToSection('aura')">
+                    <span class="toc-num">10</span>
+                    <span class="toc-text">光环流</span>
+                </li>
+                <li class="toc-item" onclick="scrollToSection('attrition')">
+                    <span class="toc-num">11</span>
+                    <span class="toc-text">疲劳流</span>
+                </li>
+                <li class="toc-item" onclick="scrollToSection('metamorphosis')">
+                    <span class="toc-num">12</span>
+                    <span class="toc-text">变形流</span>
+                </li>
+                <li class="toc-item" onclick="scrollToSection('zone')">
+                    <span class="toc-num">13</span>
+                    <span class="toc-text">领域流</span>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- 流派分类总览 -->
+        <section class="card" id="overview">
+            <h2 class="section-title">流派分类总览</h2>
+            
+            <div class="overview-item">
+                <div class="overview-label">按胜利节奏</div>
+                <div class="overview-row">
+                    <span class="overview-key">速攻型</span>
+                    <span class="overview-value">5-7回合解决战斗 → 快攻流</span>
+                </div>
+                <div class="overview-row">
+                    <span class="overview-key">中速型</span>
+                    <span class="overview-value">8-15回合决胜负 → 中速流</span>
+                </div>
+                <div class="overview-row">
+                    <span class="overview-key">控制型</span>
+                    <span class="overview-value">15+回合消耗战 → 控制流、防御流</span>
+                </div>
+                <div class="overview-row">
+                    <span class="overview-key">爆发型</span>
+                    <span class="overview-value">一回合定胜负 → OTK流、无限流</span>
+                </div>
+            </div>
+
+            <div class="overview-item">
+                <div class="overview-label">按资源模式</div>
+                <div class="overview-row">
+                    <span class="overview-key">消耗型</span>
+                    <span class="overview-value">资源有限，谨慎使用 → 控制流</span>
+                </div>
+                <div class="overview-row">
+                    <span class="overview-key">循环型</span>
+                    <span class="overview-value">资源自我补给 → 亡语流、无限流</span>
+                </div>
+                <div class="overview-row">
+                    <span class="overview-key">爆发型</span>
+                    <span class="overview-value">积累→一次释放 → 连击流、光环流</span>
+                </div>
+            </div>
+
+            <div class="overview-item">
+                <div class="overview-label">按交互方式</div>
+                <div class="overview-row">
+                    <span class="overview-key">主动进攻</span>
+                    <span class="overview-value">主导场面节奏 → 快攻流、中速流</span>
+                </div>
+                <div class="overview-row">
+                    <span class="overview-key">反应应对</span>
+                    <span class="overview-value">等待时机反制 → 控制流、防御流</span>
+                </div>
+                <div class="overview-row">
+                    <span class="overview-key">心理博弈</span>
+                    <span class="overview-value">信息不对称 → 奥秘流</span>
+                </div>
+                <div class="overview-row">
+                    <span class="overview-key">持续增益</span>
+                    <span class="overview-value">时间换力量 → 光环流、连击流</span>
+                </div>
+            </div>
+
+            <h3 class="section-title">流派克制关系</h3>
+            <div class="counter-list">
+                <div class="counter-item">
+                    <span class="counter-arrow">快攻流 →</span>
+                    <span class="counter-target">OTK流</span>
+                    <span class="counter-desc">趁组件未齐斩杀</span>
+                </div>
+                <div class="counter-item">
+                    <span class="counter-arrow">控制流 →</span>
+                    <span class="counter-target">快攻流</span>
+                    <span class="counter-desc">解牌消耗战</span>
+                </div>
+                <div class="counter-item">
+                    <span class="counter-arrow">奥秘流 →</span>
+                    <span class="counter-target">连击流</span>
+                    <span class="counter-desc">打断关键连锁</span>
+                </div>
+                <div class="counter-item">
+                    <span class="counter-arrow">控制流 →</span>
+                    <span class="counter-target">亡语流</span>
+                    <span class="counter-desc">清场克制套娃</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 1. 连击流 -->
+        <article class="archetype" id="combo">
+            <div class="archetype-header">
+                <span class="archetype-num">流派 1</span>
+                <h2 class="archetype-title">连击流 / Combo Chain</h2>
+                <p class="archetype-tagline">多段结算的数学艺术，精密连锁的爆发美学</p>
+            </div>
+            
+            <p class="archetype-desc">
+                核心是通过积累连锁次数或多次触发效果，在一个回合内实现多段伤害结算或复合战术链条。
+            </p>
+
+            <h3 class="section-title">设计特点</h3>
+            <ul class="feature-list">
+                <li><strong>多段结算</strong>：伤害或效果分多次触发，而非一次性结算</li>
+                <li><strong>高操作上限</strong>：需要玩家精准计算连锁顺序和伤害分配</li>
+                <li><strong>风险与收益并存</strong>：连锁失败可能直接崩盘，成功则爆发极高</li>
+                <li><strong>数学机器</strong>：核心玩家能看到"方程组"而非单纯的场面</li>
+            </ul>
+
+            <h3 class="section-title">代表游戏</h3>
+            <div>
+                <span class="game-tag">游戏王</span>
+                <span class="game-tag">炉石传说</span>
+                <span class="game-tag">影之诗</span>
+            </div>
+
+            <h3 class="section-title">核心技能</h3>
+            <table class="skill-table">
+                <thead>
+                    <tr>
+                        <th>技能类型</th>
+                        <th>效果描述</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="skill-type">连锁触发</td>
+                        <td>当连锁数达到N时触发额外效果</td>
+                        <td class="skill-example">「连锁爆击」：每连锁+1，伤害+X</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">次数强化</td>
+                        <td>某效果可被触发N次</td>
+                        <td class="skill-example">「怒火」：每受伤一次，攻击+Y</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">复制生成</td>
+                        <td>触发时生成额外实体</td>
+                        <td class="skill-example">「熔岩镜像」：复制一个友方随从</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">连锁增伤</td>
+                        <td>攻击力随连锁次数提升</td>
+                        <td class="skill-example">「兽人·阿瑞斯」：连锁N时，攻击+N</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">直接伤害</td>
+                        <td>连锁时造成生命值伤害</td>
+                        <td class="skill-example">「连爆魔人」：连锁时对对手造成X点伤害</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="tags">
+                <span class="tag">连锁触发</span>
+                <span class="tag">次数强化</span>
+                <span class="tag">复制生成</span>
+                <span class="tag">连锁增伤</span>
+                <span class="tag">直接伤害</span>
+            </div>
+
+            <h3 class="section-title">流派变体</h3>
+            <div class="variant-list">
+                <span class="variant-tag">纯连锁伤害型</span>
+                <span class="variant-tag">连锁资源回收型</span>
+                <span class="variant-tag">连锁干扰型</span>
+                <span class="variant-tag">朝神计算型</span>
+            </div>
+
+            <h3 class="section-title">设计禁忌</h3>
+            <ul class="prohibit-list">
+                <li>避免连锁条件过于简单导致无脑Combo</li>
+                <li>避免没有反制手段使对手完全无法应对</li>
+                <li>避免连锁动画过长影响游戏节奏</li>
+            </ul>
+
+            <h3 class="section-title">典型代码示例</h3>
+            <div class="code-block">
+                <pre><span class="comment">// 【连锁爆击】技能</span>
+<span class="comment">// 费用：2 | 类型：法术 | 来源：游戏王</span>
+{
+  name: <span class="string">"连锁爆击"</span>,
+  type: <span class="string">"spell"</span>,
+  cost: <span class="value">2</span>,
+  effect: {
+    type: <span class="string">"chain_damage"</span>,
+    baseDamage: <span class="value">2</span>,
+    damagePerChain: <span class="value">3</span>,
+    description: <span class="string">"每有1次连锁+3伤害"</span>
+  }
+}</pre>
+            </div>
+            <div class="code-block">
+                <pre><span class="comment">// 【连爆魔人】随从</span>
+<span class="comment">// 费用：6 | 攻击：2000 | 生命：2200 | 来源：游戏王</span>
+{
+  name: <span class="string">"连爆魔人"</span>,
+  type: <span class="string">"monster"</span>,
+  level: <span class="value">6</span>,
+  attack: <span class="value">2000</span>,
+  defense: <span class="value">2200</span>,
+  effect: {
+    type: <span class="string">"chain_damage"</span>,
+    trigger: <span class="string">"on_chain"</span>,
+    damage: <span class="value">500</span>
+  }
+}</pre>
+            </div>
+        </article>
+
+        <!-- 2. 快攻流 -->
+        <article class="archetype" id="aggro">
+            <div class="archetype-header">
+                <span class="archetype-num">流派 2</span>
+                <h2 class="archetype-title">快攻流 / Aggressive</h2>
+                <p class="archetype-tagline">闪电战的暴力美学，用速度淹没一切对手</p>
+            </div>
+            
+            <p class="archetype-desc">
+                在最短回合数内倾泻最大伤害，通过数量优势淹没对手。用前期低费随从快速铺场，逼迫对手在资源未到位前结束战斗。
+            </p>
+
+            <h3 class="section-title">设计特点</h3>
+            <ul class="feature-list">
+                <li><strong>低费曲线密集</strong>：大量1-3费随从，前期每个回合都有威胁动作</li>
+                <li><strong>场面交换优先</strong>：用随从数量优势换取场面控制</li>
+                <li><strong>终结窗口短</strong>：通常5-7回合内必须建立胜势</li>
+                <li><strong>上下限差距大</strong>：天胡可速推，卡手则崩盘</li>
+            </ul>
+
+            <h3 class="section-title">代表游戏</h3>
+            <div>
+                <span class="game-tag">炉石传说</span>
+                <span class="game-tag">游戏王</span>
+                <span class="game-tag">影之诗</span>
+                <span class="game-tag">七圣召唤</span>
+            </div>
+
+            <h3 class="section-title">核心技能</h3>
+            <table class="skill-table">
+                <thead>
+                    <tr>
+                        <th>技能类型</th>
+                        <th>效果描述</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="skill-type">低费冲锋</td>
+                        <td>1-2费随从直接攻击英雄</td>
+                        <td class="skill-example">「海盗帕奇斯」：冲锋，战吼召唤衍生物</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">战场强化</td>
+                        <td>场上随从获得属性加成</td>
+                        <td class="skill-example">「南海船长」：所有海盗+1/+1</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">铺场法术</td>
+                        <td>一次性召唤多个随从</td>
+                        <td class="skill-example">「等级的提升」：所有1费随从变成2/2</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">Buff增益</td>
+                        <td>单体或群体属性提升</td>
+                        <td class="skill-example">「王者祝福」：随从+4/+4并获得圣盾</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">武器攻击</td>
+                        <td>用武器补伤害</td>
+                        <td class="skill-example">「鹰角弓」：攻击时触发奥秘效果</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="tags">
+                <span class="tag">低费冲锋</span>
+                <span class="tag">战场强化</span>
+                <span class="tag">铺场法术</span>
+                <span class="tag">Buff增益</span>
+                <span class="tag">武器攻击</span>
+            </div>
+
+            <h3 class="section-title">流派变体</h3>
+            <div class="variant-list">
+                <span class="variant-tag">动物园型</span>
+                <span class="variant-tag">海盗型</span>
+                <span class="variant-tag">速攻野兽型</span>
+                <span class="variant-tag">武器型</span>
+            </div>
+
+            <h3 class="section-title">设计原则</h3>
+            <ul class="feature-list">
+                <li>1-3费随从应占卡组 50% 以上</li>
+                <li>前期每个回合都应有有效动作</li>
+                <li>终结手段应在 5-7 费区间</li>
+                <li>手牌消耗快，需要充足的过牌支撑</li>
+            </ul>
+
+            <h3 class="section-title">典型代码示例</h3>
+            <div class="code-block">
+                <pre><span class="comment">// 【南海船长】随从</span>
+<span class="comment">// 费用：3 | 攻击：3 | 生命：3 | 来源：炉石传说</span>
+{
+  name: <span class="string">"南海船长"</span>,
+  type: <span class="string">"minion"</span>,
+  cost: <span class="value">3</span>,
+  attack: <span class="value">3</span>,
+  health: <span class="value">3</span>,
+  tribe: <span class="string">"pirate"</span>,
+  effect: {
+    type: <span class="string">"aura"</span>,
+    buff: { attack: <span class="value">1</span>, health: <span class="value">1</span> },
+    description: <span class="string">"所有海盗获得+1/+1"</span>
+  }
+}</pre>
+            </div>
+            <div class="code-block">
+                <pre><span class="comment">// 【烈焰小鬼】随从</span>
+<span class="comment">// 费用：1 | 攻击：3 | 生命：2 | 来源：炉石传说</span>
+{
+  name: <span class="string">"烈焰小鬼"</span>,
+  type: <span class="string">"minion"</span>,
+  cost: <span class="value">1</span>,
+  attack: <span class="value">3</span>,
+  health: <span class="value">2</span>,
+  tribe: <span class="string">"demon"</span>,
+  effect: {
+    type: <span class="string">"battlecry"</span>,
+    damageToHero: <span class="value">2</span>,
+    description: <span class="string">"战吼：对你造成2点伤害"</span>
+  }
+}</pre>
+            </div>
+        </article>
+
+        <!-- 3. 亡语流 -->
+        <article class="archetype" id="deathrattle">
+            <div class="archetype-header">
+                <span class="archetype-num">流派 3</span>
+                <h2 class="archetype-title">亡语流 / Deathrattle</h2>
+                <p class="archetype-tagline">死亡不是终点，每一次倒下都是新循环的起点</p>
+            </div>
+            
+            <p class="archetype-desc">
+                随从死亡时触发额外效果，产生持续的资源链。让每一个随从的"死亡"都不是终点，而是新循环的起点。
+            </p>
+
+            <h3 class="section-title">设计特点</h3>
+            <ul class="feature-list">
+                <li><strong>死亡触发</strong>：随从死亡时产生额外随从或收益</li>
+                <li><strong>套娃效应</strong>：亡语触发亡语，形成连锁反应</li>
+                <li><strong>场面滚雪球</strong>：死亡产生的资源持续扩大场面</li>
+                <li><strong>架墙保护</strong>：需要嘲讽随从保护核心不被直杀</li>
+            </ul>
+
+            <h3 class="section-title">代表游戏</h3>
+            <div>
+                <span class="game-tag">炉石传说</span>
+                <span class="game-tag">酒馆战棋</span>
+            </div>
+
+            <h3 class="section-title">核心技能</h3>
+            <table class="skill-table">
+                <thead>
+                    <tr>
+                        <th>技能类型</th>
+                        <th>效果描述</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="skill-type">死亡召唤</td>
+                        <td>死亡时召唤随从</td>
+                        <td class="skill-example">「麦田傀儡」：亡语召唤一个2/1的麦田影子</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">死亡增益</td>
+                        <td>死亡时Buff场上单位</td>
+                        <td class="skill-example">「恩佐斯的子嗣」：亡语使所有友方随从+1/+1</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">死亡抽牌</td>
+                        <td>死亡时抽牌</td>
+                        <td class="skill-example">「战利品贮藏者」：亡语抽一张牌</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">死亡伤害</td>
+                        <td>死亡时造成伤害</td>
+                        <td class="skill-example">「爆爆机器人」：亡语对一个随机敌人造成3点伤害</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">亡语强化</td>
+                        <td>亡语效果翻倍</td>
+                        <td class="skill-example">「瑞文戴尔男爵」：所有亡语效果触发两次</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="tags">
+                <span class="tag">死亡召唤</span>
+                <span class="tag">死亡增益</span>
+                <span class="tag">死亡抽牌</span>
+                <span class="tag">死亡伤害</span>
+                <span class="tag">亡语强化</span>
+            </div>
+
+            <h3 class="section-title">流派变体</h3>
+            <div class="variant-list">
+                <span class="variant-tag">野兽亡语型</span>
+                <span class="variant-tag">机械亡语型</span>
+                <span class="variant-tag">圣盾嘲讽型</span>
+                <span class="variant-tag">连击爆发型</span>
+            </div>
+
+            <h3 class="section-title">设计原则</h3>
+            <ul class="feature-list">
+                <li>亡语触发应有资源净收益（不亏场面）</li>
+                <li>套娃层级控制在 2-3 层以内</li>
+                <li>需要嘲讽随从保护核心亡语单位</li>
+                <li>亡语强化核心卡应有较高费用</li>
+            </ul>
+
+            <h3 class="section-title">典型代码示例</h3>
+            <div class="code-block">
+                <pre><span class="comment">// 【瑞文戴尔男爵】随从</span>
+<span class="comment">// 费用：5 | 攻击：4 | 生命：4 | 来源：炉石传说</span>
+{
+  name: <span class="string">"瑞文戴尔男爵"</span>,
+  type: <span class="string">"minion"</span>,
+  cost: <span class="value">5</span>,
+  attack: <span class="value">4</span>,
+  health: <span class="value">4</span>,
+  effect: {
+    type: <span class="string">"aura"</span>,
+    buff: <span class="string">"deathrattle_twice"</span>,
+    description: <span class="string">"你的亡语会触发两次"</span>
+  }
+}</pre>
+            </div>
+            <div class="code-block">
+                <pre><span class="comment">// 【爆爆机器人】随从</span>
+<span class="comment">// 费用：2 | 攻击：1 | 生命：1 | 来源：炉石传说</span>
+{
+  name: <span class="string">"爆爆机器人"</span>,
+  type: <span class="string">"minion"</span>,
+  cost: <span class="value">2</span>,
+  attack: <span class="value">1</span>,
+  health: <span class="value">1</span>,
+  effect: {
+    type: <span class="string">"deathrattle"</span>,
+    action: <span class="string">"damage_random_enemy"</span>,
+    damage: <span class="value">3</span>,
+    description: <span class="string">"亡语：对敌人造成3点伤害"</span>
+  }
+}</pre>
+            </div>
+        </article>
+
+        <!-- 4. 控制流 -->
+        <article class="archetype" id="control">
+            <div class="archetype-header">
+                <span class="archetype-num">流派 4</span>
+                <h2 class="archetype-title">控制流 / Control</h2>
+                <p class="archetype-tagline">以静制动、后发制人，用解牌化解一切攻势</p>
+            </div>
+            
+            <p class="archetype-desc">
+                通过高效的解牌和清场手段化解对手的每一波攻势，存活到游戏后期再依靠高质量单卡取胜。
+            </p>
+
+            <h3 class="section-title">设计特点</h3>
+            <ul class="feature-list">
+                <li><strong>解牌优先</strong>：大量单解、AOE、硬去除</li>
+                <li><strong>资源管理</strong>：精确计算"三回合后的资源净值"</li>
+                <li><strong>后期终结</strong>：高质量高费大哥作为胜利条件</li>
+                <li><strong>过牌体系</strong>：充足的滤牌确保关键解牌上手</li>
+            </ul>
+
+            <h3 class="section-title">代表游戏</h3>
+            <div>
+                <span class="game-tag">万智牌</span>
+                <span class="game-tag">炉石传说</span>
+                <span class="game-tag">游戏王</span>
+            </div>
+
+            <h3 class="section-title">核心技能</h3>
+            <table class="skill-table">
+                <thead>
+                    <tr>
+                        <th>技能类型</th>
+                        <th>效果描述</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="skill-type">AOE清场</td>
+                        <td>对所有敌方随从造成伤害</td>
+                        <td class="skill-example">「奉献」：对所有敌人造成2点伤害</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">单体硬解</td>
+                        <td>消灭单个强力随从</td>
+                        <td class="skill-example">「谋杀」：消灭一个随从</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">软解去除</td>
+                        <td>移回手牌或变形</td>
+                        <td class="skill-example">「变形术」：使随从变成1/1的绵羊</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">护甲积累</td>
+                        <td>获得可叠加的护甲值</td>
+                        <td class="skill-example">「盾牌格挡」：获得5点护甲</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">生命恢复</td>
+                        <td>恢复英雄生命值</td>
+                        <td class="skill-example">「圣光术」：恢复6点生命</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="tags">
+                <span class="tag">AOE清场</span>
+                <span class="tag">单体硬解</span>
+                <span class="tag">软解去除</span>
+                <span class="tag">护甲积累</span>
+                <span class="tag">生命恢复</span>
+            </div>
+
+            <h3 class="section-title">流派变体</h3>
+            <div class="variant-list">
+                <span class="variant-tag">宇宙控制型</span>
+                <span class="variant-tag">防战型</span>
+                <span class="variant-tag">奶牧型</span>
+                <span class="variant-tag">解场法型</span>
+            </div>
+
+            <h3 class="section-title">设计禁忌</h3>
+            <ul class="prohibit-list">
+                <li>避免解牌过于高效导致无脑控制</li>
+                <li>避免缺乏终结手段陷入疲劳劣势</li>
+                <li>避免前期空过导致被快攻速推</li>
+            </ul>
+
+            <h3 class="section-title">典型代码示例</h3>
+            <div class="code-block">
+                <pre><span class="comment">// 【烈焰风暴】法术</span>
+<span class="comment">// 费用：7 | 类型：AOE伤害 | 来源：炉石传说</span>
+{
+  name: <span class="string">"烈焰风暴"</span>,
+  type: <span class="string">"spell"</span>,
+  cost: <span class="value">7</span>,
+  effect: {
+    type: <span class="string">"aoe_damage"</span>,
+    damage: <span class="value">4</span>,
+    description: <span class="string">"对所有敌方随从造成4点伤害"</span>
+  }
+}</pre>
+            </div>
+            <div class="code-block">
+                <pre><span class="comment">// 【了不起的杰弗逊】随从</span>
+<span class="comment">// 费用：3 | 攻击：2 | 生命：4 | 来源：炉石传说</span>
+{
+  name: <span class="string">"了不起的杰弗逊"</span>,
+  type: <span class="string">"minion"</span>,
+  cost: <span class="value">3</span>,
+  attack: <span class="value">2</span>,
+  health: <span class="value">4</span>,
+  effect: {
+    type: <span class="string">"battlecry"</span>,
+    action: <span class="string">"discover_no_duplicates"</span>,
+    description: <span class="string">"战吼：发现一张牌"</span>
+  }
+}</pre>
+            </div>
+        </article>
+
+        <!-- 5. 爆发流 -->
+        <article class="archetype" id="otk">
+            <div class="archetype-header">
+                <span class="archetype-num">流派 5</span>
+                <h2 class="archetype-title">爆发流 / OTK</h2>
+                <p class="archetype-tagline">一击必杀的暴力美学，精密计算的回合秒杀</p>
+            </div>
+            
+            <p class="archetype-desc">
+                通过特定组件的组合，在单个回合内积累远超对手生命值的伤害。一击必杀的暴力美学。
+            </p>
+
+            <h3 class="section-title">设计特点</h3>
+            <ul class="feature-list">
+                <li><strong>组件依赖</strong>：需要集齐特定卡牌组合才能启动</li>
+                <li><strong>斩杀线明确</strong>：有明确的伤害计算公式</li>
+                <li><strong>铺垫期长</strong>：前期需要安全度过积累期</li>
+                <li><strong>反制脆弱</strong>：一旦被干扰可能直接崩盘</li>
+            </ul>
+
+            <h3 class="section-title">代表游戏</h3>
+            <div>
+                <span class="game-tag">炉石传说</span>
+                <span class="game-tag">游戏王</span>
+                <span class="game-tag">决斗链接</span>
+            </div>
+
+            <h3 class="section-title">核心技能</h3>
+            <table class="skill-table">
+                <thead>
+                    <tr>
+                        <th>技能类型</th>
+                        <th>效果描述</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="skill-type">费用减少</td>
+                        <td>降低法术或随从费用</td>
+                        <td class="skill-example">「巫师学徒」：你的法术费用-1</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">冲锋攻击</td>
+                        <td>使随从获得直接攻击能力</td>
+                        <td class="skill-example">「库卡隆精英」：冲锋</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">伤害增幅</td>
+                        <td>Buff伤害数值</td>
+                        <td class="skill-example">「暗影步伐」：使随从获得+10攻击</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">复制技能</td>
+                        <td>复制手牌或场上的卡牌</td>
+                        <td class="skill-example">「熔岩镜像」：复制一个友方随从</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">直伤法术</td>
+                        <td>直接对英雄造成伤害</td>
+                        <td class="skill-example">「火球术」：造成6点伤害</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="tags">
+                <span class="tag">费用减少</span>
+                <span class="tag">冲锋攻击</span>
+                <span class="tag">伤害增幅</span>
+                <span class="tag">复制技能</span>
+                <span class="tag">直伤法术</span>
+            </div>
+
+            <h3 class="section-title">流派变体</h3>
+            <div class="variant-list">
+                <span class="variant-tag">无限火球型</span>
+                <span class="variant-tag">奴隶战型</span>
+                <span class="variant-tag">巨人型</span>
+                <span class="variant-tag">德鲁伊OTK型</span>
+            </div>
+
+            <h3 class="section-title">设计原则</h3>
+            <ul class="feature-list">
+                <li>组件数量应控制在 3-4 张以内</li>
+                <li>铺垫期应有自保能力</li>
+                <li>斩杀线应有明确的可计算公式</li>
+                <li>应有检索组件的稳定手段</li>
+            </ul>
+
+            <h3 class="section-title">典型代码示例</h3>
+            <div class="code-block">
+                <pre><span class="comment">// 【巫师学徒】随从</span>
+<span class="comment">// 费用：2 | 攻击：0 | 生命：4 | 来源：炉石传说</span>
+{
+  name: <span class="string">"巫师学徒"</span>,
+  type: <span class="string">"minion"</span>,
+  cost: <span class="value">2</span>,
+  attack: <span class="value">0</span>,
+  health: <span class="value">4</span>,
+  effect: {
+    type: <span class="string">"aura"</span>,
+    effect: <span class="string">"spell_cost_reduction"</span>,
+    value: <span class="value">-1</span>,
+    description: <span class="string">"法术费用-1"</span>
+  }
+}</pre>
+            </div>
+            <div class="code-block">
+                <pre><span class="comment">// 【火球术】法术</span>
+<span class="comment">// 费用：4 | 类型：直接伤害 | 来源：炉石传说</span>
+{
+  name: <span class="string">"火球术"</span>,
+  type: <span class="string">"spell"</span>,
+  cost: <span class="value">4</span>,
+  effect: {
+    type: <span class="string">"damage"</span>,
+    target: <span class="string">"enemy_hero"</span>,
+    damage: <span class="value">6</span>,
+    description: <span class="string">"造成6点伤害"</span>
+  }
+}</pre>
+            </div>
+
+            <h3 class="section-title">OTK Combo 示例</h3>
+            <div class="combo-example">
+                <div class="combo-step">
+                    <span class="step-num">1</span>
+                    <span class="step-text">场上有2个巫师学徒（法术费用-2）</span>
+                </div>
+                <div class="combo-step">
+                    <span class="step-num">2</span>
+                    <span class="step-text">用熔岩镜像/模拟幻影复制巫师学徒</span>
+                </div>
+                <div class="combo-step">
+                    <span class="step-num">3</span>
+                    <span class="step-text">场上有4个巫师学徒时，火球术费用 = 4 - 8 = 0</span>
+                </div>
+                <div class="combo-step">
+                    <span class="step-num">4</span>
+                    <span class="step-text">0费火球术可无限打出，完成斩杀</span>
+                </div>
+            </div>
+        </article>
+
+        <!-- 6. 防御流 -->
+        <article class="archetype" id="defense">
+            <div class="archetype-header">
+                <span class="archetype-num">流派 6</span>
+                <h2 class="archetype-title">防御流 / Defense</h2>
+                <p class="archetype-tagline">铜墙铁壁的生存哲学，让对手在绝望中耗尽资源</p>
+            </div>
+            
+            <p class="archetype-desc">
+                通过堆叠护盾、减伤、嘲讽等手段最大化生存能力，等待对手资源耗尽后反击。
+            </p>
+
+            <h3 class="section-title">设计特点</h3>
+            <ul class="feature-list">
+                <li><strong>护盾积累</strong>：护盾值作为额外血量缓冲</li>
+                <li><strong>固定减伤</strong>：百分比减伤降低有效伤害</li>
+                <li><strong>嘲讽保护</strong>：强制对手优先攻击特定随从</li>
+                <li><strong>生命偷取</strong>：攻击回复生命值</li>
+            </ul>
+
+            <h3 class="section-title">代表游戏</h3>
+            <div>
+                <span class="game-tag">暗黑破坏神</span>
+                <span class="game-tag">艾尔登法环</span>
+                <span class="game-tag">各类RPG</span>
+            </div>
+
+            <h3 class="section-title">核心技能</h3>
+            <table class="skill-table">
+                <thead>
+                    <tr>
+                        <th>技能类型</th>
+                        <th>效果描述</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="skill-type">护盾生成</td>
+                        <td>获得临时护盾值</td>
+                        <td class="skill-example">「护盾发生器」：获得X点护盾</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">固定减伤</td>
+                        <td>减少固定数额的伤害</td>
+                        <td class="skill-example">「护甲」：受到伤害-X</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">百分比减伤</td>
+                        <td>减少受到的伤害百分比</td>
+                        <td class="skill-example">「护盾重组」：受到伤害降低30%</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">嘲讽机制</td>
+                        <td>强制敌人攻击嘲讽目标</td>
+                        <td class="skill-example">「嘲讽」：敌方必须攻击此随从</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">生命偷取</td>
+                        <td>攻击时恢复生命</td>
+                        <td class="skill-example">「吸取」：造成伤害时恢复等量生命</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="tags">
+                <span class="tag">护盾生成</span>
+                <span class="tag">固定减伤</span>
+                <span class="tag">百分比减伤</span>
+                <span class="tag">嘲讽机制</span>
+                <span class="tag">生命偷取</span>
+            </div>
+
+            <h3 class="section-title">流派变体</h3>
+            <div class="variant-list">
+                <span class="variant-tag">壁垒型</span>
+                <span class="variant-tag">护盾衰减型</span>
+                <span class="variant-tag">嘲讽墙型</span>
+                <span class="variant-tag">自适应护盾型</span>
+            </div>
+
+            <h3 class="section-title">设计禁忌</h3>
+            <ul class="prohibit-list">
+                <li>避免防御能力过高导致战斗无限拖沓</li>
+                <li>避免护盾机制没有消耗手段</li>
+                <li>避免纯防守毫无进攻性</li>
+            </ul>
+
+            <h3 class="section-title">典型代码示例</h3>
+            <div class="code-block">
+                <pre><span class="comment">// 【护盾发生器】法术</span>
+<span class="comment">// 费用：2 | 类型：护盾生成 | 来源：暗黑破坏神</span>
+{
+  name: <span class="string">"护盾发生器"</span>,
+  type: <span class="string">"spell"</span>,
+  cost: <span class="value">2</span>,
+  effect: {
+    type: <span class="string">"gain_shield"</span>,
+    target: <span class="string">"self"</span>,
+    value: <span class="value">8</span>,
+    description: <span class="string">"获得8点护盾"</span>
+  }
+}</pre>
+            </div>
+            <div class="code-block">
+                <pre><span class="comment">// 【竞技场主宰】随从</span>
+<span class="comment">// 费用：6 | 攻击：6 | 生命：6 | 来源：艾尔登法环</span>
+{
+  name: <span class="string">"竞技场主宰"</span>,
+  type: <span class="string">"minion"</span>,
+  cost: <span class="value">6</span>,
+  attack: <span class="value">6</span>,
+  health: <span class="value">6</span>,
+  effect: {
+    type: <span class="string">"taunt"</span>,
+    description: <span class="string">"嘲讽"</span>
+  }
+}</pre>
+            </div>
+        </article>
+
+        <!-- 7. 奥秘流 -->
+        <article class="archetype" id="secret">
+            <div class="archetype-header">
+                <span class="archetype-num">流派 7</span>
+                <h2 class="archetype-title">奥秘流 / Secret</h2>
+                <p class="archetype-tagline">心理博弈的艺术，用信息不对称让对手步步踩雷</p>
+            </div>
+            
+            <p class="archetype-desc">
+                通过放置奥秘和陷阱干扰对手节奏，让对手在"猜谜"中犯错。
+            </p>
+
+            <h3 class="section-title">设计特点</h3>
+            <ul class="feature-list">
+                <li><strong>延迟触发</strong>：奥秘在特定条件下自动触发</li>
+                <li><strong>节奏打断</strong>：用奥秘打乱对手的计划</li>
+                <li><strong>检索联动</strong>：奥秘与随从形成闭环</li>
+                <li><strong>心理压迫</strong>：即使未触发也影响对手决策</li>
+            </ul>
+
+            <h3 class="section-title">代表游戏</h3>
+            <div>
+                <span class="game-tag">炉石传说</span>
+                <span class="game-tag">万智牌</span>
+                <span class="game-tag">游戏王</span>
+            </div>
+
+            <h3 class="section-title">核心技能</h3>
+            <table class="skill-table">
+                <thead>
+                    <tr>
+                        <th>技能类型</th>
+                        <th>效果描述</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="skill-type">误导效果</td>
+                        <td>改变攻击目标</td>
+                        <td class="skill-example">「误导」：对手攻击时改为攻击另一个目标</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">冻结效果</td>
+                        <td>阻止目标行动</td>
+                        <td class="skill-example">「冰冻陷阱」：对手下随从时冻结该随从</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">爆炸效果</td>
+                        <td>造成范围伤害</td>
+                        <td class="skill-example">「爆炸陷阱」：对手攻击时对所有敌人造成2点伤害</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">召唤效果</td>
+                        <td>生成额外随从</td>
+                        <td class="skill-example">「毒蛇陷阱」：生成3个1/1的蛇</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">检索效果</td>
+                        <td>抽牌或发现</td>
+                        <td class="skill-example">「奥秘守护者」：挂奥秘时发现一张奥秘</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="tags">
+                <span class="tag">误导效果</span>
+                <span class="tag">冻结效果</span>
+                <span class="tag">爆炸效果</span>
+                <span class="tag">召唤效果</span>
+                <span class="tag">检索效果</span>
+            </div>
+
+            <h3 class="section-title">流派变体</h3>
+            <div class="variant-list">
+                <span class="variant-tag">奥秘猎型</span>
+                <span class="variant-tag">武器奥秘型</span>
+                <span class="variant-tag">节奏打断型</span>
+                <span class="variant-tag">心理压迫型</span>
+            </div>
+
+            <h3 class="section-title">设计禁忌</h3>
+            <ul class="prohibit-list">
+                <li>避免奥秘数量过多导致信息过载</li>
+                <li>避免奥秘过于强力让对手无法反制</li>
+                <li>避免触发条件模糊影响体验</li>
+            </ul>
+
+            <h3 class="section-title">典型代码示例</h3>
+            <div class="code-block">
+                <pre><span class="comment">// 【爆炸陷阱】奥秘</span>
+<span class="comment">// 费用：2 | 触发：敌方攻击 | 来源：炉石传说</span>
+{
+  name: <span class="string">"爆炸陷阱"</span>,
+  type: <span class="string">"secret"</span>,
+  cost: <span class="value">2</span>,
+  trigger: { type: <span class="string">"enemy_attack"</span> },
+  effect: {
+    type: <span class="string">"aoe_damage"</span>,
+    targets: <span class="string">"all_enemies"</span>,
+    damage: <span class="value">2</span>,
+    description: <span class="string">"对手攻击时造成2点伤害"</span>
+  }
+}</pre>
+            </div>
+            <div class="code-block">
+                <pre><span class="comment">// 【鹰角弓】武器</span>
+<span class="comment">// 费用：3 | 攻击：3 | 耐久：2 | 来源：炉石传说</span>
+{
+  name: <span class="string">"鹰角弓"</span>,
+  type: <span class="string">"weapon"</span>,
+  cost: <span class="value">3</span>,
+  attack: <span class="value">3</span>,
+  durability: <span class="value">2</span>,
+  effect: {
+    type: <span class="string">"on_hit"</span>,
+    trigger: <span class="string">"secret_present"</span>,
+    action: <span class="string">"trigger_secret"</span>,
+    description: <span class="string">"攻击时触发奥秘"</span>
+  }
+}</pre>
+            </div>
+        </article>
+
+        <!-- 8. 中速流 -->
+        <article class="archetype" id="midrange">
+            <div class="archetype-header">
+                <span class="archetype-num">流派 8</span>
+                <h2 class="archetype-title">中速流 / Midrange</h2>
+                <p class="archetype-tagline">节奏掌控的艺术，每个回合都踩在最优费用上</p>
+            </div>
+            
+            <p class="archetype-desc">
+                每个回合按费用打出能立即改变场面的行动，靠优质随从与交换滚雪球。
+            </p>
+
+            <h3 class="section-title">设计特点</h3>
+            <ul class="feature-list">
+                <li><strong>曲线平滑</strong>：1-7费每个回合都有有效动作</li>
+                <li><strong>随从交换</strong>：通过场面交换积累优势</li>
+                <li><strong>三段式打击</strong>：前期站场→中期压制→后期终结</li>
+                <li><strong>灵活性高</strong>：可根据对手调整策略</li>
+            </ul>
+
+            <h3 class="section-title">代表游戏</h3>
+            <div>
+                <span class="game-tag">炉石传说</span>
+                <span class="game-tag">游戏王</span>
+                <span class="game-tag">影之诗</span>
+            </div>
+
+            <h3 class="section-title">核心技能</h3>
+            <table class="skill-table">
+                <thead>
+                    <tr>
+                        <th>技能类型</th>
+                        <th>效果描述</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="skill-type">优质随从</td>
+                        <td>高费高价值的站场随从</td>
+                        <td class="skill-example">「银色指挥官」：冲锋，圣盾</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">Buff增益</td>
+                        <td>强化场上随从</td>
+                        <td class="skill-example">「王者祝福」：随从+4/+4</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">铺场法术</td>
+                        <td>召唤多个随从</td>
+                        <td class="skill-example">「光铸远征军」：召唤2个2/2圣盾骑士</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">嘲讽站场</td>
+                        <td>阻挡快攻同时站场</td>
+                        <td class="skill-example">「守日者塔林姆」：使随从成为嘲讽并+3/+3</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">英雄技能</td>
+                        <td>每回合稳定威胁</td>
+                        <td class="skill-example">「射箭」：对一个敌人造成1点伤害</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="tags">
+                <span class="tag">优质随从</span>
+                <span class="tag">Buff增益</span>
+                <span class="tag">铺场法术</span>
+                <span class="tag">嘲讽站场</span>
+                <span class="tag">英雄技能</span>
+            </div>
+
+            <h3 class="section-title">流派变体</h3>
+            <div class="variant-list">
+                <span class="variant-tag">中速猎型</span>
+                <span class="variant-tag">中速骑型</span>
+                <span class="variant-tag">中速德型</span>
+                <span class="variant-tag">节奏贼型</span>
+            </div>
+
+            <h3 class="section-title">设计原则</h3>
+            <ul class="feature-list">
+                <li>费用曲线应平滑分布（1-7费）</li>
+                <li>每个回合都应有有效动作</li>
+                <li>优质随从应有 4-6 费的黄金区间</li>
+                <li>终结手段应有足够的场面压力</li>
+            </ul>
+
+            <h3 class="section-title">典型代码示例</h3>
+            <div class="code-block">
+                <pre><span class="comment">// 【动物伙伴】法术</span>
+<span class="comment">// 费用：3 | 类型：随机召唤 | 来源：炉石传说</span>
+{
+  name: <span class="string">"动物伙伴"</span>,
+  type: <span class="string">"spell"</span>,
+  cost: <span class="value">3</span>,
+  effect: {
+    type: <span class="string">"summon_random"</span>,
+    pool: [<span class="string">"米莎"</span>, <span class="string">"霍弗"</span>, <span class="string">"雷欧克"</span>],
+    description: <span class="string">"召唤随机动物伙伴"</span>
+  }
+}</pre>
+            </div>
+            <div class="code-block">
+                <pre><span class="comment">// 【银色指挥官】随从</span>
+<span class="comment">// 费用：6 | 攻击：4 | 生命：2 | 来源：炉石传说</span>
+{
+  name: <span class="string">"银色指挥官"</span>,
+  type: <span class="string">"minion"</span>,
+  cost: <span class="value">6</span>,
+  attack: <span class="value">4</span>,
+  health: <span class="value">2</span>,
+  effect: {
+    type: <span class="string">"charge_divine_shield"</span>,
+    description: <span class="string">"冲锋，圣盾"</span>
+  }
+}</pre>
+            </div>
+        </article>
+
+        <!-- 9. 无限流 -->
+        <article class="archetype" id="infinite">
+            <div class="archetype-header">
+                <span class="archetype-num">流派 9</span>
+                <h2 class="archetype-title">无限流 / Infinite</h2>
+                <p class="archetype-tagline">永动机的奇迹，创造自我驱动的资源闭环</p>
+            </div>
+            
+            <p class="archetype-desc">
+                创造一个能自我补给、自我驱动的资源循环，在一个回合内实现理论上无限的行动。
+            </p>
+
+            <h3 class="section-title">设计特点</h3>
+            <ul class="feature-list">
+                <li><strong>资源闭环</strong>：产出≥消耗，形成正向循环</li>
+                <li><strong>无限次数</strong>：通过回收和减费实现重复使用</li>
+                <li><strong>Combo精密</strong>：需要多个组件精确配合</li>
+                <li><strong>爆发力强</strong>：一旦启动即可清场或秒杀</li>
+            </ul>
+
+            <h3 class="section-title">代表游戏</h3>
+            <div>
+                <span class="game-tag">万智牌</span>
+                <span class="game-tag">炉石传说</span>
+                <span class="game-tag">决斗链接</span>
+            </div>
+
+            <h3 class="section-title">核心技能</h3>
+            <table class="skill-table">
+                <thead>
+                    <tr>
+                        <th>技能类型</th>
+                        <th>效果描述</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="skill-type">资源回收</td>
+                        <td>将卡牌返回手牌或牌库</td>
+                        <td class="skill-example">「暗影步」：将随从移回手牌</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">费用归零</td>
+                        <td>将卡牌费用降至0</td>
+                        <td class="skill-example">「艾雅黑爪」：随从获得+2/+2，下回合移回手牌</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">循环触发</td>
+                        <td>重复执行某效果</td>
+                        <td class="skill-example">「跳蛙」：可被任意多次标记触发</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">资源转换</td>
+                        <td>将一种资源转化为另一种</td>
+                        <td class="skill-example">「生命绽放」：消耗法力获得+1/+1</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">无限增殖</td>
+                        <td>某个数值无限增加</td>
+                        <td class="skill-example">「周而复始」：每使用一次，效果+X</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="tags">
+                <span class="tag">资源回收</span>
+                <span class="tag">费用归零</span>
+                <span class="tag">循环触发</span>
+                <span class="tag">资源转换</span>
+                <span class="tag">无限增殖</span>
+            </div>
+
+            <h3 class="section-title">流派变体</h3>
+            <div class="variant-list">
+                <span class="variant-tag">无限火球型</span>
+                <span class="variant-tag">无限冲锋型</span>
+                <span class="variant-tag">资源循环型</span>
+                <span class="variant-tag">时间静止型</span>
+            </div>
+
+            <h3 class="section-title">设计禁忌</h3>
+            <ul class="prohibit-list">
+                <li>避免真正的无限循环（无资源消耗）</li>
+                <li>避免循环过程过于复杂难以理解</li>
+                <li>避免对手无法打断循环组合</li>
+            </ul>
+
+            <h3 class="section-title">典型代码示例</h3>
+            <div class="code-block">
+                <pre><span class="comment">// 【暗影步】法术</span>
+<span class="comment">// 费用：0 | 类型：回收减费 | 来源：炉石传说</span>
+{
+  name: <span class="string">"暗影步"</span>,
+  type: <span class="string">"spell"</span>,
+  cost: <span class="value">0</span>,
+  effect: {
+    type: <span class="string">"bounce"</span>,
+    target: <span class="string">"friendly_minion"</span>,
+    bonus: <span class="string">"reduce_cost_next_turn"</span>,
+    description: <span class="string">"移回手牌，费用-1"</span>
+  }
+}</pre>
+            </div>
+            <div class="code-block">
+                <pre><span class="comment">// 【永恒之环】神器</span>
+<span class="comment">// 费用：5 | 类型：循环触发 | 来源：万智牌</span>
+{
+  name: <span class="string">"永恒之环"</span>,
+  type: <span class="string">"artifact"</span>,
+  cost: <span class="value">5</span>,
+  effect: {
+    type: <span class="string">"loop_trigger"</span>,
+    condition: <span class="string">"on_spell_cast"</span>,
+    action: <span class="string">"reduce_cost_of_this"</span>,
+    value: <span class="value">1</span>,
+    description: <span class="string">"每施法一次，本牌费用-1"</span>
+  }
+}</pre>
+            </div>
+        </article>
+
+        <!-- 10. 光环流 -->
+        <article class="archetype" id="aura">
+            <div class="archetype-header">
+                <span class="archetype-num">流派 10</span>
+                <h2 class="archetype-title">光环流 / Aura</h2>
+                <p class="archetype-tagline">叠加的艺术，以时间换力量，越持久越强大</p>
+            </div>
+            
+            <p class="archetype-desc">
+                通过持续性的光环和Buff叠加，在战斗过程中逐步强化己方单位，最终达到碾压效果。
+            </p>
+
+            <h3 class="section-title">设计特点</h3>
+            <ul class="feature-list">
+                <li><strong>持续增益</strong>：光环效果在整场战斗中持续生效</li>
+                <li><strong>层数叠加</strong>：增益效果可叠加提升强度</li>
+                <li><strong>范围影响</strong>：光环影响所有符合条件的单位</li>
+                <li><strong>后期爆发</strong>：多层光环下的终极技能伤害极高</li>
+            </ul>
+
+            <h3 class="section-title">代表游戏</h3>
+            <div>
+                <span class="game-tag">暗黑破坏神</span>
+                <span class="game-tag">魔法战歌</span>
+                <span class="game-tag">各类RPG</span>
+            </div>
+
+            <h3 class="section-title">核心技能</h3>
+            <table class="skill-table">
+                <thead>
+                    <tr>
+                        <th>技能类型</th>
+                        <th>效果描述</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="skill-type">光环发生器</td>
+                        <td>持续产生增益效果</td>
+                        <td class="skill-example">「不息圣诗」：每3秒附加一层虔信印记</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">印记叠加</td>
+                        <td>层数提升增强效果</td>
+                        <td class="skill-example">「虔信」：每层提升2%全伤害</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">共鸣爆发</td>
+                        <td>消耗层数造成爆发伤害</td>
+                        <td class="skill-example">「共鸣爆裂」：引爆所有虔信层造成伤害</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">全队Buff</td>
+                        <td>强化所有友方单位</td>
+                        <td class="skill-example">「命令光环」：所有友方攻击力+X</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">节奏稳定</td>
+                        <td>提供续航和减伤</td>
+                        <td class="skill-example">「永恒节拍」：降低光环技能冷却</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="tags">
+                <span class="tag">光环发生器</span>
+                <span class="tag">印记叠加</span>
+                <span class="tag">共鸣爆发</span>
+                <span class="tag">全队Buff</span>
+                <span class="tag">节奏稳定</span>
+            </div>
+
+            <h3 class="section-title">流派变体</h3>
+            <div class="variant-list">
+                <span class="variant-tag">圣咏光环型</span>
+                <span class="variant-tag">多重光环型</span>
+                <span class="variant-tag">光环+印记型</span>
+                <span class="variant-tag">攻防一体型</span>
+            </div>
+
+            <h3 class="section-title">设计禁忌</h3>
+            <ul class="prohibit-list">
+                <li>避免光环效果无法被驱散</li>
+                <li>避免层数无上限导致数值爆炸</li>
+                <li>避免光环随从难以被解掉</li>
+            </ul>
+
+            <h3 class="section-title">典型代码示例</h3>
+            <div class="code-block">
+                <pre><span class="comment">// 【不息圣诗】光环</span>
+<span class="comment">// 费用：2 | 持续：整场战斗 | 来源：魔法战歌</span>
+{
+  name: <span class="string">"不息圣诗"</span>,
+  type: <span class="string">"aura"</span>,
+  cost: <span class="value">2</span>,
+  duration: <span class="string">"combat"</span>,
+  effect: {
+    type: <span class="string">"tick_buff"</span>,
+    interval: <span class="value">3</span>,
+    stacks: <span class="string">"saint_hymn_mark"</span>,
+    value: <span class="value">1</span>,
+    description: <span class="string">"每3秒附加一层虔信"</span>
+  }
+}</pre>
+            </div>
+            <div class="code-block">
+                <pre><span class="comment">// 【共鸣爆裂】法术</span>
+<span class="comment">// 费用：5 | 类型：消耗印记爆发 | 来源：魔法战歌</span>
+{
+  name: <span class="string">"共鸣爆裂"</span>,
+  type: <span class="string">"spell"</span>,
+  cost: <span class="value">5</span>,
+  effect: {
+    type: <span class="string">"consume_buff_explode"</span>,
+    stacks_from: <span class="string">"saint_hymn_mark"</span>,
+    damage_per_stack: <span class="string">"15%_spell_power"</span>,
+    description: <span class="string">"每层虔信造成15%法强伤害"</span>
+  }
+}</pre>
+            </div>
+
+            <h3 class="section-title">战斗流程示例</h3>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <span class="timeline-time">启动期 0-15秒</span>
+                    <span class="timeline-desc">部署所有光环技能，迅速叠加印记至5层以上</span>
+                </div>
+                <div class="timeline-item">
+                    <span class="timeline-time">共振期 15-45秒</span>
+                    <span class="timeline-desc">印记层数进入稳定区间（8-10层），周期性使用共鸣爆发</span>
+                </div>
+                <div class="timeline-item">
+                    <span class="timeline-time">决胜期 45秒后</span>
+                    <span class="timeline-desc">全队属性达到巅峰，开启终极咏唱</span>
+                </div>
+            </div>
+        </article>
+
+        <!-- 11. 疲劳流 -->
+        <article class="archetype" id="attrition">
+            <div class="archetype-header">
+                <span class="archetype-num">流派 11</span>
+                <h2 class="archetype-title">疲劳流 / Attrition</h2>
+                <p class="archetype-tagline">资源管理的极致，用每一张牌的精准消耗拖入胜利</p>
+            </div>
+            
+            <p class="archetype-desc">
+                通过精准的资源管理和消耗，让对手在长期对抗中逐渐耗尽资源。
+            </p>
+
+            <h3 class="section-title">设计特点</h3>
+            <ul class="feature-list">
+                <li><strong>疲劳伤害</strong>：牌库耗尽后持续受到递增伤害</li>
+                <li><strong>资源精算</strong>：精确计算每张牌的使用时机</li>
+                <li><strong>长期规划</strong>：15+回合的战斗，需要完整的大局观</li>
+                <li><strong>疲劳防范</strong>：通过过牌、复制、发现避免自身疲劳</li>
+            </ul>
+
+            <h3 class="section-title">代表游戏</h3>
+            <div>
+                <span class="game-tag">炉石传说</span>
+                <span class="game-tag">万智牌</span>
+                <span class="game-tag">游戏王</span>
+            </div>
+
+            <h3 class="section-title">核心技能</h3>
+            <table class="skill-table">
+                <thead>
+                    <tr>
+                        <th>技能类型</th>
+                        <th>效果描述</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="skill-type">疲劳伤害</td>
+                        <td>抽牌时受到递增伤害</td>
+                        <td class="skill-example">「疲劳」：每抽一张牌，受到等同于疲劳值点伤害</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">资源再生</td>
+                        <td>回手、回收重复利用</td>
+                        <td class="skill-example">「暗影收割者安度因」：使用一张牌，回复1点生命</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">偷取资源</td>
+                        <td>从对手获取资源</td>
+                        <td class="skill-example">「偷牌」：将对手一张牌移入己方手牌</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">延迟结算</td>
+                        <td>延迟效果的精确控制</td>
+                        <td class="skill-example">「炸弹」：5回合后造成5点伤害</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">生命调控</td>
+                        <td>控制双方生命差</td>
+                        <td class="skill-example">「生命锁」：双方不能抽牌</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="tags">
+                <span class="tag">疲劳伤害</span>
+                <span class="tag">资源再生</span>
+                <span class="tag">偷取资源</span>
+                <span class="tag">延迟结算</span>
+                <span class="tag">生命调控</span>
+            </div>
+
+            <h3 class="section-title">流派变体</h3>
+            <div class="variant-list">
+                <span class="variant-tag">纯疲劳型</span>
+                <span class="variant-tag">磨牌库型</span>
+                <span class="variant-tag">回复型</span>
+                <span class="variant-tag">炸弹型</span>
+            </div>
+
+            <h3 class="section-title">设计禁忌</h3>
+            <ul class="prohibit-list">
+                <li>避免疲劳速度过快导致游戏无聊</li>
+                <li>避免没有反制自身疲劳的手段</li>
+                <li>避免消耗效率过高让对手无牌可用</li>
+            </ul>
+
+            <h3 class="section-title">典型代码示例</h3>
+            <div class="code-block">
+                <pre><span class="comment">// 【疲劳陷阱】法术</span>
+<span class="comment">// 费用：2 | 类型：延迟伤害 | 来源：炉石传说</span>
+{
+  name: <span class="string">"疲劳陷阱"</span>,
+  type: <span class="string">"spell"</span>,
+  cost: <span class="value">2</span>,
+  effect: {
+    type: <span class="string">"delayed_damage"</span>,
+    delay: <span class="value">3</span>,
+    damagePerTurn: <span class="value">2</span>,
+    description: <span class="string">"接下来3回合每回合受2点伤害"</span>
+  }
+}</pre>
+            </div>
+            <div class="code-block">
+                <pre><span class="comment">// 【窃法】法术</span>
+<span class="comment">// 费用：3 | 类型：资源偷取 | 来源：万智牌</span>
+{
+  name: <span class="string">"窃法"</span>,
+  type: <span class="string">"spell"</span>,
+  cost: <span class="value">3</span>,
+  effect: {
+    type: <span class="string">"steal_card"</span>,
+    condition: <span class="string">"non_empty_deck"</span>,
+    description: <span class="string">"将对手牌库顶一张牌移入你的手牌"</span>
+  }
+}</pre>
+            </div>
+        </article>
+
+        <!-- 12. 变形流 -->
+        <article class="archetype" id="metamorphosis">
+            <div class="archetype-header">
+                <span class="archetype-num">流派 12</span>
+                <h2 class="archetype-title">变形流 / Metamorphosis</h2>
+                <p class="archetype-tagline">千面之神的幻术艺术，以变化应对一切挑战</p>
+            </div>
+            
+            <p class="archetype-desc">
+                根据对手或战场状态改变自身形态，每种形态拥有独特的技能组合。
+            </p>
+
+            <h3 class="section-title">设计特点</h3>
+            <ul class="feature-list">
+                <li><strong>形态多样</strong>：每个单位有多种可选形态</li>
+                <li><strong>切换代价</strong>：形态切换需要消耗资源</li>
+                <li><strong>反克制机制</strong>：不同形态克制不同敌人类型</li>
+                <li><strong>属性重组</strong>：切换形态时重新分配属性</li>
+            </ul>
+
+            <h3 class="section-title">代表游戏</h3>
+            <div>
+                <span class="game-tag">炉石传说</span>
+                <span class="game-tag">游戏王</span>
+                <span class="game-tag">影之诗</span>
+                <span class="game-tag">暗黑破坏神</span>
+            </div>
+
+            <h3 class="section-title">核心技能</h3>
+            <table class="skill-table">
+                <thead>
+                    <tr>
+                        <th>技能类型</th>
+                        <th>效果描述</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="skill-type">形态切换</td>
+                        <td>切换到另一种战斗形态</td>
+                        <td class="skill-example">「变身」：变为攻击形态，攻击+3</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">形态强化</td>
+                        <td>当前形态获得额外加成</td>
+                        <td class="skill-example">「野兽形态」：野兽攻击时获得+1攻击</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">拟态复制</td>
+                        <td>复制敌人的属性或技能</td>
+                        <td class="skill-example">「模仿」：获得目标最近一次使用的技能</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">进化变异</td>
+                        <td>战斗中累积成长进化</td>
+                        <td class="skill-example">「进化」：每击杀一个敌人，属性+X</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">形态连锁</td>
+                        <td>特定形态组合触发额外效果</td>
+                        <td class="skill-example">「变形共鸣」：同时在场形态种类≥3</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="tags">
+                <span class="tag">形态切换</span>
+                <span class="tag">形态强化</span>
+                <span class="tag">拟态复制</span>
+                <span class="tag">进化变异</span>
+                <span class="tag">形态连锁</span>
+            </div>
+
+            <h3 class="section-title">流派变体</h3>
+            <div class="variant-list">
+                <span class="variant-tag">元素变身型</span>
+                <span class="variant-tag">野兽进化型</span>
+                <span class="variant-tag">昆虫拟态型</span>
+                <span class="variant-tag">机械改造型</span>
+            </div>
+
+            <h3 class="section-title">设计禁忌</h3>
+            <ul class="prohibit-list">
+                <li>避免形态过多导致选择困难</li>
+                <li>避免形态间差异过小缺乏特色</li>
+                <li>避免形态切换没有代价</li>
+            </ul>
+
+            <h3 class="section-title">典型代码示例</h3>
+            <div class="code-block">
+                <pre><span class="comment">// 【元素切换】技能</span>
+<span class="comment">// 费用：1 | 类型：形态切换 | 来源：影之诗</span>
+{
+  name: <span class="string">"元素切换"</span>,
+  type: <span class="string">"spell"</span>,
+  cost: <span class="value">1</span>,
+  effect: {
+    type: <span class="string">"form_shift"</span>,
+    forms: [<span class="string">"火形态"</span>, <span class="string">"水形态"</span>, <span class="string">"风形态"</span>],
+    cycle: <span class="value">true</span>,
+    description: <span class="string">"切换到下一元素形态"</span>
+  }
+}</pre>
+            </div>
+            <div class="code-block">
+                <pre><span class="comment">// 【火形态】被动效果</span>
+<span class="comment">// 类型：形态被动 | 来源：暗黑破坏神</span>
+{
+  name: <span class="string">"火形态"</span>,
+  type: <span class="string">"form_passive"</span>,
+  activeForm: <span class="value">true</span>,
+  modifiers: {
+    attack: <span class="value">2</span>,
+    damageOnAttack: <span class="value">1</span>,
+    description: <span class="string">"攻击+2，攻击时灼烧1点"</span>
+  },
+  weakness: {
+    type: <span class="string">"take_double_damage"</span>,
+    source: <span class="string">"water"</span>,
+    description: <span class="string">"受水属性伤害翻倍"</span>
+  }
+}</pre>
+            </div>
+        </article>
+
+        <!-- 13. 领域流 -->
+        <article class="archetype" id="zone">
+            <div class="archetype-header">
+                <span class="archetype-num">流派 13</span>
+                <h2 class="archetype-title">领域流 / Territory</h2>
+                <p class="archetype-tagline">掌控战场空间，让敌人踏入领地便陷入绝境</p>
+            </div>
+            
+            <p class="archetype-desc">
+                在战场上建立特殊区域，从中获得战术优势。战场是我的主场。
+            </p>
+
+            <h3 class="section-title">设计特点</h3>
+            <ul class="feature-list">
+                <li><strong>地盘建立</strong>：在场上特定位置建立领域</li>
+                <li><strong>领域效果</strong>：己方单位在领域内获得加成</li>
+                <li><strong>入侵惩罚</strong>：敌人进入领域时受到负面效果</li>
+                <li><strong>领域扩张</strong>：领域可以升级或扩大范围</li>
+            </ul>
+
+            <h3 class="section-title">代表游戏</h3>
+            <div>
+                <span class="game-tag">炉石传说</span>
+                <span class="game-tag">游戏王</span>
+                <span class="game-tag">影之诗</span>
+                <span class="game-tag">暗黑破坏神</span>
+            </div>
+
+            <h3 class="section-title">核心技能</h3>
+            <table class="skill-table">
+                <thead>
+                    <tr>
+                        <th>技能类型</th>
+                        <th>效果描述</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="skill-type">领域建立</td>
+                        <td>在指定位置创建领域</td>
+                        <td class="skill-example">「结界」：在场创建一个持续3回合的领域</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">领域强化</td>
+                        <td>扩大或增强领域效果</td>
+                        <td class="skill-example">「领域扩张」：使所有友方领域范围+1</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">领域侵蚀</td>
+                        <td>对领域内敌人造成持续伤害</td>
+                        <td class="skill-example">「灼热领域」：领域内敌人每回合受到2点伤害</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">领域封锁</td>
+                        <td>阻止敌人进入特定区域</td>
+                        <td class="skill-example">「封锁结界」：敌人无法进入我方半场</td>
+                    </tr>
+                    <tr>
+                        <td class="skill-type">领域吸收</td>
+                        <td>吸收领域内敌人的资源</td>
+                        <td class="skill-example">「生命汲取阵」：领域内敌人受伤转化为己方治疗</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="tags">
+                <span class="tag">领域建立</span>
+                <span class="tag">领域强化</span>
+                <span class="tag">领域侵蚀</span>
+                <span class="tag">领域封锁</span>
+                <span class="tag">领域吸收</span>
+            </div>
+
+            <h3 class="section-title">流派变体</h3>
+            <div class="variant-list">
+                <span class="variant-tag">结界守护型</span>
+                <span class="variant-tag">灼烧侵蚀型</span>
+                <span class="variant-tag">资源汲取型</span>
+                <span class="variant-tag">空间封锁型</span>
+            </div>
+
+            <h3 class="section-title">设计禁忌</h3>
+            <ul class="prohibit-list">
+                <li>避免领域覆盖范围过大</li>
+                <li>避免领域效果无法被反制</li>
+                <li>避免领域层数无限制叠加</li>
+            </ul>
+
+            <h3 class="section-title">典型代码示例</h3>
+            <div class="code-block">
+                <pre><span class="comment">// 【结界建立】技能</span>
+<span class="comment">// 费用：2 | 类型：领域、持续3回合 | 来源：游戏王</span>
+{
+  name: <span class="string">"结界建立"</span>,
+  type: <span class="string">"spell"</span>,
+  cost: <span class="value">2</span>,
+  effect: {
+    type: <span class="string">"create_zone"</span>,
+    zoneId: <span class="string">"sacred_ground"</span>,
+    duration: <span class="value">3</span>,
+    range: <span class="string">"front_row"</span>,
+    description: <span class="string">"前排建立圣域，持续3回合"</span>
+  }
+}</pre>
+            </div>
+            <div class="code-block">
+                <pre><span class="comment">// 【圣域领域】领域效果</span>
+<span class="comment">// 类型：领域被动 | 来源：暗黑破坏神</span>
+{
+  name: <span class="string">"圣域领域"</span>,
+  type: <span class="string">"zone_aura"</span>,
+  zoneId: <span class="string">"sacred_ground"</span>,
+  modifiers: {
+    friendly: {
+      damageReduction: <span class="string">"20%"</span>,
+      description: <span class="string">"友方减伤20%"</span>
+    },
+    enemy: {
+      attackSpeedReduction: <span class="string">"30%"</span>,
+      description: <span class="string">"敌方攻速-30%"</span>
+    }
+  }
+}</pre>
+            </div>
+        </article>
+        
+        <!-- 适配分析 -->
+        <section class="card" id="adaptation">
+            <h2 class="section-title">本项目适配分析</h2>
+            
+            <p style="font-size: 14px; color: var(--text-tertiary); margin-bottom: 20px;">
+                基于项目核心约束：DC-1（3Vn团队战斗）、DC-2（意图可视化PVE完全信息博弈）
+            </p>
+
+            <div class="table-wrapper">
+                <table style="font-size: 12px;">
+                    <thead>
+                        <tr>
+                            <th>流派</th>
+                            <th>适配度</th>
+                            <th>优先级</th>
+                            <th>实现建议</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>控制流</strong></td>
+                            <td><span class="stars">★★★★★</span></td>
+                            <td><span class="priority priority-p0">P0</span></td>
+                            <td>敌人多为多目标，适合AOE清场</td>
+                        </tr>
+                        <tr>
+                            <td><strong>中速流</strong></td>
+                            <td><span class="stars">★★★★★</span></td>
+                            <td><span class="priority priority-p0">P0</span></td>
+                            <td>符合意图可视化博弈定位</td>
+                        </tr>
+                        <tr>
+                            <td><strong>连击流</strong></td>
+                            <td><span class="stars">★★★★☆</span></td>
+                            <td><span class="priority priority-p1">P1</span></td>
+                            <td>可作为特色技能系统</td>
+                        </tr>
+                        <tr>
+                            <td><strong>防御流</strong></td>
+                            <td><span class="stars">★★★★☆</span></td>
+                            <td><span class="priority priority-p1">P1</span></td>
+                            <td>护盾/嘲讽契合3Vn保护机制</td>
+                        </tr>
+                        <tr>
+                            <td><strong>亡语流</strong></td>
+                            <td><span class="stars">★★★☆☆</span></td>
+                            <td><span class="priority priority-p2">P2</span></td>
+                            <td>死亡触发契合战斗牺牲概念</td>
+                        </tr>
+                        <tr>
+                            <td><strong>光环流</strong></td>
+                            <td><span class="stars">★★★☆☆</span></td>
+                            <td><span class="priority priority-p2">P2</span></td>
+                            <td>持续增益符合长期战定位</td>
+                        </tr>
+                        <tr>
+                            <td><strong>奥秘流</strong></td>
+                            <td><span class="stars">★★★☆☆</span></td>
+                            <td><span class="priority priority-p2">P2</span></td>
+                            <td>心理博弈增强PVE趣味</td>
+                        </tr>
+                        <tr>
+                            <td><strong>快攻流</strong></td>
+                            <td><span class="stars">★★☆☆☆</span></td>
+                            <td><span class="priority priority-p3">P3</span></td>
+                            <td>与意图可视化博弈冲突</td>
+                        </tr>
+                        <tr>
+                            <td><strong>OTK流</strong></td>
+                            <td><span class="stars">★★☆☆☆</span></td>
+                            <td><span class="priority priority-p3">P3</span></td>
+                            <td>组件组合与生物机制契合度低</td>
+                        </tr>
+                        <tr>
+                            <td><strong>无限流</strong></td>
+                            <td><span class="stars">★☆☆☆☆</span></td>
+                            <td><span class="priority priority-p3">不推荐</span></td>
+                            <td>机制复杂，破坏游戏节奏</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="section-title">推荐实现顺序</h3>
+            <ul class="feature-list">
+                <li><strong>P0 核心</strong>：控制流、中速流 — 核心战斗体验</li>
+                <li><strong>P1 特色</strong>：连击流、防御流 — 差异化系统</li>
+                <li><strong>P2 扩展</strong>：亡语流、光环流、奥秘流 — 内容丰富</li>
+                <li><strong>P3 特殊</strong>：快攻流、OTK流 — 特殊模式</li>
+            </ul>
+        </section>
+
+        <!-- 流派对比总览 -->
+        <section class="card" id="compare">
+            <h2 class="section-title">流派对比总览</h2>
+
+            <div class="table-wrapper">
+                <table style="font-size: 12px;">
+                    <thead>
+                        <tr>
+                            <th>流派</th>
+                            <th>核心策略</th>
+                            <th>胜利条件</th>
+                            <th>抗压能力</th>
+                            <th>操作难度</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>连击流</strong></td>
+                            <td>多段结算</td>
+                            <td>中等回合斩杀</td>
+                            <td>中等</td>
+                            <td>极高</td>
+                        </tr>
+                        <tr>
+                            <td><strong>快攻流</strong></td>
+                            <td>速战速决</td>
+                            <td>5-7回合内击杀</td>
+                            <td>弱</td>
+                            <td>低</td>
+                        </tr>
+                        <tr>
+                            <td><strong>亡语流</strong></td>
+                            <td>死亡循环</td>
+                            <td>场面压死</td>
+                            <td>中等</td>
+                            <td>中</td>
+                        </tr>
+                        <tr>
+                            <td><strong>控制流</strong></td>
+                            <td>解场消耗</td>
+                            <td>后期单卡</td>
+                            <td>强</td>
+                            <td>中</td>
+                        </tr>
+                        <tr>
+                            <td><strong>OTK流</strong></td>
+                            <td>一回合秒</td>
+                            <td>组件齐秒杀</td>
+                            <td>弱</td>
+                            <td>高</td>
+                        </tr>
+                        <tr>
+                            <td><strong>防御流</strong></td>
+                            <td>生存苟活</td>
+                            <td>反打收割</td>
+                            <td>极强</td>
+                            <td>中</td>
+                        </tr>
+                        <tr>
+                            <td><strong>奥秘流</strong></td>
+                            <td>心理博弈</td>
+                            <td>节奏压死</td>
+                            <td>中等</td>
+                            <td>高</td>
+                        </tr>
+                        <tr>
+                            <td><strong>中速流</strong></td>
+                            <td>滚雪球</td>
+                            <td>场面压死</td>
+                            <td>强</td>
+                            <td>中</td>
+                        </tr>
+                        <tr>
+                            <td><strong>无限流</strong></td>
+                            <td>循环永动</td>
+                            <td>无限操作</td>
+                            <td>弱</td>
+                            <td>极高</td>
+                        </tr>
+                        <tr>
+                            <td><strong>光环流</strong></td>
+                            <td>叠加强化</td>
+                            <td>后期爆发</td>
+                            <td>中等</td>
+                            <td>中</td>
+                        </tr>
+                        <tr>
+                            <td><strong>疲劳流</strong></td>
+                            <td>资源精算</td>
+                            <td>消耗获胜</td>
+                            <td>强</td>
+                            <td>高</td>
+                        </tr>
+                        <tr>
+                            <td><strong>变形流</strong></td>
+                            <td>形态切换</td>
+                            <td>反克制获胜</td>
+                            <td>中等</td>
+                            <td>高</td>
+                        </tr>
+                        <tr>
+                            <td><strong>领域流</strong></td>
+                            <td>空间控制</td>
+                            <td>地盘压死</td>
+                            <td>强</td>
+                            <td>中</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 卡牌类型比例参考 -->
+        <section class="card" id="ratio">
+            <h2 class="section-title">卡牌类型比例参考</h2>
+
+            <div class="table-wrapper">
+                <table style="font-size: 12px;">
+                    <thead>
+                        <tr>
+                            <th>流派</th>
+                            <th>核心卡</th>
+                            <th>功能卡</th>
+                            <th>过牌卡</th>
+                            <th>终结卡</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>快攻</strong></td>
+                            <td>50%</td>
+                            <td>20%</td>
+                            <td>10%</td>
+                            <td>20%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>控制</strong></td>
+                            <td>30%</td>
+                            <td>40%</td>
+                            <td>20%</td>
+                            <td>10%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>中速</strong></td>
+                            <td>40%</td>
+                            <td>25%</td>
+                            <td>15%</td>
+                            <td>20%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Combo</strong></td>
+                            <td>30%</td>
+                            <td>20%</td>
+                            <td>30%</td>
+                            <td>20%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="section-title">流派平衡要点</h3>
+            <ul class="feature-list">
+                <li><strong>下限与上限分离</strong>：每个流派应有基础卡保证下限，上限卡提供爽感</li>
+                <li><strong>节奏差异化</strong>：快攻需要密集低费曲线，控制需要高质量高费终结</li>
+                <li><strong>反制设计</strong>：每种流派都应有对应的反制手段，避免绝对统治</li>
+                <li><strong>协同标记</strong>：用协同标记量化流派特征</li>
+            </ul>
+        </section>
+
+        <footer class="footer">
+            <p>回合制卡牌游戏流派设计百科</p>
+            <p style="margin-top: 8px; font-size: 12px;">
+                生成日期：2026年5月
+            </p>
+        </footer>
+    </main>
+
+    <a href="#" class="back-to-top" id="backToTop">↑</a>
+
+    <script>
+        function scrollToSection(id) {
+            const element = document.getElementById(id);
+            if (element) {
+                const navHeight = 60;
+                const elementPosition = element.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - navHeight;
+                
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            }
+        }
+
+        // 返回顶部按钮显示/隐藏
+        const backToTopBtn = document.getElementById('backToTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 500) {
+                backToTopBtn.classList.add('visible');
+            } else {
+                backToTopBtn.classList.remove('visible');
+            }
+        });
+
+        backToTopBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    </script>
+</body>
+</html>

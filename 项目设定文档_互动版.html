@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目设定文档 — 循迹之境</title>
+<style>
+  :root {
+    --bg: #faf9f7;
+    --bg-card: #ffffff;
+    --bg-nav: #1a1a2e;
+    --text: #1a1a2e;
+    --text-muted: #6b7280;
+    --accent: #c084fc;
+    --accent2: #60a5fa;
+    --border: #e5e7eb;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --info: #60a5fa;
+    --critical: #f87171;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+    font-size: 15px;
+  }
+
+  .topbar { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--bg); z-index: 100; }
+  #readProgress { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.1s; }
+
+  .sidebar {
+    position: fixed; top: 0; left: 0; width: 280px; height: 100vh;
+    background: var(--bg-nav); overflow-y: auto; z-index: 90; padding: 24px 0 40px;
+  }
+  .sidebar-brand { padding: 0 24px 24px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px; }
+  .sidebar-brand-title { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .sidebar-brand-sub { font-size: 12px; color: rgba(255,255,255,0.4); }
+  .sidebar-brand-ver { font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 4px; }
+  .nav-section { padding: 0 12px 16px; }
+  .nav-section-label {
+    font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.3);
+    letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 12px 4px;
+  }
+  .nav-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; color: rgba(255,255,255,0.55); text-decoration: none;
+    font-size: 13.5px; border-radius: 8px; transition: background 0.15s, color 0.15s;
+    margin-bottom: 1px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+  .nav-item.active { background: rgba(192,132,252,0.15); color: #c084fc; }
+  .nav-item-badge { font-size: 10px; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 10px; color: rgba(255,255,255,0.3); }
+  .nav-item.active .nav-item-badge { background: rgba(192,132,252,0.2); color: rgba(192,132,252,0.7); }
+
+  .main {
+    margin-left: 280px; min-height: 100vh; padding: 60px 48px 80px;
+    max-width: 1320px;
+  }
+  .section { margin-bottom: 72px; padding-top: 48px; border-top: 1px solid var(--border); scroll-margin-top: 80px; }
+  .section-label {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 20px;
+  }
+  .section h2 { font-size: 22px; font-weight: 700; margin: 32px 0 16px; }
+  .section h3 { font-size: 17px; font-weight: 600; margin: 28px 0 12px; }
+  .section h4 { font-size: 15px; font-weight: 600; margin: 20px 0 8px; }
+  .section p { margin-bottom: 12px; }
+  .section ul, .section ol { padding-left: 20px; margin-bottom: 12px; }
+  .section li { margin-bottom: 6px; }
+  .section li ul, .section li ol { margin-top: 6px; }
+  .intro-text {
+    color: var(--text-muted); font-size: 14px; margin-bottom: 24px;
+    padding: 12px 16px; background: rgba(192,132,252,0.06);
+    border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0;
+  }
+  .lead { font-size: 17px; font-weight: 600; margin: 20px 0; }
+
+  .callout { border-radius: 10px; padding: 16px 20px; margin: 20px 0; }
+  .callout-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+  .callout.info { background: rgba(96,165,250,0.1); border-left: 4px solid var(--info); }
+  .callout.info .callout-label { color: var(--info); }
+  .callout.success { background: rgba(52,211,153,0.1); border-left: 4px solid var(--success); }
+  .callout.success .callout-label { color: var(--success); }
+  .callout.warning { background: rgba(251,191,36,0.1); border-left: 4px solid var(--warning); }
+  .callout.warning .callout-label { color: var(--warning); }
+  .callout.critical { background: rgba(248,113,113,0.1); border-left: 4px solid var(--critical); }
+  .callout.critical .callout-label { color: var(--critical); }
+  .callout-content ul { margin: 0; padding-left: 18px; }
+  .callout-content li { margin-bottom: 4px; }
+
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 12px; transition: border-color 0.2s, box-shadow 0.2s; cursor: pointer; }
+  .card:hover { border-color: rgba(192,132,252,0.4); }
+  .card.featured { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(192,132,252,0.1); }
+  .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .card-id { font-size: 11px; font-weight: 700; background: rgba(192,132,252,0.1); color: var(--accent); padding: 2px 8px; border-radius: 6px; }
+  .card-title { font-size: 16px; font-weight: 700; }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; }
+  .badge-cat { background: rgba(192,132,252,0.1); color: #9333ea; }
+  .badge-battle { background: rgba(248,113,113,0.1); color: #dc2626; }
+  .badge-design { background: rgba(96,165,250,0.1); color: #2563eb; }
+  .badge-explore { background: rgba(52,211,153,0.1); color: #059669; }
+  .badge-visual { background: rgba(251,191,36,0.1); color: #d97706; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin: 20px 0; }
+  .card-grid .card { margin-bottom: 0; }
+  .card.featured .card-header .badge { display: none; }
+
+  .table-wrapper { overflow-x: auto; margin: 20px 0; border-radius: 10px; border: 1px solid var(--border); min-width: 600px; }
+  table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: 14px; }
+  thead { background: #f8f8f8; }
+  th { text-align: left; padding: 10px 14px; font-weight: 600; font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(192,132,252,0.03); }
+  .highlight-cell { background: rgba(192,132,252,0.06); }
+  .tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+  .tag-green { background: rgba(52,211,153,0.15); color: #34d399; }
+  .tag-yellow { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .tag-red { background: rgba(248,113,113,0.15); color: #f87171; }
+
+  .exp-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; margin: 16px 0; overflow: hidden; cursor: pointer; transition: border-color 0.2s; }
+  .exp-card:hover { border-color: rgba(192,132,252,0.4); }
+  .exp-card-header { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: linear-gradient(135deg, rgba(192,132,252,0.06), rgba(96,165,250,0.06)); }
+  .exp-card-letter { width: 40px; height: 40px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: 18px; font-weight: 700; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .exp-card-title { font-size: 16px; font-weight: 700; }
+  .exp-card-body { padding: 16px 20px; }
+  .exp-row { display: flex; gap: 16px; margin-bottom: 12px; }
+  .exp-row:last-child { margin-bottom: 0; }
+  .exp-row-label { flex-shrink: 0; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); padding-top: 2px; width: 60px; }
+  .exp-row-content { font-size: 14px; }
+
+  .scene-block { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin: 20px 0; }
+  .scene-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 12px; }
+  .scene-text { font-size: 15px; line-height: 1.8; }
+
+  .battle-preview { background: #1e1e2e; border-radius: 12px; margin: 24px 0; overflow: hidden; }
+  .battle-preview-header { padding: 12px 20px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); border-bottom: 1px solid rgba(255,255,255,0.08); letter-spacing: 0.05em; }
+  .battle-preview-body { padding: 24px; }
+  .battle-arena { background: linear-gradient(180deg, #16213e 0%, #1a1a2e 100%); border-radius: 10px; padding: 20px; min-height: 160px; }
+  .battle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .team-label { font-size: 11px; color: rgba(255,255,255,0.3); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .team-enemy, .team-ally { display: flex; flex-direction: column; gap: 8px; }
+  .creature { background: rgba(255,255,255,0.06); border-radius: 8px; padding: 10px 14px; min-width: 80px; text-align: center; border: 1px solid rgba(255,255,255,0.08); position: relative; }
+  .creature-emoji { font-size: 24px; margin-bottom: 6px; }
+  .creature-status { display: flex; gap: 4px; margin-bottom: 6px; justify-content: center; }
+  .status-icon { font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 4px; font-family: monospace; }
+  .status-icon.attack { background: rgba(248,113,113,0.2); color: #f87171; }
+  .status-icon.defend { background: rgba(96,165,250,0.2); color: #60a5fa; }
+  .creature-hp { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+  .creature-hp-fill { height: 100%; background: var(--success); border-radius: 2px; }
+  .intent-display { background: rgba(192,132,252,0.1); border: 1px solid rgba(192,132,252,0.2); border-radius: 10px; padding: 14px 18px; text-align: center; min-width: 140px; }
+  .intent-label { font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+  .intent-icons { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px; }
+  .intent-icon { background: rgba(248,113,113,0.2); color: #f87171; font-size: 14px; font-weight: 700; padding: 4px 10px; border-radius: 6px; font-family: monospace; }
+  .intent-name { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .intent-hint { font-size: 11px; color: rgba(255,255,255,0.4); }
+  .battle-footer { text-align: center; font-size: 12px; color: rgba(255,255,255,0.3); margin-top: 16px; }
+
+  .season-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; margin: 20px 0; overflow: hidden; cursor: pointer; }
+  .season-theme { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: linear-gradient(135deg, rgba(192,132,252,0.08), rgba(96,165,250,0.08)); }
+  .season-num { width: 44px; height: 44px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: 20px; font-weight: 700; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .season-name { font-size: 16px; font-weight: 700; }
+  .season-tag { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .season-body { padding: 16px 20px; }
+  .season-layer { margin-bottom: 12px; }
+  .season-layer:last-child { margin-bottom: 0; }
+  .season-layer-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 4px; }
+  .season-layer-content { font-size: 14px; }
+
+  .risk-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; margin: 16px 0; overflow: hidden; cursor: pointer; }
+  .risk-card.critical { border-left: 4px solid var(--critical); }
+  .risk-card.warning { border-left: 4px solid var(--warning); }
+  .risk-header { padding: 14px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
+  .risk-type { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 6px; }
+  .critical .risk-type { background: rgba(248,113,113,0.1); color: var(--critical); }
+  .warning .risk-type { background: rgba(251,191,36,0.1); color: var(--warning); }
+  .risk-title { font-size: 15px; font-weight: 600; }
+  .risk-body { padding: 16px 20px; }
+  .risk-row { display: flex; gap: 16px; margin-bottom: 12px; }
+  .risk-row:last-child { margin-bottom: 0; }
+  .risk-label { flex-shrink: 0; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); width: 90px; padding-top: 2px; }
+  .risk-value { font-size: 14px; }
+
+  .decision-item { display: flex; gap: 16px; align-items: flex-start; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+  .decision-id { flex-shrink: 0; font-size: 11px; font-weight: 700; background: rgba(192,132,252,0.1); color: var(--accent); padding: 3px 10px; border-radius: 6px; }
+  .decision-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .decision-desc { font-size: 14px; color: var(--text-muted); }
+
+  .conf-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+  .conf-high { background: rgba(52,211,153,0.15); color: #059669; }
+  .conf-warn { background: rgba(251,191,36,0.15); color: #d97706; }
+
+  .doc-footer { margin-top: 60px; padding-top: 32px; border-top: 1px solid var(--border); }
+  .footer-meta { display: flex; flex-wrap: wrap; gap: 24px; }
+  .footer-meta-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 2px; }
+  .footer-meta-value { font-size: 13px; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
+
+  @media (max-width: 900px) { .sidebar { display: none; } .main { margin-left: 0; padding: 40px 24px 60px; } }
+  @media print { .sidebar, .topbar { display: none; } .main { margin-left: 0; } .section { break-inside: avoid; } }
+</style>
+</head>
+<body>
+
+<div class="topbar"><div id="readProgress"></div></div>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="#overview" class="sidebar-brand-title" style="text-decoration:none;color:inherit;">循迹之境</a>
+    <div class="sidebar-brand-sub">项目设定文档</div>
+    <div class="sidebar-brand-ver">v42.0 · 2026-05-21</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">核心</div>
+    <a href="#overview" class="nav-item">核心概念 <span class="nav-item-badge">0</span></a>
+    <a href="#battle-experience" class="nav-item">战斗体验描述 <span class="nav-item-badge">一</span></a>
+    <a href="#what-is-game" class="nav-item">这是什么游戏 <span class="nav-item-badge">二</span></a>
+    <a href="#market" class="nav-item">市场机会 <span class="nav-item-badge">三</span></a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">系统</div>
+    <a href="#combat" class="nav-item">战斗系统 <span class="nav-item-badge">四-1</span></a>
+    <a href="#collection" class="nav-item">收集系统 <span class="nav-item-badge">四-2</span></a>
+    <a href="#scent" class="nav-item">气味事件（动态）系统 <span class="nav-item-badge">四-3</span></a>
+    <a href="#field-boss" class="nav-item">区域首领（暴君） <span class="nav-item-badge">四-4</span></a>
+    <a href="#season" class="nav-item">赛季系统 <span class="nav-item-badge">四-5</span></a>
+    <a href="#map" class="nav-item">地图与探索 <span class="nav-item-badge">四-6</span></a>
+    <a href="#narrative" class="nav-item">叙事系统 <span class="nav-item-badge">四-7</span></a>
+    <a href="#economics" class="nav-item">经济系统 <span class="nav-item-badge">四-8</span></a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">五</div>
+    <a href="#users" class="nav-item">目标用户 <span class="nav-item-badge">五</span></a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">附录</div>
+    <a href="#appendix" class="nav-item">快速索引 <span class="nav-item-badge">附录</span></a>
+  </div>
+</nav>
+
+<main class="main">
+<div class="content">
+
+<!-- 核心概念 -->
+<section id="overview" class="section">
+  <span class="section-label">核心概念</span>
+  <div class="callout info">
+    <div class="callout-content">
+      在循迹之境的世界里，每只生物都散发着独一无二的气味——而对你而言，情绪也有气味。恐惧带着幽暗深邃的冷意，愤怒裹着焦灼的热度，眷恋混着温暖奶香的柔和。你是能通过气味，读懂对手下一步行为的循迹者。
+    </div>
+  </div>
+</section>
+
+<!-- 一、战斗体验描述 -->
+<section id="battle-experience" class="section">
+  <span class="section-label">一、战斗体验描述</span>
+
+  <div class="exp-card">
+    <div class="exp-card-header"><div class="exp-card-letter">A</div><div class="exp-card-title">意图可视化</div></div>
+    <div class="exp-card-body">
+      <div class="exp-row"><div class="exp-row-label">玩家行为</div><div class="exp-row-content">每个回合开始，敌人头顶显示其当前回合的意图信息：行为类型（攻击/防御/蓄力/特殊）与目标。意图始终完全可见，信息无模糊层。</div></div>
+      <div class="exp-row"><div class="exp-row-label">解读</div><div class="exp-row-content">在"循迹之境"的世界里，气味是生物状态的表达，玩家通过气味来获取关于这只生物的情报。意图可视化让玩家始终掌握战场主动权。</div></div>
+    </div>
+  </div>
+
+  <div class="exp-card">
+    <div class="exp-card-header"><div class="exp-card-letter">B</div><div class="exp-card-title">属性克制</div></div>
+    <div class="exp-card-body">
+      <div class="exp-row"><div class="exp-row-label">玩家行为</div><div class="exp-row-content">派出一只低等级的、但属性恰好克制对方的生物——不是属性碾压，而是"我知道你怕这个"。你闻到了这只橙红色小家伙身上一股微辛的热度——躁动、尖锐、蓄势待发。它被换上了场：草绿色的敌人正在蓄力，而它恰好克制对方的草属性。</div></div>
+      <div class="exp-row"><div class="exp-row-label">解读</div><div class="exp-row-content">每种生物有明确的克制与被克制关系。</div></div>
+    </div>
+  </div>
+
+  <div class="exp-card">
+    <div class="exp-card-header"><div class="exp-card-letter">C</div><div class="exp-card-title">羁绊构筑</div></div>
+    <div class="exp-card-body">
+      <div class="exp-row"><div class="exp-row-label">玩家行为</div><div class="exp-row-content">构筑你的队伍，战胜强大的'暴君'生物。</div></div>
+      <div class="exp-row"><div class="exp-row-label">解读</div><div class="exp-row-content">不同生物组合产生奇妙的化学反应。</div></div>
+    </div>
+  </div>
+
+  <div class="exp-card">
+    <div class="exp-card-header"><div class="exp-card-letter">D</div><div class="exp-card-title">气味干扰</div></div>
+    <div class="exp-card-body">
+      <div class="exp-row"><div class="exp-row-label">玩家行为</div><div class="exp-row-content">对敌人使用芳香剂，影响它的气味信号，诱导改变攻击意图。</div></div>
+      <div class="exp-row"><div class="exp-row-label">解读</div><div class="exp-row-content">在"循迹之境"的世界里，气味不只是被动的情报来源，也可以成为主动的干预手段。循迹者不只能"感知敌人要干什么"，还能利用气味，诱导敌人改变意图。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 二、这是什么游戏 -->
+<section id="what-is-game" class="section">
+  <span class="section-label">二、氛围</span>
+
+  <div class="scene-block">
+    <div class="scene-label">你走进一片湿地</div>
+    <div class="scene-text">
+      雾气从水面升起来，白茫茫的，把远处的树影和天光都吞没了。你低头看自己的脚——芦苇在膝盖边轻轻摇晃，水没过脚踝，凉意从脚底慢慢渗上来。<br><br>
+      视野只有几步远。雾里什么也看不清。<br><br>
+      但气味先到了。浓烈的金属腥味从雾气深处涌来，裹着某种正在升温的热度——像是某种东西的呼吸，沉重地，一点点向你靠近。<br><br>
+      你站住了。有什么东西在那里。你不知道它是什么，不知道它有多大，但你知道它在看你。<br><br>
+    </div>
+  </div>
+
+  <div class="callout success">
+    <div class="callout-label">这就是循迹之境</div>
+    <div class="callout-content">每一只生物都有气味，每一种气味都在说话。你闻到的第一个信号，就是它的意图。</div>
+  </div>
+
+</section>
+
+<!-- 三、市场机会与差异化 -->
+<section id="market" class="section">
+  <span class="section-label">三、市场机会与差异化</span>
+
+  <h2>A. 市场机会</h2>
+  <p class="lead">宝可梦Like品类在移动端已经证明了长线价值。宝可梦GO（全球下载量10亿+）和洛克王国世界（2026年3月公测）证明了品类底力。</p>
+  <p>但大多数产品停留在"数值驱动+视觉收集"的框架内。</p>
+  <p><strong>循迹之境的切入点是：让战斗本身变成一场推理游戏。</strong></p>
+  <p>现有移动端市场没有战斗中展示完全信息的产品，这意味着我们可以设计真正有趣的PVE战斗——不是数值碾压，而是读懂对手，以弱胜强。</p>
+
+  <h2>B. 品类生态定位对比</h2>
+  <h3>洛克王国世界正面分析</h3>
+  <p>洛克王国世界以"免费捕捉 + 无抽卡"为核心差异点，上线首月DAU均值1300万、收入破亿，有力证明了移动端宠物收集战斗市场的规模天花板。其差异化锚点不在社交层，而在收集机制零门槛化 + 付费设计克制化这一组合。洛克王国世界在PVE战斗层面存在属性克制和换宠博弈，但地图BOSS难度缺乏梯度设计——玩家练度达标即可碾压，缺乏机制深度，导致战斗沦为纯粹的数值验证。更深层的问题在于内容空洞：玩家完成等级拉满、技能配齐后，缺少需要研究机制、反复挑战才能获取的顶级目标，PVE的成就感天花板过低。相比之下，PVP因为有对手的实时博弈，战斗体验明显更胜一筹。但恰恰是这些被"收集+社交"吸引进来的用户，他们中有大量人天然渴望"战斗本身也有意思"——洛克王国验证了这个需求的存在，却没有能力满足它。循迹之境的切入空间不是从零教育市场，而是接住被洛克王国预热的用户。</p>
+  <p>在制作人的多次访谈中，洛克王国世界团队明确将"生态构建"和"无限社交"作为品类终极想象的核心支柱，并通过精灵行为系统、大世界交互道具、家园系统大量堆砌互动深度；同时将PVP定为GaaS化框架的三大支柱之一（无限抓+无限PVP+无限社交）。然而制作人也坦言，PVP的实际参与率未达预期，团队持续在降低门槛上迭代。这恰恰说明：洛克王国的研发重心在生态互动和PVP上，PVE战斗体验的深度反而成了被战略性放弃的空间——这正是循迹之境的切入窗口。</p>
+  <p>品类生态定位专项：</p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>玩法维度</th><th class="highlight-cell">循迹之境</th><th>洛克王国世界</th><th>Temtem</th></tr></thead>
+      <tbody>
+        <tr><td><strong>PVE</strong></td><td class="highlight-cell">意图可视化+抉择博弈——战斗即推理（解决那些能力、机制看似无敌的暴君会获得巨大成就感，参考龙息：神寂的技能效果）</td><td>传统属性克制+数值碾压——战前已定胜负，PVE被战略性弱化</td><td>1v1对称对战——PVE体验单薄</td></tr>
+        <tr><td><strong>PVP</strong></td><td class="highlight-cell">3V3（不适用意图可视化）</td><td>GaaS三大支柱之一，实际参与率持续未达预期</td><td>品类核心体验，平衡性是设计生命线</td></tr>
+        <tr><td><strong>多人玩法</strong></td><td class="highlight-cell">参与世界事件——狩猎区域首领（暴君）<br>3人组队副本玩法——BOSS巢穴（攻略BOSS，偷蛋）</td><td>生态互动+家园+社交功能——强调关系链沉淀</td><td>交换对战——强调玩家间经济循环</td></tr>
+        <tr><td><strong>差异化优势</strong></td><td class="highlight-cell">PVE玩法乐趣性，深度与扩展性<br>多人玩法的战斗基于PVE，继承PVE优势<br>气味，循迹叙事包装融入战斗系统，野外事件，副本巢穴玩法与交互，有更好的代入感与沉浸感</td><td>生态丰富+社交深度——玩家关系链驱动</td><td>平衡性+竞技性——PVP为核心体验</td></tr>
+        <tr><td><strong>叙事</strong></td><td class="highlight-cell">分层叙事（表里双层）：表层全年龄可读，里层宫崎骏式情感深度——羁绊、放手、传承、代价，成年玩家在具体行动中自然感受到超越事件的情感重量；<br>碎片化叙事：叙事碎片（黑魂式书信/物件）</td><td>生态世界观叙事+赛季事件叙事</td><td>竞技叙事为主</td></tr>
+        <tr><td><strong>品类生态位</strong></td><td class="highlight-cell">主推精英/BOSS战：战斗即推理的PVE玩法（普通战斗快节奏），非低幼剧情，箱庭式区域探索（参考英勇之地手游地图营地+野外的感觉）</td><td>洛克王国世界：生态互动+PVP社交（实际PVP参与率未达预期，PVE被战略性弱化）；腾讯(宝可梦大集结/MOBA)、爪印工作室(伊莫/大世界捉宠)等跟进生态互动+PVP方向；国内同类多停留在"属性克制+数值碾压"</td><td>"硬核竞技"赛道已成熟</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>C. 核心竞争力</h2>
+  <div class="callout critical">
+    <div class="callout-label">一句话说清</div>
+    <div class="callout-content">
+      <p>循迹之境的核心竞争力，在于<strong>战斗即推理的PVE玩法深度与乐趣</strong>。</p>
+      <p>以目标为导向的多人玩法：狩猎暴君（区域首领世界事件）、巢穴偷蛋（3人组队攻略BOSS），将"战斗即推理"的乐趣从单人延伸到多人协作场景。</p>
+      <p>对比：洛克王国世界当前版本没有多人玩法，只有低频次的自发式社交互动（城镇挂机星光产生的互动行为，牵手抓异色）。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 四、核心系统怎么玩 -->
+<section id="combat" class="section">
+  <span class="section-label">四、核心系统 · 战斗系统</span>
+
+  <div class="card featured">
+    <div class="card-header"><span class="badge badge-battle">DC-1</span><div class="card-title">3Vn回合制战斗</div></div>
+    <div class="card-body">
+      <p>3Vn回合制战斗（我方3只 vs 敌方N个）。</p>
+      <p>战斗的核心是"选择"——先读懂意图，再选择正确的应对。意图可视化是始终呈现的，但选择应对方式是主动的。</p>
+      <p>生物遭遇时的环境，状态会直接作用于战斗——同样的物种，花丛里的是花粉浓度高的增益态，采集区边缘的是领地冲突后的激进态。总的来说：不同环境，不同状态下，生物的技能效果、AI逻辑、属性参数会产生变化，呈现差异化的战斗体验（资产复用）。</p>
+    </div>
+    <div class="card-tags">
+      <span class="badge badge-battle">DC-1 团队战斗</span>
+      <span class="badge badge-design">DC-2 意图可视化</span>
+    </div>
+  </div>
+
+  <h2>战斗的三阶段生命周期</h2>
+
+  <h3>第一阶段：开荒期——构筑摸索</h3>
+  <p>玩家已能完全看清敌人意图，但队伍组合与技能选择尚未成型。这一阶段的核心体验是"试错"：面对已知的意图，反复调整队伍构筑与技能释放顺序。</p>
+  <ul>
+    <li>玩家心理：好奇 + 挫败感交替。知道敌人要干什么，却未必知道该如何应对——"它要打我的前排，但我没有能扛的前排"。"我知道它要干什么，但我不知道该带什么技能克制它"。</li>
+    <li>设计要点：失败是构筑调整的一部分。每一次失败都在排除一个错误选项，让玩家离正确答案更近一步。</li>
+    <li><strong>引导型第一BOSS：</strong>第一只精英/BOSS采用较低的敌人强度，它的意图可视化同时承载教学功能——教会玩家"意图图标"与"应对策略"之间的映射关系。</li>
+    <li>风险警戒：这一阶段如果挫败感过强会让人流失。需要保证构筑调整后有可感知的进步，让玩家看到"换了配置之后，这次打得比上次好"。</li>
+  </ul>
+
+  <h3>第二阶段：稳定刷——通关节奏</h3>
+  <p>玩家已形成稳定的构筑与技能释放节奏。这一阶段的核心体验是"掌控感"：知道敌人要干什么，也知道自己该用什么阵容和打法来应对。</p>
+  <ul>
+    <li>玩家心理：熟练感 + 正向循环。稳定通关 → 获取奖励 → 用奖励强化阵容 → 继续稳定通关。进入良性循环后，玩家获得踏实感与成长感。</li>
+    <li>设计要点：这一阶段是游戏产出的主要窗口。稳定的通关体验确保玩家能持续获得奖励，支撑后续成长。竞速排名的钩子开始出现，让有更高追求的玩家进入第三阶段。</li>
+  </ul>
+
+  <h3>第三阶段：竞速优化——寻找最优解</h3>
+  <p>玩家开始研究如何在稳定通关的基础上进一步压缩时间与回合数。这一阶段的核心体验是"技能天花板的延伸"：基本玩法已经掌握，但"更优雅地赢"是一个没有尽头的目标。</p>
+  <ul>
+    <li>玩家心理：成就感 + 社交性。玩家不只是在和自己竞争，也在和社区比较、打法录像分享、构筑讨论中获取乐趣。</li>
+    <li>竞速排名仅针对特殊指定的BOSS开启。系统每周根据玩家的数据表现生成一个100人的临时小组竞速榜（只是荣誉，榜单没有奖励），在小组内进行排名对比，而非全服排名。</li>
+    <li>设计要点：竞速要真正有研究空间，需要两个前提条件：
+      <ul>
+        <li><strong>构筑多样性：</strong>不同构筑在不同关卡有不同的最优解，没有唯一的"正确答案"，这样不同类型的玩家都有竞速的空间</li>
+        <li><strong>生态位差距：</strong>如果竞速的最优解是唯一的，那么拿到这套构筑的玩家刷到名次后失去动力，没拿到的直接放弃——健康的竞速生态是"不同解法各有千秋"</li>
+      </ul>
+    </li>
+    <li>竞速档案：个人最佳成绩（PB）永久记录</li>
+    <li>里程碑节点：首次进入20回合、10回合有对应个性称号。</li>
+    <li>赛季竞速：每个赛季选择一个代表性BOSS开启竞速挑战。新赛季带来新生物和新构筑，竞速生态也随之刷新。</li>
+  </ul>
+
+  <h3>三阶段的衔接设计</h3>
+  <p>三个阶段之间的过渡不能靠玩家"自发觉醒"，需要游戏有意识地引导：</p>
+  <ul>
+    <li>开荒→稳定刷：每次通关结算时展示"通关评价"，让玩家清晰看到"下次通关时，我可以尝试调整某个环节来提升评价"</li>
+    <li>稳定刷→竞速优化：竞速仅在特定指定BOSS上开启，竞速开启的提示仅出现在这类BOSS的击杀结算界面中，对其他玩家不造成干扰。</li>
+  </ul>
+
+  <h2>气味干扰道具</h2>
+  <div class="callout info">
+    <div class="callout-label">设计定位说明（v40.9新增）</div>
+    <div class="callout-content">气味干扰道具不是"辅助道具"，而是气味感知系统的第三层——从"读取意图"到"干扰意图"到"操控意图"，是核心体验的自然延伸，而非额外附加的道具体系。</div>
+  </div>
+
+  <p>气味干扰道具是<strong>气味操控的主动形态</strong>——玩家从"闻到敌人要干什么"升级到"利用气味，诱导敌人改变意图"。这是核心战斗体验D（气味干扰）的系统展开，与意图可视化系统共享同一个感官逻辑：敌人通过气味传递意图，循迹者即可通过气味反作用于敌人。</p>
+
+  <h3>道具分级（与三层框架对应）</h3>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>道具名称</th><th>对应层次</th><th>适用范围</th><th>获取方式</th><th>效果</th></tr></thead>
+      <tbody>
+        <tr><td><strong>低级芳香剂</strong></td><td>第二层：主动干扰</td><td>普通怪</td><td>野外商人购买（软货币）</td><td>定向替换普通敌人下一回合意图（攻击↔防御↔蓄力）</td></tr>
+        <tr><td><strong>稀有芳香剂</strong></td><td>第三层：气味操控</td><td>BOSS/精英</td><td>野外商人购买（软货币）+ 气味事件（动态）奖励</td><td>定向替换BOSS/精英下一回合意图</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ul>
+    <li>稀有芳香剂对普通怪同样有效（向下兼容），但购买成本更高——玩家不会被迫购买两套道具。</li>
+    <li>低级芳香剂对BOSS使用无效——BOSS的气味阈值更高，需要更强的干扰浓度，逻辑自洽。</li>
+  </ul>
+
+  <h3>获取与货币设计</h3>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>道具</th><th>主要获取</th><th>消耗货币</th><th>辅助获取</th></tr></thead>
+      <tbody>
+        <tr><td>低级芳香剂</td><td>野外商人购买</td><td>软货币（野外探索产出）</td><td>气味事件（动态）随机奖励</td></tr>
+        <tr><td>稀有芳香剂</td><td>野外商人购买</td><td>软货币（较高单价）</td><td>叙事类/危险类气味事件（动态）完成奖励</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ul>
+    <li><strong>不设内购专属获取：</strong>两种道具均可通过软货币购买，不设内购专属通道。</li>
+    <li><strong>气味事件（动态）作为辅助产出：</strong>叙事类和危险类气味事件（动态）完成后，有概率作为额外奖励掉落稀有芳香剂，鼓励探索行为。</li>
+    <li><strong>货币隔离：</strong>芳香剂消耗软货币，与内购硬货币完全隔离，战斗能力不受货币购买力影响。</li>
+  </ul>
+
+  <h3>命中与抗性机制</h3>
+  <ul>
+    <li><strong>命中判定：100%命中。</strong>只要能对目标使用，效果必定生效。</li>
+    <li><strong>芳香剂抗性：</strong>目标被使用后，获得「芳香剂抗性」状态，持续N回合。每次使用芳香剂，抗性概率叠加50%（上限封顶）。
+      <ul>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>冷却机制</h3>
+  <ul>
+    <li>道具使用后，该道具进入3回合冷却。</li>
+    <li>冷却时间内，该道具无法再次使用（不区分目标）。</li>
+    <li>抗性机制与冷却机制共同作用：玩家需要在"何时使用"和"对谁使用"之间做策略权衡。</li>
+  </ul>
+
+</section>
+
+<!-- 收集系统 -->
+<section id="collection" class="section">
+  <span class="section-label">四、核心系统 · 收集系统</span>
+
+  <div class="card featured">
+    <div class="card-header"><span class="badge badge-explore">DC-5</span><div class="card-title">收集系统</div></div>
+    <div class="card-body">
+      <p>收集对象是<strong>具有实体生命的生物</strong>，它们有习性、有栖息地、有气味感官特征。</p>
+      <p>观察笔记是带成就任务的图鉴系统——记录物种信息、同时也提供观察、捕获等不同要求的任务与成就。通过完成观察笔记的任务、成就，能够获得大量的学习点，用于提升生存天赋——所有天赋均不影响战斗，比如增加骑乘速度、学习野外生火、学习野外制药等冒险与探索相关的非战斗效果。</p>
+    </div>
+    <div class="card-tags">
+      <span class="badge badge-explore">DC-5 生物收集</span>
+      <span class="badge badge-explore">DC-8 野外生态</span>
+    </div>
+  </div>
+
+  <h3>培养深度与PVE内容消耗的关系</h3>
+  <p class="intro-text"><strong>问题溯源：洛克王国世界的PVE内容危机。</strong>洛克王国世界宠物培养极度廉价——同名宠物强度上只有性格差异，性格对了即算完美。2只宠物（初始宠物迪莫 + 罗隐）即可碾压所有PVE内容。其结果是：玩家培养上限极低，内容消耗速度远超内容产出速度，S2上线时PVE内容已经失去目标感。</p>
+
+  <p><strong>循迹之境的解题思路。</strong>循迹之境的PVE是主推内容，必须确保玩家始终有目标可追。核心手段是<strong>适当增加每只宠物完美培养的难度</strong>：2-3天的资源投入可以养成一只强度完美的宠物。这个节奏比洛克王国慢得多，但不至于让玩家感到遥遥无期。</p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>对比维度</th><th>洛克王国世界</th><th>循迹之境（本案）</th></tr></thead>
+      <tbody>
+        <tr><td>培养周期</td><td>分钟级（性格对了即完美）</td><td>2-3天/只（强度完美）</td></tr>
+        <tr><td>同名宠物差异</td><td>仅性格</td><td>技能组 × 气味层级</td></tr>
+        <tr><td>全PVE所需工具箱</td><td>2只宠物（迪莫+罗隐）</td><td>多只不同技能组的完美宠物</td></tr>
+        <tr><td>PVE目标感</td><td>快速消散</td><td>持续存在</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>培养体系与积分挑战的联动。</strong>每个赛季都有独立的积分挑战目标。培养完美宠物是完成积分挑战的核心手段。使用赛季生物参赛可获得额外积分加成，更容易达成高积分获取奖励。玩家追求的不再是"用最少宠物通关"，而是"拥有更丰富的工具箱应对不同的战术需求，同时积累更高积分"。</p>
+
+  <p>这让培养行为本身成为PVE内容的延伸——你不是在"消耗内容"，而是在"为下一场战斗准备更合适的工具"。</p>
+
+  <h3>外观追求四层结构</h3>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>层级</th><th class="highlight-cell">外观特征</th><th>战斗影响</th><th>获取方式</th><th>冷却</th><th>受众</th></tr></thead>
+      <tbody>
+        <tr><td><strong>第一层：普通气味</strong></td><td class="highlight-cell">基础外观</td><td>基础技能组</td><td>直接遭遇，高概率</td><td>无</td><td>休闲玩家</td></tr>
+        <tr><td><strong>第二层：混合气味</strong></td><td class="highlight-cell">混合外观</td><td>增强技能组</td><td>1/10~1/20概率，~1分钟捕获一只（待定）</td><td>无</td><td>休闲党/强度党</td></tr>
+        <tr><td><strong>第三层：混合气味+染色</strong></td><td class="highlight-cell">混合外观+局部变色</td><td>增强技能组</td><td>1/150概率</td><td>无</td><td>外观肝帝</td></tr>
+        <tr><td><strong>第四层：野生炫彩</strong></td><td class="highlight-cell">炫彩外观（特效）</td><td>增强技能组</td><td>1/1000概率</td><td>7天冷却</td><td>蹲守玩家</td></tr>
+        <tr><td><strong>第四层：付费炫彩</strong></td><td class="highlight-cell">炫彩外观（特效）</td><td>增强技能组</td><td>昂贵付费道具</td><td>无</td><td>付费玩家</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>设计原则：解耦稀有度与审美偏好。</strong>各层级的视觉风格是独特的，但不是"更精致"，风格之间没有高低之分。</p>
+
+  <h3>染色与炫彩</h3>
+  <ul>
+    <li><strong>染色（局部变色）：</strong>不影响强度，只影响外观。1/150概率，无冷却，可持续肝。染色方案多样化（多种局部变色款式），让外观党有更多追求空间。</li>
+    <li><strong>炫彩（带特效）：</strong>超越颜色的视觉变化，包含周期性粒子特效（颜色/形状/周期），动态特效。</li>
+  </ul>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>炫彩来源</th><th>视觉效果</th><th>标签</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>野生炫彩</td><td>炫彩外观（特效）</td><td>"野生"标签</td><td>蹲守者专属荣誉徽章</td></tr>
+        <tr><td>付费炫彩</td><td>炫彩外观（特效，完全相同）</td><td>无标签</td><td>与野生炫彩视觉完全一致</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>设计原则：野生炫彩 = 付费炫彩（视觉无差异，不让付费党感觉低人一等）；野生炫彩携带"野生"标签（蹲守者的荣誉证明）。"野生"标签是荣誉系统，不是歧视系统——它不贬低任何人，只是给愿意投入时间的人一个身份证明。</p>
+
+  <h3>气味追求闭环</h3>
+  <p>气味四层追求与玩家行为形成闭环：持续遭遇高外观个体 → 混合气味 → 混合气味+染色 → 炫彩。</p>
+
+  <h3>玩家分群的行为路径</h3>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>玩家类型</th><th>追求目标</th><th>获取路径</th><th>投入方式</th></tr></thead>
+      <tbody>
+        <tr><td>纯休闲玩家</td><td>强度，不肝</td><td>普通气味 或 混合气味</td><td>~1分钟一只混合（待定）</td></tr>
+        <tr><td>休闲外观党</td><td>混合气味好看</td><td>混合气味</td><td>少量时间，收集混合气味</td></tr>
+        <tr><td>外观肝帝</td><td>外观拉满</td><td>混合气味+染色（1/150）</td><td>无限肝，无冷却，可持续追求</td></tr>
+        <tr><td>蹲守玩家</td><td>蹲到野生炫彩</td><td>野生炫彩（1/1000）</td><td>捕获野生炫彩有7天冷却时间，稀缺感极强</td></tr>
+        <tr><td>付费玩家</td><td>快速炫彩</td><td>付费炫彩道具</td><td>昂贵付费，秒得，无冷却</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>设计优势：</strong>战斗党和外观党各取所需——追求混合气味是为了技能组合，追求染色是为了个人喜好，评分独立于战斗力不影响游戏平衡。休闲、肝帝、蹲守、付费各有出口，互不替代。</p>
+
+  <h3>宠物技能习得体系</h3>
+  <p class="intro-text">本节参考了《以太术士》(Aethermancer) 的可学习技能组三选一机制，并针对循迹之境的定位做了简化与调整。</p>
+
+  <h4>升级结构（25级满级）</h4>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>等级节点</th><th>类型</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><strong>初始</strong></td><td>种族被动 + 初始主动</td><td>每只宠物出生自带的固定技能</td>
+        <tr><td><strong>5级</strong></td><td>主动技能</td><td>从可学习技能组中3选1主动技能</td>
+        <tr><td><strong>10级</strong></td><td>被动技能</td><td>从可学习技能组中3选1被动效果</td>
+        <tr><td><strong>15级</strong></td><td>主动技能</td><td>从可学习技能组中3选1主动技能</td>
+        <tr><td><strong>20级</strong></td><td>被动技能</td><td>从可学习技能组中3选1被动效果</td>
+        <tr><td><strong>25级</strong></td><td>主动技能</td><td>从可学习技能组中3选1主动技能，满级</td>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>满级技能总计</h4>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>类别</th><th>来源</th><th>数量</th><th>合计</th></tr></thead>
+      <tbody>
+        <tr><td>主动技能</td><td>初始1个 + 5/15/25级各学1个</td><td>4个</td><td rowspan="2">7个技能</td></tr>
+        <tr><td>被动技能</td><td>种族天赋1个 + 10/20级各学1个</td><td>3个</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>药水重学习机制</h4>
+  <p>使用药水可定向重新学习已习得的技能：</p>
+  <ul>
+    <li>选择目标技能槽（主动或被动）</li>
+    <li>从该槽对应的可学习技能组中随机抽取<strong>3个选项</strong>供选择</li>
+    <li>三选一完成替换，旧技能消失</li>
+  </ul>
+  <p>药水保持了三选一的抉择感，而非纯随机替换——玩家始终知道自己在调整什么、选择什么。</p>
+</section>
+
+<!-- 气味事件（动态）系统 -->
+<section id="scent" class="section">
+  <span class="section-label">四、核心系统 · 气味事件（动态）系统</span>
+
+  <p class="intro-text">气味是探索时的信号——玩家在区域间移动时，随机遇到气味异常点。屏幕边缘出现轻微提示："空气中有什么不对劲"。玩家可以选择忽略继续走，或者停下来调查。</p>
+
+  <p>气味事件（动态）系统不是"战斗之外的调味品"，而是探索体验的核心组成部分。气味是玩家与生物、环境、故事之间的第一接触点。每一种气味都可能是隐藏资源的信号、稀有生物的前兆、区域故事的碎片、危险逼近的预警。玩家通过气味来阅读这个世界，而气味事件（动态）系统让这种"阅读"变成可交互的探索行为。</p>
+
+  <h2>事件类型与结果</h2>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>事件类型</th><th>可能的调查路径</th><th>随机结果</th></tr></thead>
+      <tbody>
+        <tr><td><strong>资源类</strong></td><td>追踪气味 → 开锁/带走</td><td>稀有道具、消耗品、进化素材</td></tr>
+        <tr><td><strong>生物类</strong></td><td>追踪气味 → 接近/设陷阱</td><td>偷蛋（观察+战斗风险）、发现幼崽（观察数据）、触发战斗（稀有遭遇）</td></tr>
+        <tr><td><strong>叙事类</strong></td><td>追踪气味 → 检查/离开</td><td>环境故事碎片、区域背景信息、观察数据</td></tr>
+        <tr><td><strong>危险类</strong></td><td>气味异常 → 调查/绕行</td><td>发现异变生物前兆（提前预警奖励）、触发精英战斗、发现陷阱</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>结果要有随机惊喜感：</strong>选择"带走蛋"可能导致战斗，可能直接获得观察数据，也可能带回城镇后蛋自行孵化成为搭档——玩家选了一个方向，但不知道具体会得到什么。这比"闻到A气味打A怪拿A道具"有悬念得多。</p>
+
+  <h2>气味类型与感官层次</h2>
+  <p class="intro-text">气味不是抽象的图标，而是有具体感官的描述。气味承载两种信息：<strong>生理信号</strong>（饥饿、受伤、发情）和<strong>情绪表达</strong>（恐惧、愤怒、眷恋、哀伤）。气味的呈现分三个层次，让玩家能够"闻到"这个世界的生理状态与情感内核：</p>
+
+  <h3>第一层——气味类型识别（直觉层）</h3>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>气味类型</th><th>感官描述</th><th>玩家直觉判断</th></tr></thead>
+      <tbody>
+        <tr><td>花香/甜腻</td><td>花蜜的浓郁甜香，混合着某种躁动的热度</td><td>生物在附近，可能是蜜食性生物或花朵拟态；情绪层面可能暗示求偶或护幼</td></tr>
+        <tr><td>金属腥</td><td>冰凉的铁锈味，混合着类似血液的铁腥</td><td>矿物区或甲壳生物，防御型敌人出没地；情绪层面可能暗示领地防御或受伤</td></tr>
+        <tr><td>腐败酸臭</td><td>发酵的酸味，混合着某种正在升温的气息</td><td>有机物富集区，可能是食腐生物或陷阱；情绪层面可能暗示死亡气息或哀伤</td></tr>
+        <tr><td>清冷辛冽</td><td>雪山泉水混合薄荷的凉意</td><td>水源附近，可能是水属性生物；情绪层面可能暗示平静或疏离</td></tr>
+        <tr><td>焦灼热度</td><td>火焰舔舐后的焦味，混合着硫磺</td><td>火山口或岩浆区，火/龙属性生物；情绪层面可能暗示愤怒或躁动</td></tr>
+        <tr><td>幽暗深邃</td><td>潮湿的苔藓混合着无法辨认的陌生气息</td><td>地下或浓雾区，未知生物出没地；情绪层面可能暗示恐惧或敌意</td></tr>
+        <tr><td>温暖奶香</td><td>柔和的暖意中带着一丝柔软的奶香</td><td>幼崽或蛋在附近；情绪层面暗示眷恋、信任或保护的本能</td></tr>
+        <tr><td>凛冽苦涩</td><td>冷风中夹杂着干燥的苦涩气息</td><td>生物正在经历失去；情绪层面暗示哀伤、孤独或放弃</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>第二层——气味细节解读（分析层）</h3>
+  <p>在第一层的基础上，气味会给出更多细节线索。这些细节不是"答案"，而是"线索"——帮助玩家判断气味的来源和价值，以及它当下的情绪状态：</p>
+  <ul>
+    <li><strong>浓度变化：</strong>气味随距离远近有浓度变化，玩家可以通过"迎风走"或"逆风走"来判断气味来源方向；情绪气味的浓度还透露强度——浓烈的焦灼可能意味着濒临失控的愤怒，淡薄的花香可能意味着平静或疲惫</li>
+    <li><strong>气味混合：</strong>两种以上气味的混合会提供更精确的信息——"花香中混着一丝奶香"暗示附近有幼崽，"金属腥中带着温暖奶香"可能暗示受伤的母亲正在护崽</li>
+    <li><strong>气味新鲜度：</strong>刚散发的气味带有"温度"，陈旧的气味"冷却"了——新鲜气味意味着事件刚刚发生；情绪气味同样如此，刚散发的恐惧气息意味着威胁仍在，冷却的哀伤意味着创伤已成过去</li>
+  </ul>
+
+  <h2>事件类型的扩展分支</h2>
+
+  <h3>1. 资源类事件的扩展</h3>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>气味线索</th><th>追踪路径</th><th>可能的发现</th></tr></thead>
+      <tbody>
+        <tr><td><strong>稀有矿物</strong></td><td>金属腥味中混着一丝金色光泽的气味</td><td>高品质进化石、稀有材料、炼金素材</td></tr>
+        <tr><td><strong>隐藏水源</strong></td><td>清冷气味在干燥区域异常出现</td><td>回复道具、稀有水属性材料、隐藏鱼塘</td></tr>
+        <tr><td><strong>隐藏食材点</strong></td><td>潮湿泥土混合着腐败果实的甜腻气味</td><td>稀有烹饪素材、隐藏采集点、特殊调味剂</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>2. 生物类事件的扩展</h3>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>气味线索</th><th>追踪路径</th><th>可能的发现</th></tr></thead>
+      <tbody>
+        <tr><td><strong>幼崽/蛋</strong></td><td>花香/奶香混合的柔和气味</td><td>观察数据、偷蛋机会（需承担战斗风险）、成年个体的信任</td></tr>
+        <tr><td><strong>落单生物</strong></td><td>某只生物的独特气味，与群体气味分离</td><td>稀有遭遇、观察数据、建立信任的机会</td></tr>
+        <tr><td><strong>气味领地标记</strong></td><td>某只强势生物的领地边界气味</td><td>进入后触发战斗或交易</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <h3>4. 危险类事件的扩展</h3>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>气味线索</th><th>追踪路径</th><th>可能的发现</th></tr></thead>
+      <tbody>
+        <tr><td><strong>诱饵气味</strong></td><td>某种刻意模仿的熟悉气味，但散发方式不自然</td><td>提前识破骗局、触发后反将一军、利用诱饵追踪源头</td></tr>
+        <tr><td><strong>捕食者气味</strong></td><td>顶级捕食者的气味标记，领地意识强烈</td><td>观察数据、穿越后的快速通道、战斗风险</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>设计约束</h2>
+  <ol>
+    <li><strong>节奏控制：</strong>每次事件只做一次或两次选择。移动端碎片时间的节奏内可以完成整个流程。不能拖沓。</li>
+    <li><strong>选择的后果清晰但结果随机：</strong>让玩家知道自己在赌什么，但不保证赌赢。悬念来自结果，而不是来自选择本身。</li>
+    <li><strong>一次性体验：</strong>气味事件（动态）是一次性体验。选择追踪就选了，选择放弃就放弃了，不留尾巴。</li>
+    <li><strong>气味的衰减与刷新：</strong>同一区域的气味事件（动态）有冷却时间，避免玩家"刷气味"。</li>
+  </ol>
+
+  <p><strong>与赛季系统的连接：</strong>赛季叙事中提到的"废弃矿区传来奇怪气味"、"浓雾无人区出现异象"等事件，本质上就是气味事件（动态）系统在赛季叙事层的具象化呈现——同一个气味事件（动态）系统，既是日常探索的惊喜层，也是赛季叙事的事件锚点。</p>
+</section>
+
+<!-- 区域首领（暴君）事件系统 -->
+<section id="field-boss" class="section">
+  <span class="section-label">四、核心系统 · 区域首领（暴君）事件系统</span>
+
+  <p class="intro-text">区域首领事件系统是气味事件（动态）系统的高阶形态——玩家在区域中战斗积累进度，进度满触发区域首领，所有在该区域活动的玩家共享同一个首领战，体验"大家一起来打大BOSS"的协作爽感。（类似《激战2》动态事件，暴民团）
+
+《激战2》中的"暴民团"（Zerg）是指大量玩家自发聚集、跟随指挥官（Tag）在特定地图循环完成动态事件的庞大群体。</p>
+
+  <h2>核心流程</h2>
+  <div class="callout">
+    <div class="callout-content">跑图探索 → 激活气味事件（动态） → 战斗积累进度条 → 进度满触发区域首领（暴君） → 区域内所有玩家共享首领战 → 战斗胜利获得同品质宝箱</div>
+  </div>
+
+  <p><strong>无门槛共享机制：</strong></p>
+  <ul>
+    <li>无需组队，进入事件区域自动共享该区域的事件进度</li>
+    <li>区域内所有玩家的战斗（无论是否在独立战斗界面）都会积累同一个进度条</li>
+    <li>区域首领（暴君）出现后，所有在区域内的玩家自动参与首领战</li>
+  </ul>
+
+  <h3>进度积累机制</h3>
+  <p><strong>战斗积累：</strong></p>
+  <ul>
+    <li>玩家在区域内进行的每场战斗，都会根据战斗表现积累进度</li>
+    <li>进度积累速度与区域内玩家数量相关——人越多进度越快</li>
+    <li>单人玩家可体验完整流程，进度积累速度会动态适配（比预期略慢但不卡死）</li>
+  </ul>
+  <p><strong>进度条设计：</strong></p>
+  <ul>
+    <li>每个区域有独立的事件进度条（可视化显示在区域地图上）</li>
+    <li>进度条满后，区域首领（暴君）在区域内出现（可能有明显的出现动画/特效）</li>
+    <li>首领被击败后，进度条重置，进入下一轮事件周期</li>
+  </ul>
+
+  <h2>区域首领（暴君）设计</h2>
+  <p><strong>首领特征：</strong></p>
+  <ul>
+    <li>首领是整个是区域生态的终极生物</li>
+    <li>首领有独特的气味特征，玩家在区域内活动时会逐渐感知到其存在</li>
+    <li>首领的战斗设计延续3Vn回合制框架，但规模更大——采用多阶段首领机制：先与低阶形态交战，区域内所有玩家累计造成n点伤害后，首领切换高阶形态。</li>
+  </ul>
+  <p><strong>多阶段战斗：</strong></p>
+  <ul>
+    <li>区域首领（暴君）可能有2-3个阶段，每阶段需要达到伤害阈值</li>
+    <li>玩家对首领的伤害会显示为"贡献值"，仅用于展示排名，不影响奖励</li>
+    <li>所有参与者获得同品质BOSS宝箱，主打"混了就有"</li>
+  </ul>
+
+  <h2>奖励体系</h2>
+  <p><strong>BOSS宝箱：</strong></p>
+  <ul>
+    <li>区域首领（暴君）被击败后，所有在区域内的玩家都获得同品质的BOSS宝箱</li>
+    <li>BOSS宝箱包含：装备、进化素材、货币等常规掉落</li>
+    <li>宝箱品质与首领难度挂钩，不与个人贡献挂钩</li>
+    <li>稀有掉落：散发xx香气的蛋</li>
+    <li>极小概率掉落外观时装散件</li>
+  </ul>
+  <p><strong>赛季叙事绑定：</strong>详见 <a href="#narrative">第四章·叙事系统</a>——赛季专属的区域首领（暴君）绑定赛季叙事主题，赛季期间可能出现特殊的"赛季首领"，掉落赛季限定叙事碎片。</p>
+
+  <h3>与其他系统的联动</h3>
+  <p><strong>与气味事件（动态）系统的联动：</strong></p>
+  <ul>
+    <li>区域首领（暴君）事件本质上是气味事件（动态）的高阶形态，复用气味事件（动态）的触发逻辑</li>
+    <li>区域气味基调变化会影响区域首领（暴君）的属性和掉落</li>
+  </ul>
+  <p><strong>与赛季系统的联动：</strong></p>
+  <ul>
+    <li>赛季专属的区域首领（暴君）绑定赛季叙事主题</li>
+  </ul>
+
+  <h2>设计约束</h2>
+  <ol>
+    <li><strong>节奏保持：</strong>玩家一直在"做事"，战斗积累进度，打完怪就是推进事件。不能让流程出现"等待"的感觉。</li>
+    <li><strong>叙事轻量化：</strong>碎片化叙事只是一个触发奖励的物品，完整的叙事内容放在观察笔记中，不打断战斗节奏。</li>
+    <li><strong>单人友好：</strong>设计"单人完成阈值"，单人玩家也能触发首领，但多人参与更快。确保单人玩家不会因为"没人帮忙"而卡死。</li>
+    <li><strong>奖励无差距：</strong>所有参与者获得同品质宝箱，不设贡献门槛。贡献值只显示排名，不影响实际收益。</li>
+    <li><strong>社交行为可选择：</strong>主动社交行为是额外层，不是强制要求。单人玩家即使不参与协作悬赏和广播，也能完整体验区域首领（暴君）的核心内容。</li>
+  </ol>
+</section>
+
+<!-- 赛季系统 -->
+<section id="season" class="section">
+  <span class="section-label">四、核心系统 · 赛季系统</span>
+
+  <div class="callout info">
+    <div class="callout-label">工期保障说明（v42.0更新）</div>
+    <div class="callout-content">赛季系统的可持续性是最大制作风险。以下设计通过分级赛季制、插件式内容复用机制和模块化生物模板，确保每赛季内容可执行、不断档。</div>
+  </div>
+
+  <p>赛季分为<strong>大型赛季（12周）</strong>和<strong>小型赛季（6周）</strong>两种节奏，轮流交替。一年6个赛季 = 2个大型 + 4个小型，总内容体量与原来相当，但工期压力分摊到两个节奏，团队有喘息窗口。</p>
+
+  <h2>一、赛季解锁与叙事</h2>
+  <p>赛季是叙事推进的节奏单位——每个赛季对应一段新的主线剧情，剧情展开后解锁对应的赛季专属区域、主题机制和新生物。玩家不是"进入赛季"，而是"推进到下一章故事"。</p>
+
+  <h3>赛季叙事结构</h3>
+  <ul>
+    <li><strong>赛季开启：</strong>主线剧情触发事件（比如村民报告浓雾中出现了异象、废弃矿区传来奇怪气味、港口出现神秘商人），引导玩家进入新区域。</li>
+    <li><strong>赛季探索：</strong>玩家在新区域推进剧情，遭遇主题敌人，收集气味情报，逐步解锁赛季契约。</li>
+    <li><strong>赛季收尾：</strong>剧情迎来阶段结局（如解决雾中异象、揭开宝藏真相），同时赛季契约排行榜结算，玩家带着赛季奖励和叙事进度进入下一赛季。</li>
+  </ul>
+
+  <h3>叙事示例（赛季二「迷雾宝藏」）</h3>
+  <ul>
+    <li><strong>开启触发：</strong>港口NPC提到关于「xxx宝藏」的传说，循迹师协会发布探索委托</li>
+    <li><strong>核心事件：</strong>玩家乘船前往迷雾之岛，发现岛上弥漫着奇特的气味——全新的岛屿生物、埋藏的宝箱、以及与宝藏传说相关的线索</li>
+    <li><strong>叙事主题：</strong>玩家从旁观者变成"探秘者"，通过藏宝图和宝箱事件逐步揭开宝藏真相</li>
+    <li><strong>收尾：</strong>宝藏真相揭晓，玩家带着赛季奖励和叙事进度进入下一赛季</li>
+  </ul>
+
+  <p><strong>赛季主题与叙事的绑定关系：</strong></p>
+  <ul>
+    <li>主题是叙事的"游戏机制层"，叙事是主题的"情感入口"</li>
+    <li>玩家进入赛季，先被故事吸引，再感受到主题机制的变化——而非直接告知"本季主题是什么"</li>
+  </ul>
+
+  <h2>二、赛季契约</h2>
+  <p>赛季契约是赛季的核心驱动力——一组限定条件下的挑战目标，每赛季提供3-5个契约供玩家选择接取。契约完成后获得赛季积分，积分解锁奖励。</p>
+
+  <h3>个人契约</h3>
+  <p>约束自身行为，独立完成。每赛季提供 3-5 个供玩家选择接取。</p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>契约类型</th><th>示例（对应「迷雾宝藏」）</th><th>设计意图</th></tr></thead>
+      <tbody>
+        <tr><td><strong>技巧挑战</strong></td><td>「寻宝者」：在迷雾之岛区域成功捕获≥10只岛屿专属生物</td><td>推动玩家深度体验新区域</td></tr>
+        <tr><td><strong>资源约束</strong></td><td>「无痕探索者」：不消灭任何生物的情况下完成岛屿区域探索并发现所有隐藏点</td><td>探索驱动的差异化通关</td></tr>
+        <tr><td><strong>收集/达成</strong></td><td>「全捕者」：在赛季区域中将所有生物种类各完成一次捕获</td><td>引导玩家全面体验区域内容</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>协作契约</h3>
+  <p>依赖玩家间的社交互动完成，不可独立完成。</p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>契约类型</th><th>示例（对应「迷雾宝藏」）</th><th>设计意图</th></tr></thead>
+      <tbody>
+        <tr><td><strong>情报共享</strong></td><td>「气味信使」：向其他玩家分享≥10条岛屿生物的气味情报（类似魔兽世界共享任务）</td><td>激励玩家建立社交联系与信息共享</td></tr>
+        <tr><td><strong>协作击杀</strong></td><td>「同舟共济」：与其他玩家协同完成≥5场岛屿首领战斗</td><td>推动玩家组队体验首领战斗</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>三、赛季内容</h2>
+  <p>赛季内容按类型分为大型赛季和小型赛季，两者交替进行：</p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>赛季类型</th><th>周期</th><th>内容构成</th><th>定位</th></tr></thead>
+      <tbody>
+        <tr><td><strong>大型赛季</strong></td><td>12周</td><td>区域扩展地图 + 12只新生物 + 完整叙事章节 + 主题机制</td><td>真正的新内容篇章</td></tr>
+        <tr><td><strong>小型赛季</strong></td><td>6周</td><td>6只新生物 + 叙事片段 + 事件系统 + 机制参数调整</td><td>维持节奏的活水</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>区域扩展替代完整新建：</strong>大型赛季的"新地图"实际上是现有地图的深层区域（如矿洞下层、林地深处、废墟地下），通过场景模块拼接实现，无需完整的地图生产管线。小型赛季无地图新增。</p>
+  <p><strong>赛季专属区域（大型赛季）：</strong>一段与主题呼应的区域扩展，对应赛季主题的视觉和叙事风格，包含新生物和新气味情报。</p>
+  <p><strong>赛季新生物（按赛季类型）：</strong></p>
+  <ul>
+    <li>大型赛季：12只主题生物，在专属区域内出现</li>
+    <li>小型赛季：6只主题生物，基于现有区域生态补充</li>
+  </ul>
+  <p>这些生物在赛季期间可免费获取，赛季结束后通过活动或传承机制再次获取，不直接售卖。</p>
+  <p><strong>赛季叙事章节：</strong>与主题呼应的生态故事，填补世界观背景，让赛季不只是内容刷新而是有叙事锚点。小型赛季的叙事改为3-4个核心事件碎片 + 观察笔记背景资料模块化组装。</p>
+
+  <h2>赛季差异化：每季改什么、不改什么</h2>
+  <p>赛季系统最大的坑是"换皮"——新区域、新生物、新剧情，但核心玩法原地踏步。循迹之境的解法是：<strong>内容包驱动</strong>——每个赛季在探索、叙事、战斗、奖励四个维度同时提供独立的新内容，而非仅通过数值调整制造差异。</p>
+  <p>不改的基准：每赛季依然是3vN回合制，气味始终是唯一的感知层。战前判断状态、战斗中解读意图这条链路始终存在。</p>
+  <p>改的是：内容包的具体构成——每赛季在探索、叙事、战斗、奖励四个维度同时提供独立的新内容。</p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>赛季主题</th><th>探索层</th><th>事件层</th><th>战斗层</th><th>奖励层</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>「迷雾宝藏」</strong></td>
+          <td>新区域「迷雾之岛」——乘船前往的全新岛屿地图，带来全新气味情报和生物分布</td>
+          <td>藏宝图事件 + 宝箱事件——玩家通过藏宝图逐步揭开宝藏真相</td>
+          <td>岛屿专属生物 + 专属技能组——岛屿生态带来全新的战斗行为模式</td>
+          <td>宝藏主题外观散件——赛季专属时装外观奖励</td>
+        </tr>
+        <tr>
+          <td><strong>「躁动之潮」</strong></td>
+          <td>季节性生物大迁徙——现有区域涌入大量外来生物，气味密度骤增，多种生物气味高度混杂，新生物与原生物气味相互覆盖</td>
+          <td>产卵事件 + 巢穴发现事件——追踪气味密度最高的区域，发现季节性繁殖巢穴；异变个体暴露事件——气味过载下异变个体信号异常强烈</td>
+          <td>双意图系统——赛季新生物每回合显示2种意图图标，真正意图隐藏于两者之中；意图博弈从"确定性读取"变成"概率二选一"，信息对称但需主动判断</td>
+          <td>潮汐主题外观散件——潮汐/海洋元素时装；季节限定变异个体——躁动之潮专属混合气味个体</td>
+        </tr>
+        <tr>
+          <td><strong>「异香入侵」</strong></td>
+          <td>外来气味的"入侵污染"——已知区域弥漫陌生气味，本地生物被外来气味覆盖，气味情报完全失效；需要通过排除法重新建立对区域的认知</td>
+          <td>溯源追踪事件 + 入侵生物围剿事件——追踪气味的异常源头，揭开外来生物入侵真相；生态危机事件——部分区域气味系统崩溃，揭示背后的生态失衡叙事</td>
+          <td>伪装意图系统——战斗中的意图图标准确，但气味对意图的解释被打乱；玩家知道生物"要做什么"，但不知道"为什么"——需要用特殊道具「气味探针」来解读真实动机</td>
+          <td>驱虫/净化主题外观散件——防御/净化主题时装；入侵生物专属变异个体——受污染区域的异变生物</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <h2>插件式赛季（赛季内容的可复用机制）</h2>
+
+  <div class="callout info">
+    <div class="callout-label">设计定位（v41.x新增）</div>
+    <div class="callout-content">赛季内容不是"一次性消耗品"，而是可以被"封存"与"唤醒"的可复用插件。每经历若干个新赛季后，前面已封存的赛季可以重新开放，让新玩家有机会体验、老玩家可以重温。核心思路来自"风浪太大没法出船，季节到了可以出船"的直觉类比。</div>
+  </div>
+
+  <h3>核心设计原则：战斗机制与叙事状态解耦</h3>
+  <p>战斗机制是"系统层"，始终保持一致；叙事与奖励是"内容层"，随赛季状态变化而分层。这意味着：</p>
+  <ul>
+    <li>无论哪个赛季的内容（上线期间或复刻期间），3vN回合制、双意图系统、气味探针等道具，均以相同规则运行</li>
+    <li>赛季之间的差异体现在"哪个赛季的生物出现在当前环境"，而非"某个赛季的战斗规则不同"</li>
+    <li>玩家在 上线期间和复刻期间，都能获得完整的战斗体验；封存期间则无内容可体验，不存在战斗规则切换的问题</li>
+  </ul>
+  <div class="callout success">
+    <div class="callout-label">设计意义</div>
+    <div class="callout-content">这样设计确保了"跨赛季战斗体验的一致性"。当旧赛季在复刻窗口重新开放时，玩家感受到的是叙事和奖励的差异，而不是战斗规则的割裂。</div>
+  </div>
+
+  <h3>一、季节插件的三层状态模型</h3>
+  <p class="intro-text">每个赛季内容包在生命周期中经历三个状态：</p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>状态</th><th>玩家可体验内容</th><th>奖励获取</th><th>叙事包装示例</th></tr></thead>
+      <tbody>
+        <tr><td>上线</td><td>完整内容：区域+生物+事件+契约+排行榜</td><td>全额获取（契约奖励/通行证实物）</td><td>季风抵达，港口开航；异变初期，探索窗口开启</td></tr>
+        <tr><td>封存</td><td>不可体验（区域封闭，玩家无法进入该赛季专属内容）</td><td>契约奖励不可获取，通行证实物不可重获</td><td>风暴季风封锁航线；异变污染蔓延，区域被迫隔离</td></tr>
+        <tr><td><strong>复刻</strong></td><td>核心探索内容（区域+生物+事件），无新内容开发</td><td>部分奖励可获取（见代币系统）</td><td>残余气流出现，岛屿重现模糊轮廓；历史档案开放查阅</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>二、季节插件的开放/封存叙事框架</h3>
+  <p class="intro-text">每个赛季都需要预先设计"封存叙事"与"重新开放叙事"：</p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>赛季</th><th>封存叙事</th><th>重新开放叙事</th></tr></thead>
+      <tbody>
+        <tr><td>S1 迷雾宝藏</td><td>风暴季风提前到来，迷雾之岛航线封闭</td><td>残余气流出现，岛屿重现模糊轮廓</td></tr>
+        <tr><td>S2 躁动之潮</td><td>潮汐异常退去，外来生物随海水消失</td><td>海潮再次涌动，熟悉的气息重返</td></tr>
+        <tr><td>S3 异香入侵</td><td>外来气味污染蔓延，区域被迫封锁净化</td><td>净化初见成效，岛屿重新开放探索</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout success">
+    <div class="callout-label">核心原则</div>
+    <div class="callout-content">复刻不开发新内容，仅重新开放已有的区域日常。复刻次数不影响内容规模——第1次复刻和第N次复刻能玩到的内容完全相同。</div>
+  </div>
+
+  <h3>三、首发与复刻的价值分层设计</h3>
+  <p class="intro-text">首发窗口与复刻窗口面向不同的需求，各有权重——两者有交叉，但各自拥有对方无法替代的价值。</p>
+
+  <h4>首发窗口的核心价值（不可替代）</h4>
+  <ul>
+    <li><strong>叙事首发体验：</strong>第一时间见证故事的展开，而非事后了解结局</li>
+    <li><strong>排行榜竞争：</strong>在 上线赛季排行榜上争夺名次，首发玩家之间形成竞争格局</li>
+    <li><strong>协作出勤证明：</strong>与其他玩家共同完成协作契约的记录，是社交行为的证明</li>
+    <li><strong>首发专属称号：</strong>排行榜称号、协作出勤标识等时间稀缺性产物，永远属于首发玩家</li>
+  </ul>
+
+  <h4>复刻窗口的核心价值（减少研发压力，为新内容腾出产能）</h4>
+  <ul>
+    <li><strong>内容复用：</strong>仅重新开放已有内容，不开发新内容</li>
+    <li><strong>新玩家体验：</strong>错过首发的玩家有机会完整体验该赛季的区域、生物、事件</li>
+    <li><strong>复刻专属外观：</strong>通过代币兑换可获取部分首发期间的外观（无额外新外观）</li>
+  </ul>
+
+  <h3>四、重新开放时对新老玩家的差异化处理</h3>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>玩家类型</th><th>赛季首次上线时</th><th>赛季复刻开放时</th></tr></thead>
+      <tbody>
+        <tr><td><strong>老玩家（已完整参与）</strong></td><td>完整体验，奖励全获取</td><td>排行榜记录保留，首发排名不可被复刻玩家超越；区域可重复探索，无新内容</td></tr>
+        <tr><td><strong>新玩家（从未参与）</strong></td><td>完整体验，奖励全获取</td><td>完整体验，可通过代币兑换获取部分首发期间的外观；无法获取首发排行榜记录</td></tr>
+        <tr><td><strong>回归玩家（部分参与）</strong></td><td>继承已有进度</td><td>继承历史进度，区域可重复探索</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>这样设计的结果：</strong></p>
+  <ul>
+    <li>老玩家有"历史身份"的荣誉感（首发排行榜/协作出勤记录不可被复刻取代）</li>
+    <li>新玩家有"完整探索"的乐趣（不会感觉在玩残次品）</li>
+    <li>复刻的价值明确为"让新玩家补完体验"，团队无需为复刻额外开发</li>
+  </ul>
+
+  <h2>四、赛季奖励</h2>
+  <h3>一、赛季奖励</h3>
+  <p>赛季奖励分为免费、通行证两个层次，与赛季契约直接绑定：</p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>奖励层</th><th>内容</th><th>获取方式</th></tr></thead>
+      <tbody>
+        <tr><td><strong>免费奖励</strong></td><td>赛季主题外观、赛季积分</td><td>契约奖励，区域首领宝箱，巢穴副本掉落</td></tr>
+        <tr><td><strong>通行证奖励</strong></td><td>赛季专属皮肤、特效、称号、赛季生物的变异形态</td><td>付费通行证</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>二、代币系统</h3>
+  <p class="intro-text">代币是跨状态补偿的核心媒介，定位于"复刻窗口专属的价值交换媒介"——不是"为错过道歉的补偿"，而是"复刻窗口期间可获取的专属内容"。</p>
+
+  <h4>代币获取（复刻窗口期间）</h4>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>获取方式</th><th>数量</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>任务驱动：完成区域探索（发现所有隐藏点）</td><td>每赛季固定量</td><td>鼓励深度探索而非速通</td></tr>
+        <tr><td>任务驱动：捕获复刻赛季中的每种生物至少一次</td><td>每赛季固定量</td><td>引导完整体验内容</td></tr>
+        <tr><td>任务驱动：完成复刻专属隐藏支线</td><td>一次性大量代币</td><td>复刻专属内容的核心奖励</td></tr>
+        <tr><td>周常奖励：每周登录并完成至少一次赛季区域探索</td><td>每周固定量</td><td>保证持续参与，防止末期一次性肝完</td></tr>
+        <tr><td>跨赛季叙事碎片收集</td><td>每赛季固定量</td><td>与"循迹师协会档案"隐藏内容挂钩</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>代币不设个人上限，但每赛季复刻期间的可获取总量有限（防止工作室刷取代币）。</p>
+
+  <h4>代币兑换内容与比例</h4>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>可兑换内容</th><th>兑换比例</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>赛季契约奖励外观（复刻版）</td><td>100% 代币兑换</td><td>上线窗口已获取的玩家不可重复兑换（防止刷外观）</td></tr>
+        <tr><td>通行证限定变异形态</td><td>70% 通行证实物等效价值</td><td>保留 30% 的"首发稀缺感"</td></tr>
+        <tr><td>通行证限定特效/称号</td><td>100% 通行证实物等效价值</td><td>纯收藏价值，无稀缺性担忧</td></tr>
+        <tr><td>叙事碎片合集（复刻专属）</td><td>仅代币兑换</td><td>不可从其他任何途径获取</td></tr>
+        <tr><td>复刻专属隐藏外观散件</td><td>仅代币兑换</td><td>复刻专属内容，仅在复刻窗口可获取</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>代币不能兑换的内容（不可替代的首发专属）</h4>
+  <ul>
+    <li>排行榜排名/称号（时间稀缺性产物，必须在 上线窗口通过竞争获取）</li>
+    <li>协作出勤记录（社交行为的实时证明，不可追溯）</li>
+    <li>赛季生物本体（上线窗口可免费获取，复刻窗口直接可获取，无需代币）</li>
+  </ul>
+
+  <h3>三、赛季奖励在插件模式下的完整生命周期</h3>
+  <p class="intro-text">赛季内容经历"上线→封存→复刻"三个状态，每类奖励在不同状态下的获取规则如下：</p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>奖励类型</th><th>上线</th><th>封存</th><th>复刻开放</th></tr></thead>
+      <tbody>
+        <tr><td>赛季契约奖励（外观/称号）</td><td>完成契约即可获取</td><td>不可获取</td><td>代币兑换（复刻版）</td></tr>
+        <tr><td>通行证外观（赛季专属皮肤/特效/称号）</td><td>可购买通行证获取</td><td>不可获取</td><td>代币兑换</td></tr>
+        <tr><td>通行证内赛季生物变异形态</td><td>通行证内获取</td><td>不可获取</td><td>70% 代币兑换</td></tr>
+        <tr><td>赛季生物本体</td><td>赛季期间可免费获取</td><td>不可获取</td><td>可直接获取（无需代币）</td></tr>
+        <tr><td>叙事碎片</td><td>赛季期间可掉落</td><td>不可获取</td><td>可掉落（复刻专属碎片仅复刻期间可掉落）</td></tr>
+        <tr><td>首发排行榜称号</td><td>上线排行榜竞争获取</td><td>历史记录保留</td><td>不可获取</td></tr>
+        <tr><td>首发协作出勤记录</td><td>实时协作完成</td><td>历史记录保留</td><td>不可获取</td></tr>
+        <tr><td>复刻专属隐藏外观</td><td>不可获取</td><td>不可获取</td><td>代币兑换（复刻窗口独家）</td></tr>
+        <tr><td>跨赛季叙事线索</td><td>不可获取</td><td>不可获取</td><td>复刻专属隐藏支线完成后解锁</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>五、赛季进度</h2>
+  <p>赛季进度分个人进度一层，独立结算：</p>
+
+  <h3>个人进度</h3>
+  <ul>
+    <li>赛季积分独立计算，赛季结束后清零</li>
+    <li>赛季专属生物赛季结束后无法继续获取，已获得的保留</li>
+    <li>赛季契约个人部分归档，不继承到下一赛季</li>
+    <li>通行证外观奖励永久保留</li>
+    <li>主线叙事进度永久保留，下一赛季接续推进</li>
+  </ul>
+</section>
+
+<!-- 地图结构与探索 -->
+<section id="map" class="section">
+  <span class="section-label">四、核心系统 · 地图结构与探索</span>
+
+  <div class="callout warning">
+    <div class="callout-label">适用范围</div>
+    <div class="callout-content">本节对应 DC-7（横版视角与地图结构，P0）约束落地。游戏采用横版俯视角（参考《英勇之地》手游版），每张地图包含城镇区域和野外区域的成对结构。</div>
+  </div>
+
+  <h2>地图结构</h2>
+  <p>每张地图由<strong>城镇区域</strong>和<strong>野外区域</strong>组成，两者物理相邻，玩家在两者之间自然切换。</p>
+
+  <h3>城镇区域</h3>
+  <ul>
+    <li>安全据点，无战斗发生。提供以下功能：
+      <ul>
+        <li><strong>气养泉：</strong>伙伴生物的状态恢复（气味休养，非单纯回血）</li>
+        <li><strong>道具商店：</strong>气味干扰道具（低级芳香剂/稀有芳香剂）的购买入口</li>
+        <li><strong>NPC 交互：</strong>情报交换、气味情报分享</li>
+        <li><strong>赛季入口：</strong>赛季叙事触发 NPC 位于城镇内</li>
+      </ul>
+    </li>
+    <li>视觉基调：温暖的居家人文感，与野外自然生态形成对比</li>
+  </ul>
+
+  <h3>野外区域</h3>
+  <ul>
+    <li>与城镇出口相连的区域，是生物的栖息地。玩家沿横版路线左右推进时，遭遇生物并触发战斗或捕获。</li>
+    <li>野外包含多种生态场景（草丛/水域/林地/岩地等），不同场景对应不同的气味类型和生物群落。</li>
+    <li><strong>战斗触发采用双模式</strong>（参考《英勇之地》手游版）：
+      <ul>
+        <li><strong>碰撞触发：</strong>玩家移动中与生物发生碰撞，直接进入战斗或捕获流程</li>
+        <li><strong>精灵球投掷：</strong>玩家主动从远处向生物投掷精灵球，命中则激活捕获式战斗</li>
+        <li>两种方式互补：碰撞提供意外感，精灵球投掷提供选择性</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>地图联通</h3>
+  <ul>
+    <li>每张地图的野外尽头连接下一张地图的入口（通过小路/拱门等过渡场景）</li>
+    <li>野外尽头设有安全返回路径，可直接返回当前地图的城镇休整</li>
+    <li>赛季专属区域入口位于城镇内，通过 NPC 触发解锁</li>
+  </ul>
+
+  <h3>世界观解释（与气味主题呼应）</h3>
+  <ul>
+    <li>城镇是"气味情报据点"——循迹师从这里出发，深入生物栖息地调查生态异常</li>
+    <li>野外是"气味信息网络"——每种气味都在说话，循迹师通过气味读懂这片区域的状态</li>
+    <li>战斗失败后，循迹师带着受伤的伙伴撤退休整（回到城镇治疗）——这是叙事上的撤退，不是系统层面的惩罚</li>
+  </ul>
+
+  <h2>探索节奏</h2>
+  <ul>
+    <li>横版推进确保碎片化节奏适配移动端：玩家每次进入野外，可在单次游戏内完成一次完整的遭遇-战斗-休整循环</li>
+    <li>气味事件（动态）系统在野外移动时随机触发，补充探索的惊喜层</li>
+    <li>野外不存在"空气墙"式的边界感——横版路线尽头就是下一区域的入口或返回路径</li>
+  </ul>
+</section>
+
+<!-- 叙事系统 -->
+<section id="narrative" class="section">
+  <span class="section-label">四、核心系统 · 叙事系统</span>
+
+  <h2>分层叙事设计</h2>
+  <p>游戏采用<strong>分层叙事设计</strong>——表层故事全年龄可读，里层叙事对成年玩家同样有情感冲击力和思考空间。生态世界的运作方式本身就是叙事载体，而非背景板。</p>
+
+  <blockquote>
+    <strong>核心原则：理解世界的运作方式本身就是奖励；循迹之境的故事本身就是情感容器。</strong> 世界的内在逻辑越自洽，成年玩家越愿意沉浸其中探索；循迹之境的故事不只有逻辑，具体的生态事件承载着超越事件本身的情感重量。叙事设计的目标不是"让所有人都看懂"（这往往导致低幼化），而是让不同深度的玩家都能在世界中找到自己的理解层次。
+  </blockquote>
+
+  <h3>表层叙事（全年龄可读）</h3>
+  <ul>
+    <li>玩家做具体的事：保护一只生物、修复被破坏的栖息地、帮助一个种群</li>
+    <li>叙事清晰：一个没玩过游戏的普通人能在30秒内说出"游戏在做什么"</li>
+    <li>不依赖抽象概念或需要前置知识的名词</li>
+  </ul>
+
+  <h3>里层叙事（成年玩家额外收获）</h3>
+  <ul>
+    <li>同样的事件背后有生态伦理、文化冲突或灰色地带</li>
+    <li>成年玩家能看到"为什么这件事会发生"的深层逻辑</li>
+    <li><strong>宫崎骏式标准</strong>：珊不是在思考"人与自然的关系"，她是在保护麒麟山、救阿席达卡——但成年人会自然感受到人与自然的关系；
+娜乌西卡不是在论证「生命的意义」，她是在风之谷找种子、救村民——但观众会自然感受到生命的重量；
+赈早见琥珀主不是在讨论「遗忘与记忆」，他是在汤屋打工、找自己的名字——但观众会自然感受到记忆的珍贵。
+循迹之境同样如此：玩家不只是在追踪气味、帮助迁徙、阻止破坏——循迹之境的故事本身就是情感容器，一只生物的离去可能承载羁绊与放手，种群的迁徙可能承载传承与告别，栖息地的危机可能承载发展的代价与抉择——这些都能让成年玩家在具体行动中自然感受到更深层的情感重量。</li>
+  </ul>
+
+  <h3>生态世界作为叙事载体</h3>
+  <ul>
+    <li>世界运作方式本身传递叙事信息，而非靠NPC旁白说教</li>
+    <li>玩家通过探索世界理解其内在逻辑，这个过程本身就是奖励</li>
+    <li>生物的习性、栖息地的状态、生态链条的运作——这些是成年玩家最感兴趣的内容</li>
+    <li>具体行动替代抽象说教：✅ 玩家亲眼看到枯萎森林中一窝没有母亲的幼崽</li>
+  </ul>
+
+  <h3>避免低幼化陷阱</h3>
+  <ul>
+    <li>❌ NPC直接发表陈述性说教（"我们要保护环境！"）</li>
+    <li>❌ 非黑即白的阵营对立（所有反派都有自己视角下的"合理性"）</li>
+    <li>❌ 成人向内容（血腥/暴力/色情）——但在尺度上，叙事的情感重量可以超出低幼范围</li>
+  </ul>
+
+  <h2>赛季叙事结构</h2>
+  <ul>
+    <li>每个赛季对应一段主线剧情，剧情推进解锁赛季专属区域、主题机制和新生物</li>
+    <li>赛季叙事章节与主题机制绑定，以具体生态故事填补世界观背景</li>
+    <li>赛季叙事是叙事推进的节奏单位，主线叙事进度永久保留，下一赛季接续推进</li>
+  </ul>
+
+  <h2>支线任务设计</h2>
+  <p>支线任务必须有独立的价值主张，每条支线是一个完整的小故事。支线不是主线的"填充物"或"跑腿挂机时间"，而是让玩家深入理解生态世界的窗口。</p>
+
+  <h3>支线类型（至少三种）</h3>
+  <ul>
+    <li><strong>生态调查型</strong>：发现某区域生物行为异常 → 追踪原因 → 发现更大的生态链条 → 理解世界运作</li>
+    <li><strong>关系建立型</strong>：与某只生物建立信任需要多次互动，每次解锁它的一部分故事</li>
+    <li><strong>生态记录型</strong>：为某只生物做行为观察记录，在过程中意外发现隐藏习性</li>
+    <li><strong>保护干预型</strong>：某生态链条失衡需要玩家介入，但介入方式不止一种</li>
+  </ul>
+
+  <h3>核心要求</h3>
+  <ul>
+    <li><strong>战斗是手段而非目的</strong>：提供非战斗替代方案（投喂、分散注意力、诱导、谈判）作为同等有效的选择</li>
+    <li><strong>生态连接</strong>：支线行为与野外生态系统有真实影响（生物分布、栖息地状态等）</li>
+    <li><strong>闭环半径短</strong>：单条支线可在野外区域内完成大部分，不需要频繁回城镇</li>
+    <li><strong>失败后果有趣</strong>：失败导致情况变化（生态恶化、关系复杂、时间窗口关闭），而非简单惩罚</li>
+  </ul>
+
+  <h3>禁止</h3>
+  <ul>
+    <li>❌ 纯跑腿型支线（去A点→B点→C点→D点→回A点，无叙事价值）</li>
+    <li>❌ 战斗作为唯一解决手段的支线</li>
+    <li>❌ 失败后只是"重来"的支线（缺乏后果）</li>
+    <li>❌ 支线沦为刷怪量或刷金币的手段</li>
+  </ul>
+
+  <h2>叙事类事件扩展</h2>
+  <p>气味事件（动态）系统是叙事传递的日常触点——同一套事件系统既是探索惊喜层，也是赛季叙事的事件锚点。叙事类事件通过特定气味线索，引导玩家发现区域背景故事和隐藏事件。</p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>气味线索</th><th>追踪路径</th><th>可能的发现</th></tr></thead>
+      <tbody>
+        <tr><td><strong>历史残留</strong></td><td>古老的气味，时间感明显，与当前生物不同</td><td>观察数据、区域历史碎片、前代文明的痕迹</td></tr>
+        <tr><td><strong>故事气味</strong></td><td>混合了多种情绪的气味——悲伤、愤怒、恐惧、希望</td><td>区域背景故事、隐藏任务的触发线索</td></tr>
+        <tr><td><strong>连接气味</strong></td><td>某种熟悉的气味，但无法辨认来源</td><td>伏笔记录、与其他事件串联的线索</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>叙事碎片</h2>
+  <p>叙事碎片是碎片化叙事的主要载体，讲述区域/首领的背景故事。它们不打断游戏节奏，完整的叙事内容放在观察笔记中。</p>
+  <ul>
+    <li>战斗中有概率掉落"叙事碎片"（黑魂式书信、物件等）</li>
+    <li>叙事碎片讲述区域/首领的背景故事，阅读获得额外奖励（少量经验、区域内道具等）</li>
+    <li>碎片化叙事不打断游戏节奏，奖励以轻量方式结算</li>
+    <li>赛季专属的区域首领（暴君），绑定赛季叙事主题，掉落赛季限定叙事碎片</li>
+  </ul>
+
+  <h2>赛季叙事深化</h2>
+  <p>赛季是叙事推进的节奏单位——每个赛季对应一段新的主线剧情，剧情展开后解锁对应的赛季专属区域、主题机制和新生物。玩家不是"进入赛季"，而是"推进到下一章故事"。</p>
+  <ul>
+    <li><strong>赛季开启：</strong>主线剧情触发事件（比如村民报告浓雾中出现了异象、废弃矿区传来奇怪气味），引导玩家进入新区域。</li>
+    <li><strong>赛季探索：</strong>玩家在新区域推进剧情，遭遇主题敌人，逐步解锁赛季契约。</li>
+    <li><strong>赛季收尾：</strong>剧情迎来阶段结局，同时赛季契约排行榜结算，玩家带着赛季奖励和叙事进度进入下一赛季。</li>
+    <li><strong>主题与叙事绑定：</strong>主题是叙事的"游戏机制层"，叙事是主题的"情感入口"。玩家先被故事吸引，再感受到主题机制的变化——而非直接告知"本季主题是什么"。</li>
+  </ul>
+
+  <p><strong>叙事示例（赛季二「迷雾宝藏」）：</strong></p>
+  <ul>
+    <li><strong>开启触发：</strong>港口NPC提到关于「宝藏传说」的线索，循迹师协会发布探索委托</li>
+    <li><strong>核心事件：</strong>玩家乘船前往迷雾之岛，发现岛上弥漫着奇特的气味——全新的岛屿生物、埋藏的宝箱、以及与宝藏真相相关的线索</li>
+    <li><strong>叙事主题：</strong>玩家从旁观者变成"探秘者"，通过藏宝图和宝箱事件逐步揭开宝藏真相，对抗守护宝藏的岛屿生物</li>
+    <li><strong>收尾：</strong>宝藏真相揭晓，玩家带着赛季奖励和叙事进度进入下一赛季</li>
+  </ul>
+</section>
+
+<!-- 经济系统 -->
+<section id="economics" class="section">
+  <span class="section-label">四、核心系统 · 经济系统</span>
+
+  <p class="intro-text">免费+内购（生物外观/赛季通行证），核心战斗能力免费获取，保证无P2W体验。</p>
+</section>
+
+<!-- 五、目标用户与市场 -->
+<section id="users" class="section">
+  <span class="section-label">五、目标用户与市场</span>
+
+  <h2>用户画像</h2>
+
+  <p>循迹之境的核心用户并非单纯被"怀旧"驱动，而是在寻找一种当前市场稀缺的体验：**战斗中能够通过思考和判断获得成就感，而非依赖数值碾压**。这个品类空缺由两个维度交叉构成——战斗体验的深度需求 × 移动端回合制品类的用户基数——共同定义了我们的核心人群。</p>
+
+  <h3>画像一：策略型玩家（核心用户）</h3>
+  <div class="scene-block">
+    <div class="scene-label">典型场景</div>
+    <div class="scene-text">
+      小明在地铁上用手游玩循迹之境。眼前的精英敌人显示它下一回合要攻击后排——他只有两只生物，一只血量见底。他没有足够的数值扛下这一击，但他在上一场战斗中记住了一个信息：敌人处于"进攻蓄力"状态下的伤害会比平时更高。<br><br>
+      他花3秒钟换上了克制草属性的火系生物，同时让血量见底的生物使用防御姿态吸收这一击。回合结算，敌人的攻击打出了最低伤害，他活了下来。<br><br>
+      "我在手机上玩了一局需要动脑子的战斗。"
+    </div>
+  </div>
+  <p><strong>特征：</strong></p>
+  <ul>
+    <li>18-35岁，移动端重度用户，对战斗策略有真实兴趣</li>
+    <li>熟悉宝可梦-like品类，理解属性克制和技能搭配的基础逻辑</li>
+    <li>渴望"以弱胜强"的体验——数值不够，用判断力来补</li>
+    <li>愿意为研究机制投入时间（如竞速优化、克制关系表）</li>
+    <li>在社区中活跃，分享构筑思路，寻找"最优解"</li>
+  </ul>
+  <p><strong>与产品的关系：</strong>意图可视化是他们的入口——战斗不再是黑盒。他们不是来挂机的，他们是来"解谜"的。</p>
+
+  <h3>画像二：收集型玩家（核心用户）</h3>
+  <div class="scene-block">
+    <div class="scene-label">典型场景</div>
+    <div class="scene-text">
+      阿月上周肝出了一只混合气味的火系小家伙，这周又在蹲一只野生的炫彩个体。她在游戏外建了一个表格，记录每只生物的外观变体出现概率。<br><br>
+      "炫彩真的很稀有，但我看到有人在游戏里蹲到了，我也可以。"<br><br>
+      她不太在乎竞速排名，但赛季期间会认真肝契约任务——因为契约奖励里有好看的外观。
+    </div>
+  </div>
+  <p><strong>特征：</strong></p>
+  <ul>
+    <li>年龄跨度大（15-35岁），女性用户占比相对更高</li>
+    <li>核心驱动力是"收集完成度"和"外观稀缺性"</li>
+    <li>愿意为稀有外观投入大量时间（蹲守、反复捕获）</li>
+    <li>对战斗强度要求低，但对视觉效果和稀有度敏感</li>
+    <li>社交性强，会在社区分享自己的收藏成就</li>
+  </ul>
+  <p><strong>与产品的关系：</strong>气味四层追求结构为她们提供了清晰的长期目标——普通→混合→染色→炫彩，每一层都有可达成的路径。</p>
+
+  <h3>画像三：社交协作型玩家（重要用户）</h3>
+  <div class="scene-block">
+    <div class="scene-label">典型场景</div>
+    <div class="scene-text">
+      小李和朋友组队打巢穴副本。他们约好了每周二晚上一起打——不是因为肝进度，而是因为"一起打大龙比较爽"。<br><br>
+      他不太在乎构筑最优解，但会在协作契约里认真做贡献——因为"和朋友一起完成契约"本身就是一种社交证明。
+    </div>
+  </div>
+  <p><strong>特征：</strong></p>
+  <ul>
+    <li>18-30岁，有固定社交圈（同学、同事、游戏好友）</li>
+    <li>核心驱动力是与他人共同完成目标的协作体验</li>
+    <li>不追求最强构筑，但追求和朋友"一起玩"的仪式感</li>
+    <li>对区域首领（暴君）和巢穴副本等多人内容参与意愿高</li>
+    <li>赛季协作契约是他们的核心目标——协作行为本身是社交</li>
+  </ul>
+  <p><strong>与产品的关系：</strong>区域首领无门槛共享机制确保了他们不需要强制组队也能参与；协作契约则给了他们主动社交的理由。</p>
+
+  <h3>画像四：赛季追更型玩家（活跃用户）</h3>
+  <div class="scene-block">
+    <div class="scene-label">典型场景</div>
+    <div class="scene-text">
+      小王在S1上线时肝满了所有契约任务，拿到了首发排行榜称号。进入S2后他依然活跃——新生物、新机制、新叙事每次都能带来新鲜感。<br><br>
+      他不觉得自己在"肝"，他觉得他在"体验新内容"。
+    </div>
+  </div>
+  <p><strong>特征：</strong></p>
+  <ul>
+    <li>22-35岁，有稳定的游戏习惯，但时间有限</li>
+    <li>核心驱动力是"持续有新东西可玩"</li>
+    <li>对赛季叙事有真实兴趣，不只是刷奖励</li>
+    <li>会在赛季结束后继续留存，等待下一赛季</li>
+    <li>付费意愿中等——愿意为通行证买单，但不会大额内购</li>
+  </ul>
+  <p><strong>与产品的关系：</strong>大型赛季12周+小型赛季6周的双轨节奏，为他们提供了稳定的"回归锚点"和"新内容期待"。</p>
+
+  <h3>画像五：叙事深度型玩家（差异化用户）</h3>
+  <div class="scene-block">
+    <div class="scene-label">典型场景</div>
+    <div class="scene-text">
+      小林在游戏里发现了一封叙事碎片，信中描述了一只生物被迫离开栖息地的故事。她没有跳过这段文字，而是去观察笔记里查了这只生物的完整记录。<br><br>
+      "这个世界比我想象的更有层次。"
+    </div>
+  </div>
+  <p><strong>特征：</strong></p>
+  <ul>
+    <li>25-40岁，对叙事质量有较高要求</li>
+    <li>被宫崎骏式分层叙事吸引——表面是可玩的战斗系统，里层是情感重量</li>
+    <li>会主动探索叙事碎片、观察笔记中的深层信息</li>
+    <li>对游戏的认同感来自"世界观可信度"和"情感共鸣"</li>
+    <li>是高质量口碑传播的种子用户</li>
+  </ul>
+  <p><strong>与产品的关系：</strong>分层叙事设计（表层可读+里层深度）为这类用户提供了额外的情感回报，是竞品难以复制的差异化壁垒。</p>
+
+  <h3>用户结构总结</h3>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>用户画像</th><th>核心驱动力</th><th>付费意愿</th><th>与产品的核心连接点</th></tr></thead>
+      <tbody>
+        <tr><td><strong>策略型玩家</strong></td><td>战斗推理的成就感</td><td>中（通行证+外观）</td><td>意图可视化、战斗三阶段生命周期、竞速排名</td></tr>
+        <tr><td><strong>收集型玩家</strong></td><td>收集完成度、稀有外观</td><td>中高（外观付费）</td><td>气味四层追求、炫彩蹲守、赛季外观奖励</td></tr>
+        <tr><td><strong>社交协作型玩家</strong></td><td>共同完成目标的协作体验</td><td>中（通行证）</td><td>区域首领、巢穴副本、协作契约</td></tr>
+        <tr><td><strong>赛季追更型玩家</strong></td><td>持续的新内容体验</td><td>中（通行证为主）</td><td>赛季系统、新生物、新机制、新叙事</td></tr>
+        <tr><td><strong>叙事深度型玩家</strong></td><td>世界观的情感共鸣</td><td>中低（对叙事内容认同驱动）</td><td>分层叙事、叙事碎片、观察笔记</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</section>
+
+
+<!-- 附录A：快速定位索引 -->
+<section id="appendix" class="section">
+  <span class="section-label">附录A — 快速定位索引</span>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>查找内容</th><th>章节位置</th></tr></thead>
+      <tbody>
+        <tr><td>一句话理解这个游戏</td><td>核心概念</td></tr>
+        <tr><td>核心战斗体验是什么</td><td>第一章·战斗体验描述</td></tr>
+        <tr><td>和洛克王国世界相比差在哪</td><td>第三章·市场机会与差异化·品类生态定位对比表</td></tr>
+        <tr><td>战斗系统怎么玩</td><td>第四章·核心系统·战斗系统</td></tr>
+        <tr><td>横版地图结构（DC-7）</td><td>第四章·地图结构与探索</td></tr>
+        <tr><td>赛季分级节奏（大型/小型）</td><td>第四章·赛季系统</td></tr>
+        <tr><td>气味状态语言系统</td><td>第一章·战斗体验描述（气味作为感官情报）；第四章·收集系统（观察笔记气味记录）</td></tr>
+        <tr><td>战斗的三阶段生命周期（竞速排名）</td><td>第四章·核心系统·战斗系统·战斗的三阶段生命周期</td></tr>
+        <tr><td>气味干扰道具</td><td>第四章·核心系统·战斗系统·气味干扰道具</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>附录B：合规追溯</h2>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>约束ID</th><th>约束内容</th><th>文档落实情况</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td><strong>DC-1</strong></td><td>3Vn团队战斗</td><td>第四章·战斗系统：明确我方3只同时在场，敌方N个</td><td><span class="conf-badge conf-high">通过</span></td></tr>
+        <tr><td><strong>DC-2</strong></td><td>敌人意图可视化（PVE）</td><td>第四章·战斗系统：意图可视化适用于PVE，敌人意图始终100%完全可见；PVP不适用本系统</td><td><span class="conf-badge conf-high">通过</span></td></tr>
+        <tr><td><strong>DC-4</strong></td><td>赛季系统</td><td>第四章·赛季系统：大型赛季12周+小型赛季6周，契约+奖励+新生物（6只/4只）；模块化开发管线保障工期</td><td><span class="conf-badge conf-high">通过</span></td></tr>
+        <tr><td><strong>DC-5</strong></td><td>生物收集</td><td>第四章·收集系统：实体生命生物，有习性/栖息地/气味感官特征</td><td><span class="conf-badge conf-high">通过</span></td></tr>
+        <tr><td><strong>DC-6</strong></td><td>世界观基调</td><td>第一章·战斗体验描述：分层叙事设计；第四章·叙事系统：宫崎骏式生态叙事，"循迹师"行为定义</td><td><span class="conf-badge conf-high">通过</span></td></tr>
+        <tr><td><strong>DC-7</strong></td><td>横版视角</td><td>第四章·地图结构与探索：横版俯视角（参考《英勇之地》手游版），每张地图=城镇+野外；城镇为安全据点，野外为生物栖息地；碰撞/精灵球双触发战斗</td><td><span class="conf-badge conf-high">通过</span></td></tr>
+        <tr><td><strong>DC-8</strong></td><td>野外生态与BOSS战</td><td>第四章·收集系统：碰撞/精灵球双触发，独立BOSS地图，巢穴蛋（概率及孵化流程待细化）</td><td><span class="conf-badge conf-high">通过</span></td></tr>
+        <tr><td><strong>DC-9</strong></td><td>分层叙事</td><td>第一章：表层"意图可视化"直觉可玩，里层"观察深度"；第八章：宫崎骏式生态叙事</td><td><span class="conf-badge conf-high">通过</span></td></tr>
+        <tr><td><strong>DC-10</strong></td><td>生态驱动力支线</td><td>第四章·叙事系统：完整支线任务设计（生态调查型/关系建立型/生态记录型/保护干预型，战斗为手段而非目的）</td><td><span class="conf-badge conf-high">通过</span></td></tr>
+        <tr><td><strong>F类约束</strong></td><td>28条全量</td><td>全部合规，无F类约束违反</td><td><span class="conf-badge conf-high">通过</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="doc-footer">
+  <div class="footer-meta">
+    <div class="footer-meta-item">
+      <div class="footer-meta-label">文档版本</div>
+      <div class="footer-meta-value">v42.0</div>
+    </div>
+    <div class="footer-meta-item">
+      <div class="footer-meta-label">假设文件</div>
+      <div class="footer-meta-value">循迹之境（[假设E-气味核心]_闻气之境_世界观.md，v3.1）</div>
+    </div>
+    <div class="footer-meta-item">
+      <div class="footer-meta-label">立项说明书</div>
+      <div class="footer-meta-value">07_立项说明书.md（v36.2）</div>
+    </div>
+    <div class="footer-meta-item">
+      <div class="footer-meta-label">约束版本</div>
+      <div class="footer-meta-value">定向内容文档 v1.12（DC-1~DC-10）</div>
+    </div>
+    <div class="footer-meta-item">
+      <div class="footer-meta-label">生成日期</div>
+      <div class="footer-meta-value">2026-05-18</div>
+    </div>
+    <div class="footer-meta-item">
+      <div class="footer-meta-label">最后更新</div>
+      <div class="footer-meta-value">2026-05-21（插件式赛季重大修订：战斗机制与叙事状态解耦、首发/复刻价值分层、代币系统具体化、复刻专属内容层、路线B跨赛季社交方案）</div>
+    </div>
+    <div class="footer-meta-item">
+      <div class="footer-meta-label">方向代号</div>
+      <div class="footer-meta-value">假设E-气味核心</div>
+    </div>
+  </div>
+</footer>
+
+</div>
+</main>
+
+<script>
+// Reading Progress
+var readProgress = document.getElementById('readProgress');
+var lastProgressScrollTop = -1;
+function updateProgress() {
+  var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+  if (scrollTop === lastProgressScrollTop) return;
+  lastProgressScrollTop = scrollTop;
+  var docHeight = document.body.scrollHeight || document.documentElement.scrollHeight;
+  var docHeightVal = docHeight - window.innerHeight;
+  var progress = docHeightVal > 0 ? (scrollTop / docHeightVal) * 100 : 0;
+  if (readProgress) readProgress.style.width = Math.min(progress, 100) + '%';
+}
+(function progressLoop() { updateProgress(); requestAnimationFrame(progressLoop); })();
+
+// Active Navigation — scroll-position based
+var navItems = document.querySelectorAll('.nav-item');
+var sectionIds = ['overview','battle-experience','what-is-game','market','combat','collection','scent','field-boss','season','map','narrative','economics','users','appendix'];
+var sectionEls = sectionIds.map(function(id) { return document.getElementById(id); });
+var lastActiveId = null;
+var isSmoothScrolling = false;
+var smoothScrollTimer = null;
+
+function setActiveNav(bestId) {
+  if (!bestId || bestId === lastActiveId) return;
+  lastActiveId = bestId;
+  navItems.forEach(function(item) {
+    if (item.getAttribute('href') === '#' + bestId) item.classList.add('active');
+    else item.classList.remove('active');
+  });
+}
+
+function detectActiveByScroll() {
+  if (isSmoothScrolling) return;
+  var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+  var viewportTop = scrollTop + 120;
+  var bestId = null;
+  var bestTop = -Infinity;
+  sectionEls.forEach(function(el, i) {
+    if (!el) return;
+    var top = el.offsetTop;
+    if (top <= viewportTop && top > bestTop) {
+      bestTop = top;
+      bestId = sectionIds[i];
+    }
+  });
+  if (bestId) setActiveNav(bestId);
+}
+
+// Smooth Scroll for Nav
+navItems.forEach(function(item) {
+  item.addEventListener('click', function(e) {
+    e.preventDefault();
+    var targetId = this.getAttribute('href').substring(1);
+    var target = document.getElementById(targetId);
+    if (target) {
+      navItems.forEach(function(nav) { nav.classList.remove('active'); });
+      this.classList.add('active');
+      lastActiveId = targetId;
+      isSmoothScrolling = true;
+      if (smoothScrollTimer) clearTimeout(smoothScrollTimer);
+      smoothScrollTimer = setTimeout(function() {
+        isSmoothScrolling = false;
+        detectActiveByScroll();
+      }, 700);
+      var top = target.getBoundingClientRect().top + (document.documentElement.scrollTop || document.body.scrollTop);
+      window.scrollTo({ top: top - 80, behavior: 'smooth' });
+    }
+  });
+});
+
+// Brand title click → scroll to top
+var brandTitle = document.querySelector('.sidebar-brand-title');
+if (brandTitle) {
+  brandTitle.addEventListener('click', function(e) {
+    e.preventDefault();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    navItems.forEach(function(nav) { nav.classList.remove('active'); });
+    lastActiveId = null;
+  });
+}
+
+// Scroll listener for active state
+var scrollTimer = null;
+window.addEventListener('scroll', function() {
+  if (scrollTimer) return;
+  scrollTimer = setTimeout(function() {
+    scrollTimer = null;
+    detectActiveByScroll();
+  }, 50);
+}, { passive: true });
+</script>
+
+</body>
+</html>
