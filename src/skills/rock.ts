@@ -20,6 +20,7 @@ import {
   ElementType,
   EnergyCost,
   SkillTendency,
+  BuffType,
   SKILL_TENDENCY_TEXT,
   getEnergyCostText
 } from '../types';
@@ -87,57 +88,65 @@ export const STONE_IMPACT: Skill = (() => {
 
 /**
  * 【攻击倾向3】地震
- * 对所有敌方造成100威力伤害
- * 全体攻击技能，克制火/冰属性
+ * 攻击单体目标，造成85威力伤害，自身+1级防御（持续2回合）
+ * 攻击+自保的平衡技能
  */
 export const EARTHQUAKE: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'earthquake',
     name: '地震',
-    description: '对所有敌方单位造成100威力岩石伤害（全体攻击）',
+    description: '攻击单体目标，造成85威力岩石伤害，自身防御+1级（持续2回合）',
     type: 'action',
     energyCost: EnergyCost.ULTRA,
-    target: SkillTarget.ALL,
+    target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
     effects: [{
       damage: {
-        basePower: 100,
+        basePower: 85,
         damageType: DamageType.PHYSICAL,
         element: ElementType.ROCK
       }
+    }, {
+      statBoost: {
+        stat: 'defense',
+        stages: 1,
+        duration: 2
+      }
     }],
     category: '岩石防御流·攻击',
-    tags: ['岩石', '防御流', '攻击', '全体伤害']
+    tags: ['岩石', '防御流', '攻击', '防御强化']
   };
   return new Skill(definition);
 })();
 
 /**
- * 【攻击倾向4】磐石崩落
- * 蓄力1回合后，对单体造成130威力伤害
- * 蓄力期间若被攻击则技能取消
- * 终极攻击技能
+ * 【攻击倾向4】崩岩碎
+ * 攻击单体目标，造成120威力岩石伤害，使目标防御-2级
+ * 高伤害+削防的强力攻击技能
  */
 export const BOULDER_CRASH: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'boulder_crash',
-    name: '磐石崩落',
-    description: '蓄力1回合后发动，造成130威力岩石伤害【蓄力可被打断】',
+    name: '崩岩碎',
+    description: '攻击单体目标，造成120威力岩石伤害，使目标防御-2级',
     type: 'action',
     energyCost: EnergyCost.ULTIMATE,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
-    chargeTurns: 1,
-    canBeInterrupted: true,
     effects: [{
       damage: {
-        basePower: 130,
+        basePower: 120,
         damageType: DamageType.PHYSICAL,
         element: ElementType.ROCK
       }
+    }, {
+      statBoost: {
+        stat: 'defense',
+        stages: -2
+      }
     }],
     category: '岩石防御流·攻击',
-    tags: ['岩石', '防御流', '攻击', '蓄力', '终极技能']
+    tags: ['岩石', '防御流', '攻击', '削防', '终极技能']
   };
   return new Skill(definition);
 })();
@@ -160,9 +169,21 @@ export const ROCK_SHIELD: Skill = (() => {
     tendency: SkillTendency.DEFENSE,
     effects: [{
       applyBuff: {
-        buffType: 'rock_armor' as any,
+        buffType: BuffType.ROCK_ARMOR,
         duration: 1,
         value: 0.65  // 65%减伤
+      }
+    }, {
+      statBoost: {
+        stat: 'attack',
+        stages: 1,
+        duration: 1  // 本回合
+      }
+    }, {
+      statBoost: {
+        stat: 'defense',
+        stages: 1,
+        duration: 1  // 本回合
       }
     }],
     category: '岩石防御流·防御',
@@ -187,7 +208,7 @@ export const IRON_WALL: Skill = (() => {
     tendency: SkillTendency.DEFENSE,
     effects: [{
       applyBuff: {
-        buffType: 'iron_wall' as any,
+        buffType: BuffType.IRON_WALL,
         duration: 1,
         value: 0.75  // 75%减伤
       }
@@ -214,13 +235,40 @@ export const ROCK_BARRIER: Skill = (() => {
     tendency: SkillTendency.DEFENSE,
     effects: [{
       applyBuff: {
-        buffType: 'quake_body' as any,
+        buffType: BuffType.QUAKE_BODY,
         duration: 1,
         value: 0.55  // 55%减伤
       }
     }],
     category: '岩石防御流·防御',
     tags: ['岩石', '防御流', '防御', '减伤', '眩晕']
+  };
+  return new Skill(definition);
+})();
+
+/**
+ * 【防御倾向3】反击姿态
+ * 获得「反击」状态
+ * 反击：受到攻击时对攻击者造成30点固定伤害，本回合防御+1级
+ */
+export const COUNTER_STANCE: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'counter_stance',
+    name: '反击姿态',
+    description: '本回合受到攻击时反击攻击者30点伤害，防御+1级',
+    type: 'action',
+    energyCost: EnergyCost.MEDIUM,
+    target: SkillTarget.SELF,
+    tendency: SkillTendency.DEFENSE,
+    effects: [{
+      statBoost: {
+        stat: 'defense',
+        stages: 1,
+        duration: 1
+      }
+    }],
+    category: '岩石防御流·防御',
+    tags: ['岩石', '防御流', '防御', '反击']
   };
   return new Skill(definition);
 })();

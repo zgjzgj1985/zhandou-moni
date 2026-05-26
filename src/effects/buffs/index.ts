@@ -6,6 +6,65 @@
 import { BuffType } from '../../types';
 
 /**
+ * 临时属性强化Buff
+ * 用于技能产生的有持续时间的属性变化效果
+ * 在持续时间结束后自动移除属性加成
+ */
+export class TempStatModifier extends Buff {
+  stat: 'attack' | 'defense' | 'spAttack' | 'spDefense' | 'speed';
+  stages: number;
+  private modifier: TempStatModifier;
+
+  constructor(
+    stat: 'attack' | 'defense' | 'spAttack' | 'spDefense' | 'speed',
+    stages: number,
+    duration: number = 2
+  ) {
+    const statNames: Record<string, string> = {
+      'attack': '攻击',
+      'defense': '防御',
+      'spAttack': '特攻',
+      'spDefense': '特防',
+      'speed': '速度'
+    };
+    const direction = stages > 0 ? '提升' : '下降';
+    super(`${statNames[stat]}${direction}`, BuffType.TEMP_STAT_MODIFIER, 1, duration);
+    this.stat = stat;
+    this.stages = stages;
+  }
+
+  /**
+   * 应用属性变化
+   */
+  applyTo(unit: any): void {
+    if (unit && typeof unit.modifyStat === 'function') {
+      unit.modifyStat(this.stat, this.stages);
+    }
+  }
+
+  /**
+   * 移除属性变化（效果结束时调用）
+   */
+  removeFrom(unit: any): void {
+    if (unit && typeof unit.modifyStat === 'function') {
+      // 移除效果 = 施加相反的变化
+      unit.modifyStat(this.stat, -this.stages);
+    }
+  }
+
+  /**
+   * 回合结束时减少持续时间
+   */
+  onTurnEnd(_unit: BuffCombatUnit): void {
+    this.remainingDuration--;
+  }
+
+  clone(): TempStatModifier {
+    return new TempStatModifier(this.stat, this.stages, this.duration);
+  }
+}
+
+/**
  * 前向引用CombatUnit（避免循环依赖）
  */
 export type BuffCombatUnit = {
@@ -53,23 +112,29 @@ export abstract class Buff {
 // ==================== 冰属性·减速流专用Buff ====================
 
 /**
- * 冰霜护甲buff：冰属性·冻结破冰流v3.0
- * 受到伤害降低50%，本回合受伤时使攻击者冻结1回合
+ * 冰霜护甲buff v4.0：冰属性·冰霜蓄力流
+ * 受到伤害降低50%，本回合受伤时使攻击者获得1层冰霜
  */
 export class IceArmorBuff extends Buff {
   damageReduction: number;
+  counterFrost: boolean;  // 反击冰霜
   
-  constructor(duration: number = 1, damageReduction: number = 0.5) {
+  constructor(duration: number = 1, damageReduction: number = 0.5, counterFrost: boolean = true) {
     super('冰霜护甲', BuffType.ICE_ARMOR, 1, duration);
     this.damageReduction = damageReduction;
+    this.counterFrost = counterFrost;
   }
 
   getDamageReduction(): number {
     return this.damageReduction;
   }
 
+  hasCounterFrost(): boolean {
+    return this.counterFrost;
+  }
+
   clone(): IceArmorBuff {
-    const cloned = new IceArmorBuff(this.remainingDuration, this.damageReduction);
+    const cloned = new IceArmorBuff(this.remainingDuration, this.damageReduction, this.counterFrost);
     return cloned;
   }
 }
@@ -311,15 +376,15 @@ export class HeatCounterBuff extends Buff {
 
 /**
  * 蓄焰buff：火属性爆发流
- * 下次火属性攻击威力+50%
+ * 根据当前能量增加下次火属性攻击威力（每点能量+10威力）
  */
 export class FlameChargeBuff extends Buff {
-  damageBonus: number;
+  bonusPerEnergy: number;
   consumed: boolean;
 
-  constructor(duration: number = 3, damageBonus: number = 0.5) {
+  constructor(duration: number = 3, bonusPerEnergy: number = 10) {
     super('蓄焰', BuffType.FLAME_CHARGE, 1, duration);
-    this.damageBonus = damageBonus;
+    this.bonusPerEnergy = bonusPerEnergy;
     this.consumed = false;
   }
 
@@ -328,8 +393,11 @@ export class FlameChargeBuff extends Buff {
     this.remainingDuration = 0;
   }
 
-  getDamageMultiplier(): number {
-    return 1 + this.damageBonus;
+  /**
+   * 根据施法者当前能量计算额外伤害
+   */
+  getExtraDamage(currentEnergy: number): number {
+    return currentEnergy * this.bonusPerEnergy;
   }
 
   isActive(): boolean {
@@ -337,7 +405,47 @@ export class FlameChargeBuff extends Buff {
   }
 
   clone(): FlameChargeBuff {
-    const cloned = new FlameChargeBuff(this.remainingDuration, this.damageBonus);
+    const cloned = new FlameChargeBuff(this.remainingDuration, this.bonusPerEnergy);
+    cloned.consumed = this.consumed;
+    return cloned;
+  }
+}
+
+/**
+ * 烈焰护体buff：火属性爆发流
+ * 受到伤害降低70%，下次火属性攻击威力+40
+ */
+export class FlameBodyBuff extends Buff {
+  damageReduction: number;
+  extraDamage: number;
+  consumed: boolean;
+
+  constructor(duration: number = 2, damageReduction: number = 0.7, extraDamage: number = 40) {
+    super('烈焰护体', BuffType.FLAME_BODY, 1, duration);
+    this.damageReduction = damageReduction;
+    this.extraDamage = extraDamage;
+    this.consumed = false;
+  }
+
+  getDamageReduction(): number {
+    return this.damageReduction;
+  }
+
+  getExtraDamage(): number {
+    return this.extraDamage;
+  }
+
+  consume(): void {
+    this.consumed = true;
+    this.remainingDuration = 0;
+  }
+
+  isActive(): boolean {
+    return !this.consumed && this.remainingDuration > 0;
+  }
+
+  clone(): FlameBodyBuff {
+    const cloned = new FlameBodyBuff(this.remainingDuration, this.damageReduction, this.extraDamage);
     cloned.consumed = this.consumed;
     return cloned;
   }
@@ -345,14 +453,14 @@ export class FlameChargeBuff extends Buff {
 
 /**
  * 炎之意志buff：火属性爆发流
- * 攻击+1级，速度+1级，火属性伤害+15%
+ * 攻击+1级，速度+1级，火属性伤害+25%
  */
 export class BlazeWillBuff extends Buff {
   attackBonus: number;
   speedBonus: number;
   fireDamageBonus: number;
 
-  constructor(duration: number = 2, attackBonus: number = 1, speedBonus: number = 1, fireDamageBonus: number = 0.15) {
+  constructor(duration: number = 2, attackBonus: number = 1, speedBonus: number = 1, fireDamageBonus: number = 0.25) {
     super('炎之意志', BuffType.BLAZE_WILL, 1, duration);
     this.attackBonus = attackBonus;
     this.speedBonus = speedBonus;
@@ -663,27 +771,28 @@ export class ForceBuff extends Buff {
 export class ShieldBuff extends Buff {
   value: number;
   maxValue: number;
-  
-  constructor(unit: BuffCombatUnit, value?: number) {
+  unitMaxHp: number;
+
+  constructor(unit?: BuffCombatUnit, value?: number) {
     super('护盾', BuffType.SHIELD, 1, 999);
-    this.maxValue = Math.floor(unit.maxHp * 0.5);
+    this.unitMaxHp = unit?.maxHp ?? 100;
+    this.maxValue = Math.floor(this.unitMaxHp * 0.5);
     this.value = value ?? this.maxValue;
   }
-  
+
   onTurnStart(_unit: BuffCombatUnit): void {
     this.value = 0;
     this.remainingDuration = 0;
   }
-  
+
   absorbDamage(damage: number): number {
     const absorbed = Math.min(this.value, damage);
     this.value -= absorbed;
     return absorbed;
   }
-  
+
   clone(): ShieldBuff {
-    const mockUnit = { maxHp: this.maxValue * 2 } as BuffCombatUnit;
-    const cloned = new ShieldBuff(mockUnit, this.value);
+    const cloned = new ShieldBuff({ maxHp: this.unitMaxHp * 2, heal: () => 0, takeDamage: () => 0 } as BuffCombatUnit, this.value);
     cloned.maxValue = this.maxValue;
     return cloned;
   }
@@ -1181,10 +1290,90 @@ export class LeafBarrierBuff extends Buff {
   }
 }
 
+// ==================== 岩石属性·防御流专用Buff ====================
+
+/**
+ * 岩甲护体buff：岩石属性防御流
+ * 受到伤害降低65%，本回合攻击+防御各+1级
+ */
+export class RockArmorBuff extends Buff {
+  damageReduction: number;
+
+  constructor(damageReduction: number = 0.65, duration: number = 1) {
+    super('岩甲护体', BuffType.ROCK_ARMOR, 1, duration);
+    this.damageReduction = damageReduction;
+  }
+
+  getDamageReduction(): number {
+    return this.damageReduction;
+  }
+
+  clone(): RockArmorBuff {
+    return new RockArmorBuff(this.damageReduction, this.remainingDuration);
+  }
+}
+
+/**
+ * 铁壁buff：岩石属性防御流
+ * 受到伤害降低75%，本回合无法进行攻击
+ */
+export class IronWallBuff extends Buff {
+  damageReduction: number;
+  canAttack: boolean;
+
+  constructor(damageReduction: number = 0.75, duration: number = 1) {
+    super('铁壁', BuffType.IRON_WALL, 1, duration);
+    this.damageReduction = damageReduction;
+    this.canAttack = false;
+  }
+
+  getDamageReduction(): number {
+    return this.damageReduction;
+  }
+
+  isAttackBlocked(): boolean {
+    return !this.canAttack;
+  }
+
+  clone(): IronWallBuff {
+    const cloned = new IronWallBuff(this.damageReduction, this.remainingDuration);
+    cloned.canAttack = this.canAttack;
+    return cloned;
+  }
+}
+
+/**
+ * 震荡护体buff：岩石属性防御流
+ * 受到伤害降低55%，本回合攻击附带眩晕（30%概率使目标眩晕1回合）
+ */
+export class QuakeBodyBuff extends Buff {
+  damageReduction: number;
+  stunChance: number;
+
+  constructor(damageReduction: number = 0.55, stunChance: number = 0.3, duration: number = 1) {
+    super('震荡护体', BuffType.QUAKE_BODY, 1, duration);
+    this.damageReduction = damageReduction;
+    this.stunChance = stunChance;
+  }
+
+  getDamageReduction(): number {
+    return this.damageReduction;
+  }
+
+  getStunChance(): number {
+    return this.stunChance;
+  }
+
+  clone(): QuakeBodyBuff {
+    return new QuakeBodyBuff(this.damageReduction, this.stunChance, this.remainingDuration);
+  }
+}
+
 // ==================== Buff工厂函数 ====================
 
 /**
- * Buff工厂函数
+ * Buff工厂函数 - 无参数版本
+ * 适用于不需要CombatUnit参数的Buff
  */
 export function createBuff(type: BuffType, stacks: number = 1, duration: number = 3): Buff {
   switch (type) {
@@ -1193,7 +1382,8 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
     case BuffType.FORCE:
       return new ForceBuff(stacks, duration);
     case BuffType.SHIELD:
-      throw new Error('ShieldBuff需要CombatUnit参数');
+      // ShieldBuff需要unit参数，使用带参数的版本
+      return createShieldBuff({ maxHp: 100, heal: () => 0, takeDamage: () => 0 } as BuffCombatUnit);
     case BuffType.REGENERATION:
       return new RegenerationBuff(stacks, duration);
     case BuffType.GLORY:
@@ -1224,7 +1414,9 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
       return new FrostMarkBuff(duration);
     // 火属性爆发流专用Buff
     case BuffType.FIRE_SHIELD:
-      throw new Error('FireShieldBuff需要CombatUnit参数');
+      return createFireShieldBuff({ maxHp: 100, heal: () => 0, takeDamage: () => 0 } as BuffCombatUnit);
+    case BuffType.FLAME_BODY:
+      return new FlameBodyBuff(duration);
     case BuffType.WALL_OF_FIRE:
       return new WallOfFireBuff(duration);
     case BuffType.HEAT_COUNTER:
@@ -1235,7 +1427,7 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
       return new BlazeWillBuff(duration);
     // 水属性控制流专用Buff
     case BuffType.WATER_SHIELD:
-      throw new Error('WaterShieldBuff需要CombatUnit参数');
+      return createWaterShieldBuff({ maxHp: 100, heal: () => 0, takeDamage: () => 0 } as BuffCombatUnit);
     case BuffType.CLEAR_SPRING:
       return new ClearSpringBuff(duration);
     case BuffType.FLOW:
@@ -1253,7 +1445,7 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
       return new ThunderFuryBuff();
     // 超能属性奥秘流专用Buff
     case BuffType.MIND_SHIELD:
-      throw new Error('MindShieldBuff需要CombatUnit参数');
+      return createMindShieldBuff({ maxHp: 100, heal: () => 0, takeDamage: () => 0 } as BuffCombatUnit);
     case BuffType.REFLECT:
       return new ReflectBuff(stacks);
     case BuffType.PSYCHIC_DODGE:
@@ -1275,7 +1467,42 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
       return new RootBoundBuff(duration);
     case BuffType.LEAF_BARRIER:
       return new LeafBarrierBuff();
+    // 岩石属性防御流专用Buff
+    case BuffType.ROCK_ARMOR:
+      return new RockArmorBuff();
+    case BuffType.IRON_WALL:
+      return new IronWallBuff();
+    case BuffType.QUAKE_BODY:
+      return new QuakeBodyBuff();
     default:
       throw new Error(`Unknown BuffType: ${type}`);
   }
+}
+
+/**
+ * 创建护盾Buff（带CombatUnit参数）
+ */
+export function createShieldBuff(unit: BuffCombatUnit, value?: number): ShieldBuff {
+  return new ShieldBuff(unit, value);
+}
+
+/**
+ * 创建火盾Buff（带CombatUnit参数）
+ */
+export function createFireShieldBuff(unit: BuffCombatUnit, shieldValue: number = 50, counterDamage: number = 30): FireShieldBuff {
+  return new FireShieldBuff(unit, shieldValue, counterDamage);
+}
+
+/**
+ * 创建水盾Buff（带CombatUnit参数）
+ */
+export function createWaterShieldBuff(unit: BuffCombatUnit, shieldValue: number = 80, damageReduction: number = 0.2): WaterShieldBuff {
+  return new WaterShieldBuff(unit, shieldValue, damageReduction);
+}
+
+/**
+ * 创建心智护盾Buff（带CombatUnit参数）
+ */
+export function createMindShieldBuff(unit: BuffCombatUnit, value: number = 60, ppDrainPerHit: number = 1): MindShieldBuff {
+  return new MindShieldBuff(unit, value, ppDrainPerHit);
 }

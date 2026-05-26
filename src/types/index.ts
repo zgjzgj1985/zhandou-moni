@@ -171,6 +171,7 @@ export enum BuffType {
   DEFEND_UP = 'defend_up',   // 防御提升
   ATTACK_UP = 'attack_up',   // 攻击提升
   SPEED_UP = 'speed_up',     // 速度提升
+  TEMP_STAT_MODIFIER = 'temp_stat_modifier', // 临时属性强化（技能效果）
   // 冰属性·减速流专用Buff
   ICE_ARMOR = 'ice_armor',           // 冰霜护甲：冰属性抗性+30%，受伤时冻结攻击者
   ICE_REFLECT = 'ice_reflect',       // 冰晶反射：反弹冰属性攻击并减速
@@ -178,7 +179,7 @@ export enum BuffType {
   // 冰属性·冻结破冰流v3.0专用Buff
   ICE_WALL = 'ice_wall',             // 冰墙：50%闪避+格挡
   FROST_FIELD = 'frost_field',       // 极寒领域：减伤+群体冻结铺垫
-  FROST_MARK = 'frost_mark'          // 冰霜印记：冻结概率+30%
+  FROST_MARK = 'frost_mark',         // 冰霜印记：冻结概率+30%
   // 火属性·爆发流专用Buff
   FIRE_SHIELD = 'fire_shield',       // 火盾：受攻击时反伤30点
   FLAME_BODY = 'flame_body',         // 烈焰护体：减伤+受伤时灼烧
@@ -212,7 +213,11 @@ export enum BuffType {
   VINE_POWER = 'vine_power',        // 藤蔓之力：每层+1级攻击，最多3层
   GROWTH = 'growth',                 // 成长：每回合攻击+特攻各+1级，最多3层
   ROOT_BOUND = 'root_bound',         // 扎根：每回合回复最大HP的8%，速度-1级
-  LEAF_BARRIER = 'leaf_barrier'     // 绿叶屏障：群体护盾+草属性抗性
+  LEAF_BARRIER = 'leaf_barrier',     // 绿叶屏障：群体护盾+草属性抗性
+  // 岩石属性·防御流专用Buff
+  ROCK_ARMOR = 'rock_armor',           // 岩甲护体：受到伤害降低65%
+  IRON_WALL = 'iron_wall',             // 铁壁：受到伤害降低75%
+  QUAKE_BODY = 'quake_body'             // 震荡护体：受到伤害降低55%+眩晕
 }
 
 /**
@@ -233,10 +238,9 @@ export enum DebuffType {
   SLOW = 'slow',             // 减速：速度-1级
   ICE_SEAL = 'ice_seal',     // 冰封禁制：封印≥3能量技能
   ICE_DOT = 'ice_dot',       // 冰冻伤害：每回合受到冰系伤害
-  // 冰属性·冻结破冰流v3.0专用Debuff
-  DEEP_FREEZE = 'deep_freeze',       // 深冻：持续3回合，10%自解
-  ABSOLUTE_FREEZE = 'absolute_freeze', // 绝对冻结：持续3回合，0%自解，必须受伤解除
-  FROST_MARK = 'frost_mark',         // 冰霜印记：下次冰属性攻击冻结概率+30%
+  // 冰属性·冰霜蓄力流专用Debuff
+  FROST = 'frost',           // 冰霜：每层+1技能消耗，3层触发冻结
+  FROST_MARK = 'frost_mark', // 冰霜印记：下次冰属性攻击额外+1层
   // 火属性·爆发流专用Debuff
   BURN_MARK = 'burn_mark',    // 灼伤印记：下回合追加伤害
   COMBUSTION_MARK = 'combustion_mark', // 燃尽印记：延迟伤害
@@ -254,7 +258,9 @@ export enum DebuffType {
   TANGLE = 'tangle',              // 缠绕：速度降低
   PARASITE = 'parasite',          // 寄生：每回合草伤害+施法者回复
   LEAF_MARK = 'leaf_mark',        // 叶片标记：受到草属性攻击时+20%伤害
-  PARASITE_MARK = 'parasite_mark' // 寄生印记：每回合施法者HP的6%伤害+回复
+  PARASITE_MARK = 'parasite_mark', // 寄生印记：每回合施法者HP的6%伤害+回复
+  // 岩石属性·防御流专用Debuff
+  STUN = 'stun'                  // 眩晕：完全无法行动，持续1回合
 }
 
 // ==================== 能量系统 ====================
@@ -419,4 +425,141 @@ export interface BattleEvent {
   targetId?: string;
   data?: Record<string, unknown>;
   timestamp: number;
+}
+
+// ==================== 类型映射（用于技能系统） ====================
+
+/**
+ * 字符串到BuffType的映射
+ * 用于从技能定义中的字符串创建正确的BuffType枚举值
+ */
+export const STRING_TO_BUFF_TYPE: Record<string, BuffType> = {
+  // 基础Buff
+  'power': BuffType.POWER,
+  'force': BuffType.FORCE,
+  'shield': BuffType.SHIELD,
+  'regeneration': BuffType.REGENERATION,
+  'glory': BuffType.GLORY,
+  'dodge': BuffType.DODGE,
+  'redirect': BuffType.REDIRECT,
+  'heal_up': BuffType.HEAL_UP,
+  'defend_up': BuffType.DEFEND_UP,
+  'attack_up': BuffType.ATTACK_UP,
+  'speed_up': BuffType.SPEED_UP,
+  'temp_stat_modifier': BuffType.TEMP_STAT_MODIFIER,
+  // 冰属性Buff
+  'ice_armor': BuffType.ICE_ARMOR,
+  'ice_reflect': BuffType.ICE_REFLECT,
+  'ice_resist': BuffType.ICE_RESIST,
+  'ice_wall': BuffType.ICE_WALL,
+  'frost_field': BuffType.FROST_FIELD,
+  'frost_mark': BuffType.FROST_MARK,
+  // 火属性Buff
+  'fire_shield': BuffType.FIRE_SHIELD,
+  'flame_body': BuffType.FLAME_BODY,
+  'wall_of_fire': BuffType.WALL_OF_FIRE,
+  'heat_counter': BuffType.HEAT_COUNTER,
+  'flame_charge': BuffType.FLAME_CHARGE,
+  'blaze_will': BuffType.BLAZE_WILL,
+  // 水属性Buff
+  'water_shield': BuffType.WATER_SHIELD,
+  'clear_spring': BuffType.CLEAR_SPRING,
+  'flow': BuffType.FLOW,
+  'water_resist': BuffType.WATER_RESIST,
+  // 电属性Buff
+  'static_shield': BuffType.STATIC_SHIELD,
+  'static_body': BuffType.STATIC_BODY,
+  'electric_deflect': BuffType.ELECTRIC_DEFLECT,
+  'electromagnetic_induction': BuffType.ELECTROMAGNETIC_INDUCTION,
+  'thunder_domain': BuffType.THUNDER_DOMAIN,
+  'combo_charge': BuffType.COMBO_CHARGE,
+  'electric_field': BuffType.ELECTRIC_FIELD,
+  'thunder_fury': BuffType.THUNDER_FURY,
+  // 超能属性Buff
+  'mind_shield': BuffType.MIND_SHIELD,
+  'reflect': BuffType.REFLECT,
+  'psychic_dodge': BuffType.PSYCHIC_DODGE,
+  'psychic_resist': BuffType.PSYCHIC_RESIST,
+  'intent_blur': BuffType.INTENT_BLUR,
+  // 草属性Buff
+  'vine_body': BuffType.VINE_BODY,
+  'life_body': BuffType.LIFE_BODY,
+  'vine_power': BuffType.VINE_POWER,
+  'growth': BuffType.GROWTH,
+  'root_bound': BuffType.ROOT_BOUND,
+  'leaf_barrier': BuffType.LEAF_BARRIER,
+  // 岩石属性Buff
+  'rock_armor': BuffType.ROCK_ARMOR,
+  'iron_wall': BuffType.IRON_WALL,
+  'quake_body': BuffType.QUAKE_BODY,
+};
+
+/**
+ * 字符串到DebuffType的映射
+ * 用于从技能定义中的字符串创建正确的DebuffType枚举值
+ */
+export const STRING_TO_DEBUFF_TYPE: Record<string, DebuffType> = {
+  // 基础Debuff
+  'poison': DebuffType.POISON,
+  'burn': DebuffType.BURN,
+  'bleed': DebuffType.BLEED,
+  'weakness': DebuffType.WEAKNESS,
+  'terror': DebuffType.TERROR,
+  'paralysis': DebuffType.PARALYSIS,
+  'sleep': DebuffType.SLEEP,
+  'freeze': DebuffType.FREEZE,
+  'confusion': DebuffType.CONFUSION,
+  'bind': DebuffType.BIND,
+  // 冰属性Debuff
+  'slow': DebuffType.SLOW,
+  'ice_seal': DebuffType.ICE_SEAL,
+  'ice_dot': DebuffType.ICE_DOT,
+  'frost': DebuffType.FROST,
+  'frost_mark': DebuffType.FROST_MARK,
+  // 火属性Debuff
+  'burn_mark': DebuffType.BURN_MARK,
+  'combustion_mark': DebuffType.COMBUSTION_MARK,
+  // 水属性Debuff
+  'wet': DebuffType.WET,
+  'drowning': DebuffType.DROWNING,
+  'turbulence': DebuffType.TURBULENCE,
+  // 电属性Debuff
+  'static': DebuffType.STATIC,
+  'electric_shock': DebuffType.ELECTRIC_SHOCK,
+  // 超能属性Debuff
+  'mind_wound': DebuffType.MIND_WOUND,
+  'forbidden': DebuffType.FORBIDDEN,
+  // 草属性Debuff
+  'tangle': DebuffType.TANGLE,
+  'parasite': DebuffType.PARASITE,
+  'leaf_mark': DebuffType.LEAF_MARK,
+  'parasite_mark': DebuffType.PARASITE_MARK,
+  // 岩石属性Debuff
+  'stun': DebuffType.STUN,
+};
+
+/**
+ * 将字符串转换为BuffType枚举
+ * @param str 字符串值
+ * @returns BuffType枚举值，如果未找到则抛出错误
+ */
+export function stringToBuffType(str: string): BuffType {
+  const result = STRING_TO_BUFF_TYPE[str];
+  if (!result) {
+    throw new Error(`Unknown BuffType string: ${str}`);
+  }
+  return result;
+}
+
+/**
+ * 将字符串转换为DebuffType枚举
+ * @param str 字符串值
+ * @returns DebuffType枚举值，如果未找到则抛出错误
+ */
+export function stringToDebuffType(str: string): DebuffType {
+  const result = STRING_TO_DEBUFF_TYPE[str];
+  if (!result) {
+    throw new Error(`Unknown DebuffType string: ${str}`);
+  }
+  return result;
 }

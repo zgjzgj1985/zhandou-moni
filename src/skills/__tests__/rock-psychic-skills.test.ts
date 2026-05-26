@@ -13,7 +13,6 @@ import {
   BOULDER_CRASH,
   ROCK_SHIELD,
   IRON_WALL,
-  COUNTER_STANCE,
   SAND_CLOAK,
   STONE_BODY,
   MOUNTAIN_GUARDIAN
@@ -49,16 +48,26 @@ describe('岩石属性·防御流技能测试', () => {
       SkillTestHelper.validateDamageEffect(STONE_IMPACT, 90, ElementType.ROCK);
     });
 
-    it('地震 (EARTHQUAKE) - 全体攻击', () => {
-      SkillTestHelper.validateSkillBase(EARTHQUAKE, 'earthquake', '地震', 4);
-      expect(EARTHQUAKE.definition.target).toBe(SkillTarget.ALL);
-      SkillTestHelper.validateDamageEffect(EARTHQUAKE, 100, ElementType.ROCK);
+    it('地震 (EARTHQUAKE) - 单体攻击+自保', () => {
+      SkillTestHelper.validateSkillBase(EARTHQUAKE, 'earthquake', '地震', 3);
+      expect(EARTHQUAKE.definition.target).toBe(SkillTarget.SINGLE);
+      SkillTestHelper.validateDamageEffect(EARTHQUAKE, 85, ElementType.ROCK);
+      // 验证有属性强化效果
+      const statBoost = EARTHQUAKE.definition.effects.find(e => e.statBoost);
+      expect(statBoost).toBeDefined();
+      expect(statBoost?.statBoost?.stat).toBe('defense');
+      expect(statBoost?.statBoost?.stages).toBe(1);
     });
 
-    it('磐石崩落 (BOULDER_CRASH) - 蓄力+终极', () => {
-      SkillTestHelper.validateSkillBase(BOULDER_CRASH, 'boulder_crash', '磐石崩落', 5);
-      SkillTestHelper.validateChargeSkill(BOULDER_CRASH, 1, true);
-      SkillTestHelper.validateDamageEffect(BOULDER_CRASH, 130, ElementType.ROCK);
+    it('崩岩碎 (BOULDER_CRASH) - 削防终极技', () => {
+      SkillTestHelper.validateSkillBase(BOULDER_CRASH, 'boulder_crash', '崩岩碎', 5);
+      expect(BOULDER_CRASH.definition.target).toBe(SkillTarget.SINGLE);
+      SkillTestHelper.validateDamageEffect(BOULDER_CRASH, 120, ElementType.ROCK);
+      // 验证有削防效果
+      const statBoost = BOULDER_CRASH.definition.effects.find(e => e.statBoost);
+      expect(statBoost).toBeDefined();
+      expect(statBoost?.statBoost?.stat).toBe('defense');
+      expect(statBoost?.statBoost?.stages).toBe(-2);
     });
   });
 
@@ -71,11 +80,6 @@ describe('岩石属性·防御流技能测试', () => {
     it('铁壁 (IRON_WALL) - 防御提升', () => {
       SkillTestHelper.validateSkillBase(IRON_WALL, 'iron_wall', '铁壁', 2);
       expect(IRON_WALL.definition.target).toBe(SkillTarget.SELF);
-    });
-
-    it('反击姿态 (COUNTER_STANCE) - 反击', () => {
-      SkillTestHelper.validateSkillBase(COUNTER_STANCE, 'counter_stance', '反击姿态', 3);
-      expect(COUNTER_STANCE.definition.target).toBe(SkillTarget.SELF);
     });
   });
 

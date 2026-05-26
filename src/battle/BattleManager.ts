@@ -21,8 +21,39 @@ import { PlayerUnit } from './PlayerUnit';
 import { EnemyUnit } from './EnemyUnit';
 import { DamageType } from '../types';
 import { SkillDefinition } from '../skills/Skill';
-import { VineBodyBuff, LifeBodyBuff, IceArmorBuff, IceWallBuff, FrostFieldBuff } from '../effects/buffs';
-import { TangleDebuff, ParalysisDebuff, FreezeDebuff, DeepFreezeDebuff, AbsoluteFreezeDebuff, FrostMarkDebuff } from '../effects/debuffs';
+import { VineBodyBuff, LifeBodyBuff, IceArmorBuff, IceWallBuff, FrostFieldBuff, HeatCounterBuff } from '../effects/buffs';
+import {
+  TangleDebuff,
+  ParalysisDebuff,
+  FreezeDebuff,
+  FrostMarkDebuff,
+  WetDebuff,
+  SlowDebuff,
+  DrowningDebuff,
+  TurbulenceDebuff,
+  StunDebuff,
+  BurnDebuff,
+  PoisonDebuff,
+  BleedDebuff,
+  WeaknessDebuff,
+  TerrorDebuff,
+  SleepDebuff,
+  ConfusionDebuff,
+  BindDebuff,
+  IceSealDebuff,
+  IceDotDebuff,
+  FrostDebuff,
+  BurnMarkDebuff,
+  CombustionMarkDebuff,
+  StaticDebuff,
+  ElectricShockDebuff,
+  MindWoundDebuff,
+  ForbiddenDebuff,
+  ParasiteDebuff,
+  LeafMarkDebuff,
+  ParasiteMarkDebuff,
+  Debuff
+} from '../effects/debuffs';
 
 /**
  * 战斗配置
@@ -58,6 +89,17 @@ export interface DelayedEffect {
     stacks: number;
   };
   skillName: string;
+}
+
+/**
+ * 临时属性效果（带持续时间）
+ */
+export interface TempStatEffect {
+  id: string;
+  targetId: string;
+  stat: 'attack' | 'defense' | 'spAttack' | 'spDefense' | 'speed';
+  stages: number;
+  remainingTurns: number;
 }
 
 /**
@@ -99,6 +141,9 @@ export class BattleManager {
 
   // 延迟效果追踪
   private delayedEffects: DelayedEffect[];
+
+  // 临时属性效果追踪（带持续时间）
+  private tempStatEffects: TempStatEffect[];
   
   // 回调函数
   onPhaseChange?: (phase: BattlePhase) => void;
@@ -120,6 +165,7 @@ export class BattleManager {
     this.listeners = new Map();
     this.log = [];
     this.delayedEffects = [];
+    this.tempStatEffects = [];
   }
   
   // ==================== 事件系统 ====================
@@ -229,8 +275,68 @@ export class BattleManager {
       enemy.onTurnStart();
     }
 
+    // 处理灼伤印记 - 在行动前追加火属性伤害
+    this.processBurnMarkEffects();
+
+    // 处理燃尽印记 - 回合结束时触发，但检查是否到期
+    this.processCombustionMarkEffects();
+
     // 处理延迟效果
     this.processDelayedEffects();
+  }
+
+  /**
+   * 处理灼伤印记效果 - 下回合行动前追加伤害
+   */
+  private processBurnMarkEffects(): void {
+    for (const player of this.players) {
+      for (const debuff of player.debuffs) {
+        if (debuff.type === DebuffType.BURN_MARK) {
+          const burnMark = debuff as BurnMarkDebuff;
+          // 灼伤印记在回合开始时触发，对随机敌人造成伤害
+          const aliveEnemies = this.enemies.filter(e => !e.isDead);
+          if (aliveEnemies.length > 0) {
+            const target = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
+            const damage = player.calculateDamage(burnMark.getExtraDamage(), target, 'special', ElementType.FIRE);
+            const actualDamage = target.takeDamage(damage, 'special');
+            this.addLog(
+              'burn_mark',
+              `${player.name} 的灼伤印记触发`,
+              `对 ${target.name} 造成 ${actualDamage} 点火属性伤害`
+            );
+            // 消耗灼伤印记
+            burnMark.consume();
+            // 移除已消耗的debuff
+            player.debuffs = player.debuffs.filter(d => d !== debuff);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * 处理燃尽印记效果 - 延迟触发
+   */
+  private processCombustionMarkEffects(): void {
+    for (const enemy of this.enemies) {
+      for (const debuff of enemy.debuffs) {
+        if (debuff.type === DebuffType.COMBUSTION_MARK) {
+          const combustionMark = debuff as CombustionMarkDebuff;
+          // 燃尽印记在持续回合结束时触发
+          if (combustionMark.remainingDuration <= 1) {
+            const damage = Math.floor(enemy.currentHp * combustionMark.getDamagePercent());
+            const actualDamage = enemy.takeDamage(damage, 'special');
+            this.addLog(
+              'combustion_mark',
+              `${enemy.name} 的燃尽印记触发`,
+              `扣除 ${actualDamage} 点HP（30%当前HP）`
+            );
+            combustionMark.consume();
+            enemy.debuffs = enemy.debuffs.filter(d => d !== debuff);
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -329,17 +435,82 @@ export class BattleManager {
   /**
    * 创建Debuff实例
    */
-  private createDebuffFromType(debuffType: DebuffType, stacks: number, duration: number): any {
+  private createDebuffFromType(debuffType: DebuffType, stacks: number = 1, duration: number = 3): Debuff | null {
     switch (debuffType) {
-      case DebuffType.WET:
-        return new (require('../effects/debuffs').WetDebuff)(duration);
+      // 基础Debuff
+      case DebuffType.POISON:
+        return new PoisonDebuff(stacks, duration);
+      case DebuffType.BURN:
+        return new BurnDebuff(stacks, duration);
+      case DebuffType.BLEED:
+        return new BleedDebuff(stacks, duration);
+      case DebuffType.WEAKNESS:
+        return new WeaknessDebuff(stacks, duration);
+      case DebuffType.TERROR:
+        return new TerrorDebuff(stacks, duration);
+      case DebuffType.PARALYSIS:
+        return new ParalysisDebuff(duration);
+      case DebuffType.SLEEP:
+        return new SleepDebuff(1, 3);
+      case DebuffType.FREEZE:
+        return new FreezeDebuff();
+      case DebuffType.CONFUSION:
+        return new ConfusionDebuff(duration);
+      case DebuffType.BIND:
+        return new BindDebuff(duration);
+      case DebuffType.STUN:
+        return new StunDebuff(duration);
+
+      // 冰属性Debuff
       case DebuffType.SLOW:
-        return new (require('../effects/debuffs').SlowDebuff)(stacks, duration);
+        return new SlowDebuff(stacks, duration);
+      case DebuffType.ICE_SEAL:
+        return new IceSealDebuff(duration);
+      case DebuffType.ICE_DOT:
+        return new IceDotDebuff(duration);
+      case DebuffType.FROST:
+        return new FrostDebuff(stacks, duration);
+      case DebuffType.FROST_MARK:
+        return new FrostMarkDebuff(duration);
+
+      // 火属性Debuff
+      case DebuffType.BURN_MARK:
+        return new BurnMarkDebuff();
+      case DebuffType.COMBUSTION_MARK:
+        return new CombustionMarkDebuff(duration);
+
+      // 水属性Debuff
+      case DebuffType.WET:
+        return new WetDebuff(duration);
       case DebuffType.DROWNING:
-        return new (require('../effects/debuffs').DrowningDebuff)(duration);
+        return new DrowningDebuff(duration);
       case DebuffType.TURBULENCE:
-        return new (require('../effects/debuffs').TurbulenceDebuff)(duration);
+        return new TurbulenceDebuff(duration);
+
+      // 电属性Debuff
+      case DebuffType.STATIC:
+        return new StaticDebuff(duration);
+      case DebuffType.ELECTRIC_SHOCK:
+        return new ElectricShockDebuff(duration);
+
+      // 超能属性Debuff
+      case DebuffType.MIND_WOUND:
+        return new MindWoundDebuff(duration);
+      case DebuffType.FORBIDDEN:
+        return new ForbiddenDebuff(duration);
+
+      // 草属性Debuff
+      case DebuffType.TANGLE:
+        return new TangleDebuff(stacks, duration);
+      case DebuffType.PARASITE:
+        return new ParasiteDebuff(duration);
+      case DebuffType.LEAF_MARK:
+        return new LeafMarkDebuff(duration);
+      case DebuffType.PARASITE_MARK:
+        return new ParasiteMarkDebuff(duration);
+
       default:
+        console.warn(`未处理的DebuffType: ${debuffType}`);
         return null;
     }
   }
@@ -378,28 +549,72 @@ export class BattleManager {
    * 结束回合
    */
   private endTurn(): void {
+    // 处理临时属性效果的持续时间
+    this.processTempStatEffects();
+
     // 玩家单位回合结束
     for (const player of this.players) {
       player.onTurnEnd();
     }
-    
+
     // 敌人单位回合结束
     for (const enemy of this.enemies) {
       enemy.onTurnEnd();
     }
-    
+
     this.onTurnEnd?.(this.currentTurn);
     this.emit({ type: BattleEventType.TURN_END });
     this.addLog('turn_end', `第${this.currentTurn}回合结束`);
-    
+
     // 检查胜负
     if (this.checkBattleEnd()) {
       return;
     }
-    
+
     // 进入下一回合
     this.setPhase(BattlePhase.PLAYER_TURN);
     this.startTurn();
+  }
+
+  /**
+   * 处理临时属性效果的持续时间
+   */
+  private processTempStatEffects(): void {
+    const expiredEffects: TempStatEffect[] = [];
+
+    for (const effect of this.tempStatEffects) {
+      effect.remainingTurns--;
+
+      if (effect.remainingTurns <= 0) {
+        expiredEffects.push(effect);
+      }
+    }
+
+    // 移除过期效果的属性变化
+    for (const effect of expiredEffects) {
+      this.tempStatEffects = this.tempStatEffects.filter(e => e.id !== effect.id);
+
+      // 找到目标单位并移除属性效果
+      const target = [...this.players, ...this.enemies].find(u => u.id === effect.targetId);
+      if (target) {
+        target.modifyStat(effect.stat, -effect.stages);
+
+        const statNames: Record<string, string> = {
+          'attack': '攻击',
+          'defense': '防御',
+          'spAttack': '特攻',
+          'spDefense': '特防',
+          'speed': '速度'
+        };
+        const direction = effect.stages > 0 ? '提升' : '下降';
+
+        this.addLog(
+          'buff_expired',
+          `${target.name} 的 ${statNames[effect.stat]}${direction} 效果结束`,
+          `${statNames[effect.stat]}恢复`
+        );
+      }
+    }
   }
   
   // ==================== 玩家行动 ====================
@@ -496,6 +711,20 @@ export class BattleManager {
       }
     }
 
+    // 检查铁壁状态 - 铁壁状态下无法使用攻击技能
+    if (isAttackSkill) {
+      const ironWallBuff = player.buffs.find(b => b.type === BuffType.IRON_WALL);
+      if (ironWallBuff) {
+        const ironWall = ironWallBuff as any;
+        if (ironWall.isAttackBlocked && ironWall.isAttackBlocked()) {
+          return { success: false, message: '铁壁状态下无法使用攻击技能' };
+        }
+      }
+    }
+
+    // 获取当前能量（用于蓄焰等效果计算，在消耗能量之前）
+    const currentEnergy = player.energy;
+
     // 消耗能量
     const energyCost = skill.getEnergyConsumption();
     player.energy -= energyCost;
@@ -509,50 +738,121 @@ export class BattleManager {
         const target = this.enemies.find(e => e.id === targetId);
         if (target) {
           const damageType = effect.damage.damageType === DamageType.SPECIAL ? 'special' : 'physical';
-          
-          // 检查破冰机制（ice_shatter技能）
-          let finalPower = effect.damage.basePower;
-          let isShatterHit = false;
-          const isTargetFrozen = this.isTargetFrozen(target);
-          
-          if (effect.special?.type === 'ice_shatter' && isTargetFrozen) {
-            // 破冰斩对冻结目标+80%伤害
-            finalPower = Math.floor(effect.damage.basePower * (effect.special.value || 1.8));
-            isShatterHit = true;
-            results.push(`【破冰】伤害提升至${finalPower}`);
+          const hitCount = effect.damage.hits || 1;  // 多段伤害次数，默认1次
+
+          // 条件增伤判定：目标无状态时增加20威力（落石技能）
+          let actualPower = effect.damage.basePower;
+          if (target.hasNoStatus()) {
+            actualPower += 20;
+            results.push(`【纯净目标】威力+20`);
           }
-          
-          const damage = player.calculateDamage(
-            finalPower,
-            target,
-            damageType,
-            effect.damage.element
-          );
-          const actualDamage = target.takeDamage(damage, damageType);
-          results.push(`造成 ${actualDamage} 点伤害`);
 
-          // 检查反制效果
-          this.triggerOnDamagedEffects(target, player);
+          // 蓄焰buff检查：火属性攻击时，根据当前能量增加威力
+          if (effect.damage.element === ElementType.FIRE) {
+            const flameChargeBuff = player.buffs.find(b => b.type === BuffType.FLAME_CHARGE);
+            if (flameChargeBuff) {
+              const flameCharge = flameChargeBuff as any;
+              const extraDamage = flameCharge.getExtraDamage ? flameCharge.getExtraDamage(currentEnergy) : 0;
+              if (extraDamage > 0) {
+                actualPower += extraDamage;
+                results.push(`【蓄焰】威力+${extraDamage}`);
+                // 消耗蓄焰效果
+                if (flameCharge.consume) {
+                  flameCharge.consume();
+                }
+              }
+            }
 
-          // 冻结相关处理
-          if (effect.applyDebuff?.debuffType === 'freeze' || effect.applyDebuff?.debuffType === 'deep_freeze') {
-            const freezeChance = this.calculateFreezeChance(effect.applyDebuff.successRate || 0.2, target);
-            if (Math.random() < freezeChance) {
-              this.applyFreezeDebuff(target, effect.applyDebuff.debuffType === 'deep_freeze' ? 'deep_freeze' : 'freeze');
-              results.push('目标被冻结！');
+            // 烈焰护体buff检查：下次火属性攻击威力+40
+            const flameBodyBuff = player.buffs.find(b => b.type === BuffType.FLAME_BODY);
+            if (flameBodyBuff) {
+              const flameBody = flameBodyBuff as any;
+              if (flameBody.isActive && flameBody.isActive() && flameBody.getExtraDamage) {
+                const extraDamage = flameBody.getExtraDamage();
+                if (extraDamage > 0) {
+                  actualPower += extraDamage;
+                  results.push(`【烈焰护体】威力+${extraDamage}`);
+                  // 消耗烈焰护体效果
+                  flameBody.consume();
+                }
+              }
             }
           }
 
-          // 破冰成功后触发碎冰追击
-          if (isShatterHit && isTargetFrozen) {
-            const shatterFollowUpDamage = 40;
-            const followUpActualDamage = target.takeDamage(shatterFollowUpDamage, 'special');
-            results.push(`【碎冰追击】追加 ${followUpActualDamage} 点伤害`);
+          let totalDamage = 0;
+
+          // 多段伤害处理
+          for (let hit = 1; hit <= hitCount; hit++) {
+            const damage = player.calculateDamage(
+              actualPower,
+              target,
+              damageType,
+              effect.damage.element
+            );
+            const actualDamage = target.takeDamage(damage, damageType);
+            totalDamage += actualDamage;
+            
+            // 只有多段伤害才显示次数，单段不显示
+            if (hitCount > 1) {
+              results.push(`第${hit}击: ${actualDamage}伤害`);
+            }
+            
+            // 每次命中判定冻结效果
+            if (effect.applyDebuff?.debuffType === 'freeze') {
+              const freezeChance = this.calculateFreezeChance(effect.applyDebuff.successRate || 0.2, target);
+              if (Math.random() < freezeChance) {
+                this.applyFreezeDebuff(target);
+                results.push('目标被冻结！');
+                break;  // 冻结后停止后续攻击判定
+              }
+            }
+            
+            // 每次命中25%概率攻击+1级
+            if (hitCount > 1 && Math.random() < 0.25) {
+              player.modifyStat('attack', 1);
+              results.push(`【攻击蓄力】攻击+1级`);
+            }
+            
+            // 检查反制效果
+            this.triggerOnDamagedEffects(target, player);
+
+            // 检查震荡护体的眩晕效果
+            const quakeBodyBuff = player.buffs.find(b => b.type === BuffType.QUAKE_BODY);
+            if (quakeBodyBuff) {
+              const quakeBody = quakeBodyBuff as any;
+              if (quakeBody.getStunChance && Math.random() < quakeBody.getStunChance()) {
+                const stunDebuff = new StunDebuff(1);
+                target.addDebuff(stunDebuff);
+                results.push('目标被眩晕！');
+              }
+            }
+
+            // 检查目标死亡
+            if (target.isDead) {
+              this.handleUnitDeath(target);
+              break;
+            }
           }
 
-          // 检查目标死亡
-          if (target.isDead) {
-            this.handleUnitDeath(target);
+          // 多段伤害灼烧判定：在所有攻击命中后判定一次灼烧（烈焰拳等技能效果）
+          if (effect.applyDebuff?.debuffType === 'burn') {
+            const burnDebuff = effect.applyDebuff;
+            const successRate = burnDebuff.successRate ?? 0.5;
+            const stacks = burnDebuff.stacks ?? 1;
+            const duration = burnDebuff.duration ?? 3;
+
+            if (Math.random() < successRate) {
+              const newBurnDebuff = new BurnDebuff(duration, stacks);
+              target.addDebuff(newBurnDebuff);
+              results.push(`目标陷入灼烧（${stacks}层）`);
+            }
+          }
+
+          // 单段伤害显示总伤害
+          if (hitCount === 1) {
+            results.push(`造成 ${totalDamage} 点伤害`);
+          } else {
+            results.push(`累计造成 ${totalDamage} 点伤害`);
           }
         }
       }
@@ -591,6 +891,19 @@ export class BattleManager {
             : effect.healing.amount;
           const actualHeal = target.heal(healAmount);
           results.push(`回复 ${actualHeal} HP`);
+        }
+      }
+
+      // 处理属性强化效果
+      // stages > 0：对自身施放强化；stages < 0：对目标施放削弱
+      if (effect.statBoost) {
+        const isDebuff = effect.statBoost.stages < 0;
+        const statTarget = isDebuff
+          ? this.findSkillTarget(player, skill.definition.target, targetId)
+          : player;
+        if (statTarget) {
+          const statResult = this.applyStatBoost(statTarget, effect.statBoost);
+          results.push(statResult);
         }
       }
     }
@@ -715,6 +1028,44 @@ export class BattleManager {
       }
     }
 
+    // 检查火盾效果 - 受伤时对攻击者附加灼烧（1层）
+    const fireShieldBuff = target.buffs.find(b => b.type === BuffType.FIRE_SHIELD);
+    if (fireShieldBuff) {
+      const fireShield = fireShieldBuff as any;
+      if (fireShield.remainingDuration > 0) {
+        const burnDebuff = new BurnDebuff(1, 1);
+        attacker.addDebuff(burnDebuff);
+        this.addLog(
+          'counter_effect',
+          `${target.name} 的火盾触发`,
+          `对 ${attacker.name} 附加灼烧（1层）`
+        );
+      }
+    }
+
+    // 检查灼热反击效果 - 受伤时反弹50%火属性伤害
+    const heatCounterBuff = target.buffs.find(b => b.type === BuffType.HEAT_COUNTER);
+    if (heatCounterBuff) {
+      const heatCounter = heatCounterBuff as HeatCounterBuff;
+      if (heatCounter.remainingDuration > 0) {
+        // 反弹伤害 = 受到伤害的50%，作为火属性特殊伤害
+        const counterDamage = Math.floor(target.lastDamageTaken * heatCounter.counterPercent);
+        if (counterDamage > 0) {
+          const actualDamage = attacker.takeDamage(counterDamage, 'special');
+          this.addLog(
+            'counter_effect',
+            `${target.name} 的灼热反击触发`,
+            `对 ${attacker.name} 反弹 ${actualDamage} 点火属性伤害`
+          );
+          // 触发攻击者的反制效果
+          this.triggerOnDamagedEffects(attacker, target);
+          if (attacker.isDead) {
+            this.handleUnitDeath(attacker);
+          }
+        }
+      }
+    }
+
     // 检查冻结状态 - 受伤时解除冻结（绝对冻结除外）
     this.tryThawOnDamage(target);
   }
@@ -724,9 +1075,7 @@ export class BattleManager {
    */
   isTargetFrozen(target: CombatUnit): boolean {
     return target.debuffs.some(d =>
-      d.type === DebuffType.FREEZE ||
-      d.type === DebuffType.DEEP_FREEZE ||
-      d.type === DebuffType.ABSOLUTE_FREEZE
+      d.type === DebuffType.FREEZE
     );
   }
 
@@ -746,25 +1095,16 @@ export class BattleManager {
 
   /**
    * 应用冻结debuff
+   * 当前只支持普通冻结(freeze)
    */
-  applyFreezeDebuff(target: CombatUnit, freezeType: 'freeze' | 'deep_freeze' | 'absolute_freeze'): void {
+  applyFreezeDebuff(target: CombatUnit, freezeType: 'freeze' | 'deep_freeze' | 'absolute_freeze' = 'freeze'): void {
+    // 移除已有的冻结状态
     target.debuffs = target.debuffs.filter(d =>
-      d.type !== DebuffType.FREEZE &&
-      d.type !== DebuffType.DEEP_FREEZE &&
-      d.type !== DebuffType.ABSOLUTE_FREEZE
+      d.type !== DebuffType.FREEZE
     );
 
-    let debuff: FreezeDebuff | DeepFreezeDebuff | AbsoluteFreezeDebuff;
-    switch (freezeType) {
-      case 'deep_freeze':
-        debuff = new DeepFreezeDebuff();
-        break;
-      case 'absolute_freeze':
-        debuff = new AbsoluteFreezeDebuff();
-        break;
-      default:
-        debuff = new FreezeDebuff();
-    }
+    // 应用普通冻结
+    const debuff = new FreezeDebuff();
     target.addDebuff(debuff);
   }
 
@@ -773,11 +1113,12 @@ export class BattleManager {
    */
   private tryThawOnDamage(target: CombatUnit): void {
     const freezeDebuff = target.debuffs.find(d =>
-      d.type === DebuffType.FREEZE || d.type === DebuffType.DEEP_FREEZE
-    ) as FreezeDebuff | DeepFreezeDebuff | undefined;
+      d.type === DebuffType.FREEZE
+    );
 
-    if (freezeDebuff && freezeDebuff.tryThaw) {
-      if (freezeDebuff.tryThaw()) {
+    if (freezeDebuff && 'tryThaw' in freezeDebuff && typeof freezeDebuff.tryThaw === 'function') {
+      const result = (freezeDebuff as any).tryThaw();
+      if (result) {
         target.debuffs = target.debuffs.filter(d => d !== freezeDebuff);
         this.addLog(
           'freeze_thaw',
@@ -1123,9 +1464,68 @@ export class BattleManager {
       targetId: target.id
     });
   }
-  
+
+  // ==================== 属性强化处理 ====================
+
+  /**
+   * 应用属性强化效果
+   */
+  private applyStatBoost(
+    target: CombatUnit,
+    statBoost: { stat: 'attack' | 'defense' | 'spAttack' | 'spDefense' | 'speed'; stages: number; duration?: number }
+  ): string {
+    const statNames: Record<string, string> = {
+      'attack': '攻击',
+      'defense': '防御',
+      'spAttack': '特攻',
+      'spDefense': '特防',
+      'speed': '速度'
+    };
+
+    const statKey = statBoost.stat;
+    const stages = statBoost.stages;
+    const duration = statBoost.duration ?? 0;
+    const statName = statNames[statKey] || statKey;
+
+    if (duration > 0) {
+      // 临时效果：带持续时间
+      const effect: TempStatEffect = {
+        id: crypto.randomUUID(),
+        targetId: target.id,
+        stat: statKey,
+        stages: stages,
+        remainingTurns: duration
+      };
+      this.tempStatEffects.push(effect);
+      target.modifyStat(statKey, stages);
+
+      const direction = stages > 0 ? '提升' : '下降';
+      const result = `${target.name} ${statName}${direction} ${Math.abs(stages)}级（持续${duration}回合）`;
+
+      this.emit({
+        type: BattleEventType.BUFF_ADDED,
+        targetId: target.id
+      });
+
+      return result;
+    } else {
+      // 永久效果（无持续时间）
+      target.modifyStat(statKey, stages);
+
+      const direction = stages > 0 ? '提升' : '下降';
+      const result = `${target.name} ${statName}${direction} ${Math.abs(stages)}级`;
+
+      this.emit({
+        type: BattleEventType.BUFF_ADDED,
+        targetId: target.id
+      });
+
+      return result;
+    }
+  }
+
   // ==================== 死亡处理 ====================
-  
+
   /**
    * 处理单位死亡
    */
@@ -1135,13 +1535,13 @@ export class BattleManager {
       `${unit.name} 阵亡`,
       ''
     );
-    
+
     this.emit({
       type: BattleEventType.UNIT_DIED,
       targetId: unit.id
     });
   }
-  
+
   // ==================== 胜负判定 ====================
   
   /**

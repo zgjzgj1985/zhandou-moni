@@ -29,43 +29,54 @@ export interface SkillEffect {
       multiplier: number; // 倍率，如2表示克制时伤害翻倍
     };
   };
-  
+
   // 治疗效果
   healing?: {
     amount: number;
     percent?: number;     // 百分比治疗
   };
-  
+
   // 护盾效果
   shield?: {
     amount: number;
     duration?: number;    // 持续回合，默认999（整场）
   };
-  
+
   // Buff效果
   applyBuff?: {
-    buffType: BuffType;
+    buffType: BuffType | string;
     duration?: number;
     stacks?: number;
     value?: number;       // 效果值（如护盾量、增伤比例等）
   };
-  
-  // Debuff效果
+
+  // Debuff效果（单体）
   applyDebuff?: {
-    debuffType: DebuffType;
+    debuffType: DebuffType | string;
     duration?: number;
     stacks?: number;
+    maxStacks?: number;  // 最大层数（如冰霜3层触发冻结）
     successRate?: number; // 命中率/触发率
     value?: number;       // 效果值（如伤害百分比等）
   };
-  
+
+  // Debuff效果（群体）
+  applyDebuffAll?: {
+    debuffType: DebuffType | string;
+    duration?: number;
+    stacks?: number;
+    maxStacks?: number;  // 最大层数
+    successRate?: number; // 命中率/触发率
+    value?: number;
+  };
+
   // 状态提升效果（速度、攻击等）
   statBoost?: {
     stat: 'attack' | 'defense' | 'spAttack' | 'spDefense' | 'speed';
     stages: number;
     duration?: number;
   };
-  
+
   // 蓄力效果
   charge?: {
     turns: number;
@@ -77,7 +88,7 @@ export interface SkillEffect {
     turns: number;          // 延迟回合数
     effect: SkillEffect;    // 延迟触发的效果
   };
-  
+
   // 特殊效果
   special?: {
     type: 'reflect' | 'counter' | 'drain' | 'chain' | 'cleanse' | 'consume_buff_heal' | 'delay_damage' | 'water_shield_counter' | 'counter_slow' | 'static_charge' | 'chain_damage' | 'extra_attack_damage' | 'ice_shatter' | 'shatter_follow_up';

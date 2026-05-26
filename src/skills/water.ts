@@ -12,29 +12,14 @@
 
 import {
   Skill,
-  SkillDefinition,
-  SkillEffect
+  SkillDefinition
 } from './Skill';
 import {
   SkillTarget,
   DamageType,
   ElementType,
-  EnergyCost,
-  SkillTendency,
-  SKILL_TENDENCY_TEXT,
-  getEnergyCostText
+  SkillTendency
 } from '../types';
-import {
-  Buff,
-  Debuff,
-  WaterShieldBuff,
-  HealOverTimeBuff,
-  FlowBuff,
-  DrowningDebuff,
-  SlowDebuff,
-  WetDebuff
-} from '../effects';
-import { CombatUnit } from '../battle/CombatUnit';
 
 // ==================== 攻击倾向技能（4种）====================
 
@@ -59,7 +44,7 @@ export const WATER_JET: Skill = (() => {
         element: ElementType.WATER
       },
       applyDebuff: {
-        debuffType: 'wet' as any,
+        debuffType: 'wet',
         duration: 3,
         stacks: 1,
         successRate: 1.0
@@ -92,7 +77,7 @@ export const HYDRO_PUMP: Skill = (() => {
         element: ElementType.WATER
       },
       applyDebuff: {
-        debuffType: 'slow' as any,
+        debuffType: 'slow',
         duration: 2,
         stacks: 1,
         successRate: 1.0
@@ -129,7 +114,7 @@ export const TORRENT_CRASH: Skill = (() => {
         }
       },
       applyDebuff: {
-        debuffType: 'drowning' as any,
+        debuffType: 'drowning',
         duration: 3,
         stacks: 1,
         successRate: 1.0
@@ -196,7 +181,7 @@ export const ABYSS_VORTEX: Skill = (() => {
         element: ElementType.WATER
       },
       applyDebuff: {
-        debuffType: 'turbulence' as any,
+        debuffType: 'turbulence',
         duration: 2,
         stacks: 1,
         successRate: 1.0
@@ -257,7 +242,7 @@ export const CLEAR_SPRING: Skill = (() => {
     tendency: SkillTendency.DEFENSE,
     effects: [{
       applyBuff: {
-        buffType: 'clear_spring' as any,
+        buffType: 'clear_spring',
         duration: 3,
         value: 0.1  // 10%治疗
       },
@@ -288,7 +273,7 @@ export const VORTEX_BARRIER: Skill = (() => {
     tendency: SkillTendency.DEFENSE,
     effects: [{
       applyBuff: {
-        buffType: 'vortex_body' as any,
+        buffType: 'vortex_body',
         duration: 2,
         value: 0.6  // 60%减伤
       },
@@ -348,7 +333,7 @@ export const AQUA_THERAPY: Skill = (() => {
         percent: 0.15
       },
       applyBuff: {
-        buffType: 'flow' as any,
+        buffType: 'flow',
         duration: 2,
         value: 1  // 速度+1级
       }
@@ -384,7 +369,7 @@ export const TIDAL_SURGE: Skill = (() => {
           element: ElementType.WATER
         },
         applyDebuff: {
-          debuffType: 'wet' as any,
+          debuffType: 'wet',
           duration: 3,
           stacks: 1,
           successRate: 1.0

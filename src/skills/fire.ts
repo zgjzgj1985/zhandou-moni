@@ -12,32 +12,14 @@
 
 import {
   Skill,
-  SkillDefinition,
-  SkillEffect
+  SkillDefinition
 } from './Skill';
 import {
   SkillTarget,
   DamageType,
   ElementType,
-  EnergyCost,
-  SkillTendency,
-  SKILL_TENDENCY_TEXT,
-  getEnergyCostText,
-  BuffType
+  SkillTendency
 } from '../types';
-import {
-  Buff,
-  Debuff,
-  BurnDebuff,
-  ChargeBuff,
-  FireShieldBuff,
-  WallOfFireBuff,
-  HeatCounterBuff,
-  FlameChargeBuff,
-  CombustionBuff,
-  BlazeWillBuff
-} from '../effects';
-import { CombatUnit } from '../battle/CombatUnit';
 
 // ==================== 攻击倾向技能（4种）====================
 
@@ -57,7 +39,7 @@ export const EMBER: Skill = (() => {
     tendency: SkillTendency.ATTACK,
     effects: [{
       applyDebuff: {
-        debuffType: 'burn' as any,
+        debuffType: 'burn',
         duration: 3,
         stacks: 5,
         successRate: 1.0
@@ -72,14 +54,14 @@ export const EMBER: Skill = (() => {
 /**
  * 【攻击倾向2】烈焰拳
  * 连击3次火属性攻击，每次25威力，共75威力（物理伤害类型）
- * 每次命中25%概率使目标陷入「灼烧」状态（1层）
+ * 攻击结束后50%概率使目标陷入「灼烧」状态（2层）
  * 每层灼烧回合结束时造成2%最大生命伤害，层数减半
  */
 export const FLAME_PUNCH: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'flame_punch',
     name: '烈焰拳',
-    description: '连续3次火属性攻击（共75威力），每次命中50%概率灼烧（2层）【每层2%最大HP伤害，层数减半】',
+    description: '连续3次火属性攻击（共75威力），攻击结束后50%概率灼烧（2层）【每层2%最大HP伤害，层数减半】',
     type: 'action',
     energyCost: 2,
     target: SkillTarget.SINGLE,
@@ -92,7 +74,7 @@ export const FLAME_PUNCH: Skill = (() => {
         hits: 3
       },
       applyDebuff: {
-        debuffType: 'burn' as any,
+        debuffType: 'burn',
         duration: 3,
         stacks: 2,
         successRate: 0.5
@@ -125,7 +107,7 @@ export const FLARE_BLITZ: Skill = (() => {
         element: ElementType.FIRE
       },
       applyDebuff: {
-        debuffType: 'burn_mark' as any,
+        debuffType: 'burn_mark',
         duration: 2,
         stacks: 1
       }
@@ -161,7 +143,7 @@ export const EXPLOSION_FLAME: Skill = (() => {
         element: ElementType.FIRE
       },
       applyDebuff: {
-        debuffType: 'burn' as any,
+        debuffType: 'burn',
         duration: 3,
         stacks: 4,
         successRate: 1.0  // 必定灼伤
@@ -191,7 +173,7 @@ export const FIRE_SHIELD_SKILL: Skill = (() => {
     tendency: SkillTendency.DEFENSE,
     effects: [{
       applyBuff: {
-        buffType: BuffType.FIRE_SHIELD as any,
+        buffType: 'fire_shield',
         duration: 1,
         value: 0.55  // 55%减伤
       }
@@ -203,28 +185,32 @@ export const FIRE_SHIELD_SKILL: Skill = (() => {
 })();
 
 /**
- * 【防御倾向2】烈焰壁垒
- * 获得「烈焰壁垒」状态，持续2回合
- * 烈焰壁垒：对草/冰属性伤害抗性+30%
+ * 【防御倾向2】烈火护体
+ * 获得「烈焰护体」状态
+ * 烈焰护体：受到伤害降低70%，下次火属性攻击威力+40
  */
 export const WALL_OF_FLAMES: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'wall_of_flames',
-    name: '烈焰壁垒',
-    description: '对草/冰属性伤害抗性+30%（持续2回合）',
+    name: '烈火护体',
+    description: '受到伤害降低70%，下次火属性攻击威力+40',
     type: 'action',
     energyCost: 3,
     target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
     effects: [{
       applyBuff: {
-        buffType: BuffType.WALL_OF_FIRE as any,
+        buffType: 'flame_body',
         duration: 2,
-        value: 0.3  // 30%抗性
+        value: 0.7  // 70%减伤
+      },
+      special: {
+        type: 'extra_attack_damage',
+        value: 40  // 下次火攻+40威力
       }
     }],
     category: '火属性爆发流·防御',
-    tags: ['火', '爆发流', '防御', '减伤', '抗性']
+    tags: ['火', '爆发流', '防御', '减伤', '火攻强化']
   };
   return new Skill(definition);
 })();
@@ -245,7 +231,7 @@ export const HEAT_COUNTER: Skill = (() => {
     tendency: SkillTendency.DEFENSE,
     effects: [{
       applyBuff: {
-        buffType: 'heat_counter' as any,
+        buffType: 'heat_counter',
         duration: 2
       },
       special: {
@@ -264,27 +250,27 @@ export const HEAT_COUNTER: Skill = (() => {
 /**
  * 【辅助倾向1】蓄焰
  * 为己方单体施加「蓄焰」状态
- * 蓄焰：下次火属性攻击威力+50%
+ * 蓄焰：下次火属性攻击威力+（自身能量×10）
  * 持续3回合
  */
 export const FLAME_CHARGE_SKILL: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'flame_charge_skill',
     name: '蓄焰',
-    description: '为己方单体施加「蓄焰」（持续3回合），下次火属性攻击威力+50%',
+    description: '为己方单体施加「蓄焰」（持续3回合），下次火属性攻击威力+（自身能量×10）',
     type: 'action',
     energyCost: 2,
     target: SkillTarget.ALLY,
     tendency: SkillTendency.SUPPORT,
     effects: [{
       applyBuff: {
-        buffType: 'flame_charge' as any,
+        buffType: 'flame_charge',
         duration: 3,
-        value: 0.5  // 50%增伤
+        value: 10  // 每点能量+10威力
       }
     }],
     category: '火属性爆发流·辅助',
-    tags: ['火', '爆发流', '辅助', '增伤', '爆发准备']
+    tags: ['火', '爆发流', '辅助', '能量增伤', '爆发准备']
   };
   return new Skill(definition);
 })();
@@ -305,7 +291,7 @@ export const COMBUSTION: Skill = (() => {
     tendency: SkillTendency.SUPPORT,
     effects: [{
       applyDebuff: {
-        debuffType: 'combustion_mark' as any,
+        debuffType: 'combustion_mark',
         duration: 3,
         value: 0.3  // 30%当前HP
       }
@@ -319,27 +305,29 @@ export const COMBUSTION: Skill = (() => {
 /**
  * 【辅助倾向3】炎之意志
  * 为己方全体施加「炎之意志」
- * 持续2回合：攻击力+1级，速度+1级，火属性伤害+15%
+ * 持续2回合：攻击力+1级，速度+1级，火属性伤害+25%
  */
 export const BLAZE_WILL: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'blaze_will',
     name: '炎之意志',
-    description: '为己方全体施加「炎之意志」（持续2回合）：攻击+1级，速度+1级，火属性伤害+15%',
+    description: '为己方全体施加「炎之意志」（持续2回合）：攻击+1级，速度+1级，火属性伤害+25%',
     type: 'action',
     energyCost: 5,
     target: SkillTarget.ALLY_ALL,
     tendency: SkillTendency.SUPPORT,
     effects: [{
       applyBuff: {
-        buffType: 'blaze_will' as any,
+        buffType: 'blaze_will',
         duration: 2
-      },
+      }
+    }, {
       statBoost: {
         stat: 'attack',
         stages: 1,
         duration: 2
-      },
+      }
+    }, {
       statBoost: {
         stat: 'speed',
         stages: 1,

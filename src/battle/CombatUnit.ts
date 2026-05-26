@@ -12,7 +12,7 @@ import {
   BuffType,
   DebuffType
 } from '../types';
-import { Buff } from '../effects/buffs';
+import { Buff, BlazeWillBuff } from '../effects/buffs';
 import { Debuff } from '../effects/debuffs';
 import { Trait } from '../skills/traits';
 
@@ -71,6 +71,9 @@ export abstract class CombatUnit {
   
   // 护盾
   shield: number;
+
+  // 上次受到的伤害（用于反击类效果计算）
+  lastDamageTaken: number;
 
   // 属性抗性 { fire: 0.3, water: 0, ice: -0.2 } 正数=减伤，负数=增伤
   resistances: Record<string, number>;
@@ -154,7 +157,18 @@ export abstract class CombatUnit {
     };
     return calculateActualSpeed(actualSpeed);
   }
-  
+
+  /**
+   * 修改能力等级
+   * @param stat 属性名称
+   * @param amount 变化量（正数提升，负数下降）
+   */
+  modifyStat(stat: 'attack' | 'defense' | 'spAttack' | 'spDefense' | 'speed', amount: number): void {
+    const oldValue = this.stages[stat];
+    const newValue = Math.max(-6, Math.min(6, oldValue + amount));
+    this.stages[stat] = newValue;
+  }
+
   // ==================== HP管理 ====================
 
   /**
@@ -175,7 +189,14 @@ export abstract class CombatUnit {
 
     // 应用防御Buff的减伤效果
     const damageReductionBuff = this.buffs.find(b =>
-      b.type === 'vine_body' || b.type === 'life_body' || b.type === 'ice_armor'
+      b.type === BuffType.VINE_BODY ||
+      b.type === BuffType.LIFE_BODY ||
+      b.type === BuffType.ICE_ARMOR ||
+      b.type === BuffType.ROCK_ARMOR ||
+      b.type === BuffType.IRON_WALL ||
+      b.type === BuffType.QUAKE_BODY ||
+      b.type === BuffType.FLAME_BODY ||
+      b.type === BuffType.FIRE_SHIELD
     );
     if (damageReductionBuff) {
       const reduction = (damageReductionBuff as any).getDamageReduction?.() ?? 0;
@@ -188,6 +209,9 @@ export abstract class CombatUnit {
     if (actualDamage > 0) {
       this.currentHp = Math.max(0, this.currentHp - actualDamage);
     }
+
+    // 记录受到的伤害（用于反击类效果计算）
+    this.lastDamageTaken = actualDamage;
 
     // 检查死亡
     if (this.currentHp <= 0) {
@@ -230,13 +254,17 @@ export abstract class CombatUnit {
   
   /**
    * 添加Buff
+   * @param buff 要添加的Buff实例
+   * @param maxStacks 最大叠加层数（可选，用于可叠加Buff）
    */
-  addBuff(buff: Buff): void {
-    // 检查是否可叠加
+  addBuff(buff: Buff, maxStacks?: number): void {
     const existing = this.buffs.find(b => b.type === buff.type);
     if (existing) {
-      existing.stacks += buff.stacks;
-      existing.remainingDuration = buff.duration;
+      // 对于可叠加的Buff（如PowerBuff、GrowthBuff等），增加层数
+      const effectiveMaxStacks = maxStacks ?? existing.stacks + buff.stacks;
+      existing.stacks = Math.min(existing.stacks + buff.stacks, effectiveMaxStacks);
+      // 更新持续时间（取较长的持续时间）
+      existing.remainingDuration = Math.max(existing.remainingDuration, buff.remainingDuration);
     } else {
       this.buffs.push(buff);
     }
@@ -340,10 +368,10 @@ export abstract class CombatUnit {
   ): number {
     const attack = this.getActualAttack(damageType);
     const defense = target.getActualDefense(damageType);
-    
+
     // 基础伤害公式（简化版）
     let damage = Math.floor((this.level * 2 / 5 + 2) * basePower * attack / defense / 50) + 2;
-    
+
     // 属性克制
     if (element && target.elements.length > 0) {
       const multiplier = getTypeMultiplier(element, target.elements);
@@ -353,6 +381,18 @@ export abstract class CombatUnit {
     // 属性抗性（抗性为正数时减少伤害）
     if (element && target.resistances[element] > 0) {
       damage = Math.floor(damage * (1 - target.resistances[element]));
+    }
+
+    // 火属性伤害加成（炎之意志等Buff）
+    if (element === ElementType.FIRE) {
+      const blazeWillBuff = this.buffs.find(b => b.type === BuffType.BLAZE_WILL);
+      if (blazeWillBuff) {
+        const blazeWill = blazeWillBuff as BlazeWillBuff;
+        if (blazeWill.getFireDamageMultiplier) {
+          const multiplier = blazeWill.getFireDamageMultiplier();
+          damage = Math.floor(damage * multiplier);
+        }
+      }
     }
 
     // 考虑力量Buff
@@ -419,6 +459,14 @@ export abstract class CombatUnit {
     return this.resistances[element] ?? 0;
   }
   
+  /**
+   * 是否无任何状态（Buff和Debuff）
+   * 用于"落石"等技能的判定
+   */
+  hasNoStatus(): boolean {
+    return this.buffs.length === 0 && this.debuffs.length === 0;
+  }
+
   /**
    * 获取状态摘要
    */

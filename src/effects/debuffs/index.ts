@@ -232,91 +232,95 @@ export class SleepDebuff extends Debuff {
 }
 
 /**
- * 冰冻debuff
- * 完全无法行动，每回合25%概率解冻
+ * 冰冻debuff v4.0
+ * 完全无法行动，持续1回合，受到攻击时伤害×2
  */
 export class FreezeDebuff extends Debuff {
-  thawChance: number = 0.2;  // 设计文档要求20%解冻概率
-  
   constructor() {
-    super('冰冻', DebuffType.FREEZE, 1, 999);
+    super('冻结', DebuffType.FREEZE, 1, 1);  // 持续1回合
   }
-  
+
+  onDamaged(_unit: DebuffCombatUnit, _damage: number): void {
+    // 受伤不解冻，保持冻结状态
+  }
+
+  /**
+   * 尝试解冻（普通冻结有概率解冻）
+   * @returns 是否成功解冻
+   */
   tryThaw(): boolean {
-    if (Math.random() < this.thawChance) {
+    // 普通冻结30%概率自动解冻
+    if (Math.random() < 0.3) {
       this.remainingDuration = 0;
       this.stacks = 0;
       return true;
     }
     return false;
   }
-  
+
   forceThaw(): void {
     this.remainingDuration = 0;
     this.stacks = 0;
   }
-  
+
   clone(): FreezeDebuff {
     return new FreezeDebuff();
   }
 }
 
 /**
- * 深冻debuff：冰属性·冻结破冰流v3.0
- * 持续3回合，完全无法行动，每回合10%概率自动解冻
+ * 冰霜debuff v4.0：冰属性·冰霜蓄力流
+ * 每层冰霜使目标所有技能消耗+1能量
+ * 冰系技能命中叠加层数，达到3层时自动转化为冻结
  */
-export class DeepFreezeDebuff extends Debuff {
-  thawChance: number = 0.1;  // 设计文档要求10%解冻概率
+export class FrostDebuff extends Debuff {
+  maxStacks: number;
   
-  constructor() {
-    super('深冻', DebuffType.DEEP_FREEZE, 1, 3);  // 持续3回合
+  constructor(stacks: number = 1, duration: number = 999, maxStacks: number = 3) {
+    super('冰霜', DebuffType.FROST, stacks, duration);
+    this.maxStacks = maxStacks;
   }
-  
-  tryThaw(): boolean {
-    if (Math.random() < this.thawChance) {
-      this.remainingDuration = 0;
-      this.stacks = 0;
-      return true;
-    }
-    return false;
+
+  /**
+   * 获取冰霜代价（额外技能消耗）
+   */
+  getFrostCost(): number {
+    return this.stacks;
   }
-  
-  forceThaw(): void {
-    this.remainingDuration = 0;
+
+  /**
+   * 添加冰霜层数
+   * @returns 是否触发冻结（达到3层）
+   */
+  addStacks(amount: number): boolean {
+    this.stacks = Math.min(this.stacks + amount, this.maxStacks);
+    return this.stacks >= this.maxStacks;
+  }
+
+  /**
+   * 检查是否触发冻结
+   */
+  shouldFreeze(): boolean {
+    return this.stacks >= this.maxStacks;
+  }
+
+  /**
+   * 触发冻结后重置层数
+   */
+  triggerFreeze(): void {
     this.stacks = 0;
+    this.remainingDuration = 0;
   }
-  
-  clone(): DeepFreezeDebuff {
-    return new DeepFreezeDebuff();
+
+  clone(): FrostDebuff {
+    const cloned = new FrostDebuff(this.stacks, this.duration, this.maxStacks);
+    cloned.remainingDuration = this.remainingDuration;
+    return cloned;
   }
 }
 
 /**
- * 绝对冻结debuff：冰属性·冻结破冰流v3.0
- * 持续3回合，0%自动解冻概率，必须受伤才能解除
- */
-export class AbsoluteFreezeDebuff extends Debuff {
-  constructor() {
-    super('绝对冻结', DebuffType.ABSOLUTE_FREEZE, 1, 3);  // 持续3回合
-  }
-  
-  tryThaw(): boolean {
-    // 0%自解概率，必须受伤解除
-    return false;
-  }
-  
-  forceThaw(): void {
-    this.remainingDuration = 0;
-    this.stacks = 0;
-  }
-  
-  clone(): AbsoluteFreezeDebuff {
-    return new AbsoluteFreezeDebuff();
-  }
-}
-
-/**
- * 冰霜印记debuff：冰属性·冻结破冰流v3.0
+ * 冰霜印记debuff：冰属性·冰霜蓄力流
  * 下次受到冰属性攻击时，冻结概率+30%
  */
 export class FrostMarkDebuff extends Debuff {
@@ -774,6 +778,26 @@ export class ParasiteMarkDebuff extends Debuff {
   }
 }
 
+// ==================== 岩石属性·防御流专用Debuff ====================
+
+/**
+ * 眩晕debuff：岩石属性防御流
+ * 完全无法行动，持续1回合
+ */
+export class StunDebuff extends Debuff {
+  constructor(duration: number = 1) {
+    super('眩晕', DebuffType.STUN, 1, duration);
+  }
+
+  canAct(): boolean {
+    return false;
+  }
+
+  clone(): StunDebuff {
+    return new StunDebuff(this.remainingDuration);
+  }
+}
+
 /**
  * Debuff工厂函数
  */
@@ -799,6 +823,8 @@ export function createDebuff(
       return new SleepDebuff(1, 3);
     case DebuffType.FREEZE:
       return new FreezeDebuff();
+    case DebuffType.FROST:
+      return new FrostDebuff(stacks, duration);
     case DebuffType.CONFUSION:
       return new ConfusionDebuff(duration);
     case DebuffType.BIND:
@@ -810,11 +836,7 @@ export function createDebuff(
       return new IceSealDebuff(duration);
     case DebuffType.ICE_DOT:
       return new IceDotDebuff(duration);
-    // 冰属性·冻结破冰流v3.0专用Debuff
-    case DebuffType.DEEP_FREEZE:
-      return new DeepFreezeDebuff();
-    case DebuffType.ABSOLUTE_FREEZE:
-      return new AbsoluteFreezeDebuff();
+    // 冰属性·冰霜蓄力流专用Debuff
     case DebuffType.FROST_MARK:
       return new FrostMarkDebuff(duration);
     // 火属性爆发流专用Debuff
@@ -848,6 +870,9 @@ export function createDebuff(
       return new LeafMarkDebuff(duration);
     case DebuffType.PARASITE_MARK:
       return new ParasiteMarkDebuff(duration);
+    // 岩石属性防御流专用Debuff
+    case DebuffType.STUN:
+      return new StunDebuff(duration);
     default:
       throw new Error(`Unknown DebuffType: ${type}`);
   }
