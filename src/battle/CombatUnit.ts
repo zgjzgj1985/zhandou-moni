@@ -156,34 +156,45 @@ export abstract class CombatUnit {
   }
   
   // ==================== HP管理 ====================
-  
+
   /**
-   * 造成伤害
-   * @returns 实际受到的伤害（扣除护盾后）
+   * 受到伤害
+   * @returns 实际受到的伤害（扣除护盾和减伤后）
    */
   takeDamage(amount: number, damageType: 'physical' | 'special' = 'physical'): number {
     if (this.isDead) return 0;
-    
+
     let actualDamage = amount;
-    
+
     // 先扣护盾
     if (this.shield > 0) {
       const absorbed = Math.min(this.shield, actualDamage);
       this.shield -= absorbed;
       actualDamage -= absorbed;
     }
-    
+
+    // 应用防御Buff的减伤效果
+    const damageReductionBuff = this.buffs.find(b =>
+      b.type === 'vine_body' || b.type === 'life_body' || b.type === 'ice_armor'
+    );
+    if (damageReductionBuff) {
+      const reduction = (damageReductionBuff as any).getDamageReduction?.() ?? 0;
+      if (reduction > 0) {
+        actualDamage = Math.floor(actualDamage * (1 - reduction));
+      }
+    }
+
     // 护盾吸收不完，直接扣除HP
     if (actualDamage > 0) {
       this.currentHp = Math.max(0, this.currentHp - actualDamage);
     }
-    
+
     // 检查死亡
     if (this.currentHp <= 0) {
       this.currentHp = 0;
       this.isDead = true;
     }
-    
+
     return actualDamage;
   }
   

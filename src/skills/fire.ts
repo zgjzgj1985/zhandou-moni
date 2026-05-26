@@ -22,7 +22,8 @@ import {
   EnergyCost,
   SkillTendency,
   SKILL_TENDENCY_TEXT,
-  getEnergyCostText
+  getEnergyCostText,
+  BuffType
 } from '../types';
 import {
   Buff,
@@ -41,67 +42,64 @@ import { CombatUnit } from '../battle/CombatUnit';
 // ==================== 攻击倾向技能（4种）====================
 
 /**
- * 【攻击倾向1】火花
- * 基础火属性攻击，造成40威力伤害
- * 20%概率使目标陷入「灼伤」状态
+ * 【攻击倾向1】点燃
+ * 纯DOT技能，必定使目标陷入「灼烧」状态（5层）
+ * 每层灼烧回合结束时造成2%最大生命伤害，层数减半
  */
 export const EMBER: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'ember',
-    name: '火花',
-    description: '攻击单体目标，造成40威力火属性伤害，20%概率使目标灼伤（每回合损失HP，持续3回合）',
+    name: '点燃',
+    description: '对目标施加灼烧（5层）【每层2%最大HP伤害，层数减半】',
     type: 'action',
     energyCost: 1,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
     effects: [{
-      damage: {
-        basePower: 40,
-        damageType: DamageType.SPECIAL,
-        element: ElementType.FIRE
-      },
       applyDebuff: {
         debuffType: 'burn' as any,
         duration: 3,
-        stacks: 1,
-        successRate: 0.2
+        stacks: 5,
+        successRate: 1.0
       }
     }],
     category: '火属性爆发流·攻击',
-    tags: ['火', '爆发流', '攻击', '灼伤']
+    tags: ['火', '爆发流', '攻击', '灼烧']
   };
   return new Skill(definition);
 })();
 
 /**
  * 【攻击倾向2】烈焰拳
- * 中高威力火属性攻击，造成75威力伤害（物理伤害类型）
- * 30%概率使目标陷入「灼伤」状态
+ * 连击3次火属性攻击，每次25威力，共75威力（物理伤害类型）
+ * 每次命中25%概率使目标陷入「灼烧」状态（1层）
+ * 每层灼烧回合结束时造成2%最大生命伤害，层数减半
  */
 export const FLAME_PUNCH: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'flame_punch',
     name: '烈焰拳',
-    description: '攻击单体目标，造成75威力火属性伤害，30%概率使目标灼伤',
+    description: '连续3次火属性攻击（共75威力），每次命中50%概率灼烧（2层）【每层2%最大HP伤害，层数减半】',
     type: 'action',
     energyCost: 2,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
     effects: [{
       damage: {
-        basePower: 75,
+        basePower: 25,
         damageType: DamageType.PHYSICAL,
-        element: ElementType.FIRE
+        element: ElementType.FIRE,
+        hits: 3
       },
       applyDebuff: {
         debuffType: 'burn' as any,
         duration: 3,
-        stacks: 1,
-        successRate: 0.3
+        stacks: 2,
+        successRate: 0.5
       }
     }],
     category: '火属性爆发流·攻击',
-    tags: ['火', '爆发流', '攻击', '灼伤', '物理伤害']
+    tags: ['火', '爆发流', '攻击', '灼烧', '物理伤害', '连击3次']
   };
   return new Skill(definition);
 })();
@@ -142,13 +140,14 @@ export const FLARE_BLITZ: Skill = (() => {
  * 【攻击倾向4】爆炸烈焰
  * 终极爆发技能，蓄力1回合后造成150威力火属性伤害
  * 蓄力期间脆弱，若被攻击则技能取消
- * 攻击后使目标灼伤（必定生效）
+ * 攻击后使目标灼烧（必定生效，4层）
+ * 每层灼烧回合结束时造成2%最大生命伤害，层数减半
  */
 export const EXPLOSION_FLAME: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'explosion_flame',
     name: '爆炸烈焰',
-    description: '蓄力1回合后发动，造成150威力火属性伤害，必定使目标灼伤【蓄力可被打断】',
+    description: '蓄力1回合后发动，造成150威力火属性伤害，必定使目标灼烧（4层）【每层2%最大HP伤害，层数减半】【蓄力可被打断】',
     type: 'action',
     energyCost: 5,
     target: SkillTarget.SINGLE,
@@ -164,12 +163,12 @@ export const EXPLOSION_FLAME: Skill = (() => {
       applyDebuff: {
         debuffType: 'burn' as any,
         duration: 3,
-        stacks: 1,
+        stacks: 4,
         successRate: 1.0  // 必定灼伤
       }
     }],
     category: '火属性爆发流·攻击',
-    tags: ['火', '爆发流', '攻击', '终极', '蓄力', '必定灼伤']
+    tags: ['火', '爆发流', '攻击', '终极', '蓄力', '必定灼烧', '4层灼烧']
   };
   return new Skill(definition);
 })();
@@ -178,70 +177,54 @@ export const EXPLOSION_FLAME: Skill = (() => {
 
 /**
  * 【防御倾向1】火盾
- * 为己方单体生成50点护盾值
- * 护盾存在期间，若被攻击则对敌人造成30点火属性反伤
+ * 获得「烈焰护体」状态
+ * 烈焰护体：受到伤害降低55%，本回合受伤时对攻击者附加灼烧（1层）
  */
 export const FIRE_SHIELD_SKILL: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'fire_shield_skill',
     name: '火盾',
-    description: '为己方单体生成50点护盾（持续整场），受攻击时对敌人造成30点火属性反伤',
+    description: '受到伤害降低55%，本回合受伤时攻击者附加灼烧',
     type: 'action',
-    energyCost: 2,
-    target: SkillTarget.ALLY,
+    energyCost: 1,
+    target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
     effects: [{
-      shield: {
-        amount: 50,
-        duration: 999
-      },
       applyBuff: {
-        buffType: 'fire_shield' as any,
-        duration: 999
-      },
-      special: {
-        type: 'counter',
-        value: 30
+        buffType: BuffType.FIRE_SHIELD as any,
+        duration: 1,
+        value: 0.55  // 55%减伤
       }
     }],
     category: '火属性爆发流·防御',
-    tags: ['火', '爆发流', '防御', '护盾', '反伤']
+    tags: ['火', '爆发流', '防御', '减伤', '灼烧']
   };
   return new Skill(definition);
 })();
 
 /**
  * 【防御倾向2】烈焰壁垒
- * 为己方全体生成35点护盾，持续2回合
- * 护盾存在期间，对草属性和冰属性伤害抗性+30%
+ * 获得「烈焰壁垒」状态，持续2回合
+ * 烈焰壁垒：对草/冰属性伤害抗性+30%
  */
 export const WALL_OF_FLAMES: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'wall_of_flames',
     name: '烈焰壁垒',
-    description: '为己方全体生成35点护盾（持续2回合），期间对草/冰属性抗性+30%',
+    description: '对草/冰属性伤害抗性+30%（持续2回合）',
     type: 'action',
     energyCost: 3,
-    target: SkillTarget.ALLY_ALL,
+    target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
     effects: [{
-      shield: {
-        amount: 35,
-        duration: 2
-      },
-      resistance: {
-        element: 'grass',
-        value: 0.3,
-        duration: 2
-      },
-      resistance: {
-        element: 'ice',
-        value: 0.3,
-        duration: 2
+      applyBuff: {
+        buffType: BuffType.WALL_OF_FIRE as any,
+        duration: 2,
+        value: 0.3  // 30%抗性
       }
     }],
     category: '火属性爆发流·防御',
-    tags: ['火', '爆发流', '防御', '群体护盾', '属性抗性']
+    tags: ['火', '爆发流', '防御', '减伤', '抗性']
   };
   return new Skill(definition);
 })();

@@ -16,7 +16,9 @@ import {
   HEAT_COUNTER,
   FLAME_CHARGE_SKILL,
   COMBUSTION,
-  BLAZE_WILL,
+  BLAZE_WILL
+} from '../fire';
+import {
   // 冰属性技能
   ICE_CONTROL_SKILLS,
   FREEZE_WIND,
@@ -29,24 +31,23 @@ import {
   COLD_AURA,
   ICE_SEAL,
   ABSOLUTE_ZERO_FIELD
-} from '../fire';
-import '../../skills/ice';
+} from '../ice';
 import { SkillTestHelper } from './helpers';
 import { SkillTarget, SkillTendency, ElementType } from '../../types';
 
 describe('火属性·爆发流技能测试', () => {
   describe('攻击倾向技能 (4个)', () => {
-    it('火花 (EMBER) - 基础攻击', () => {
-      SkillTestHelper.validateSkillBase(EMBER, 'ember', '火花', 1);
-      SkillTestHelper.validateDamageEffect(EMBER, 40, ElementType.FIRE);
-      SkillTestHelper.validateTags(EMBER, ['火', '爆发流', '攻击', '灼伤']);
+    it('点燃 (EMBER) - 纯DOT技能', () => {
+      SkillTestHelper.validateSkillBase(EMBER, 'ember', '点燃', 1);
+      SkillTestHelper.validateTags(EMBER, ['火', '爆发流', '攻击', '灼烧']);
     });
 
-    it('烈焰拳 (FLAME_PUNCH) - 物理伤害', () => {
+    it('烈焰拳 (FLAME_PUNCH) - 物理伤害+连击', () => {
       SkillTestHelper.validateSkillBase(FLAME_PUNCH, 'flame_punch', '烈焰拳', 2);
       const effects = FLAME_PUNCH.definition.effects;
       expect(effects[0].damage?.damageType).toBe('physical');
-      expect(effects[0].damage?.basePower).toBe(75);
+      expect(effects[0].damage?.basePower).toBe(25);
+      expect(effects[0].damage?.hits).toBe(3);
     });
 
     it('大字爆炎 (FLARE_BLITZ) - 高威力+灼伤印记', () => {
@@ -71,19 +72,22 @@ describe('火属性·爆发流技能测试', () => {
   });
 
   describe('防御倾向技能 (3个)', () => {
-    it('火盾 (FIRE_SHIELD_SKILL) - 护盾+反伤', () => {
-      SkillTestHelper.validateSkillBase(FIRE_SHIELD_SKILL, 'fire_shield_skill', '火盾', 2);
-      SkillTestHelper.validateShieldEffect(FIRE_SHIELD_SKILL, 50);
-      const hasCounter = FIRE_SHIELD_SKILL.definition.effects.some(
-        e => e.special?.type === 'counter'
+    it('火盾 (FIRE_SHIELD_SKILL) - 减伤+灼烧', () => {
+      SkillTestHelper.validateSkillBase(FIRE_SHIELD_SKILL, 'fire_shield_skill', '火盾', 1);
+      expect(FIRE_SHIELD_SKILL.definition.target).toBe(SkillTarget.SELF);
+      const hasBuff = FIRE_SHIELD_SKILL.definition.effects.some(
+        e => e.applyBuff?.buffType === 'fire_shield'
       );
-      expect(hasCounter).toBe(true);
+      expect(hasBuff).toBe(true);
     });
 
-    it('烈焰壁垒 (WALL_OF_FLAMES) - 群体护盾+抗性', () => {
+    it('烈焰壁垒 (WALL_OF_FLAMES) - 属性抗性', () => {
       SkillTestHelper.validateSkillBase(WALL_OF_FLAMES, 'wall_of_flames', '烈焰壁垒', 3);
-      SkillTestHelper.validateShieldEffect(WALL_OF_FLAMES, 35);
-      expect(WALL_OF_FLAMES.definition.target).toBe(SkillTarget.ALLY_ALL);
+      expect(WALL_OF_FLAMES.definition.target).toBe(SkillTarget.SELF);
+      const hasBuff = WALL_OF_FLAMES.definition.effects.some(
+        e => e.applyBuff?.buffType === 'wall_of_fire'
+      );
+      expect(hasBuff).toBe(true);
     });
 
     it('灼热反击 (HEAT_COUNTER) - 反弹效果', () => {
@@ -170,9 +174,9 @@ describe('冰属性·减速流技能测试', () => {
   });
 
   describe('防御倾向技能 (3个)', () => {
-    it('冰霜护甲 (ICE_ARMOR) - 护盾+抗性', () => {
-      SkillTestHelper.validateSkillBase(ICE_ARMOR, 'ice_armor', '冰霜护甲', 2);
-      SkillTestHelper.validateShieldEffect(ICE_ARMOR, 50);
+    it('冰霜护甲 (ICE_ARMOR) - 减伤+冻结', () => {
+      SkillTestHelper.validateSkillBase(ICE_ARMOR, 'ice_armor', '冰霜护甲', 1);
+      expect(ICE_ARMOR.definition.target).toBe(SkillTarget.SELF);
       const hasBuff = ICE_ARMOR.definition.effects.some(
         e => e.applyBuff?.buffType === 'ice_armor'
       );
@@ -188,10 +192,13 @@ describe('冰属性·减速流技能测试', () => {
       expect(hasReflect).toBe(true);
     });
 
-    it('极寒领域 (FREEZING_FIELD) - 群体护盾', () => {
+    it('极寒领域 (FREEZING_FIELD) - 减伤+减速', () => {
       SkillTestHelper.validateSkillBase(FREEZING_FIELD, 'freezing_field', '极寒领域', 3);
-      SkillTestHelper.validateShieldEffect(FREEZING_FIELD, 30);
-      expect(FREEZING_FIELD.definition.target).toBe(SkillTarget.ALLY_ALL);
+      expect(FREEZING_FIELD.definition.target).toBe(SkillTarget.SELF);
+      const hasBuff = FREEZING_FIELD.definition.effects.some(
+        e => e.applyBuff
+      );
+      expect(hasBuff).toBe(true);
     });
   });
 

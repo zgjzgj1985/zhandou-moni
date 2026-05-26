@@ -250,70 +250,81 @@ export const DRAGON_BREATH: Skill = (() => {
 
 /**
  * 【防御倾向1】龙鳞守护
- * 为己方单体生成护盾，护盾值=50+自身攻击力等级×15
- * 护盾持续整场，体现龙属性的成长转化为防御
+ * 获得「龙魂护体」状态
+ * 龙魂护体：受到伤害降低75%，本回合攻击必定暴击
  */
 export const DRAGON_SCALES_SHIELD: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'dragon_scales_shield',
     name: '龙鳞守护',
-    description: '为己方单体生成护盾（基础50+攻击等级×15，持续整场）',
+    description: '受到伤害降低75%，本回合攻击必定暴击',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
-    target: SkillTarget.ALLY,
+    target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
     effects: [{
-      shield: {
-        amount: 50
+      applyBuff: {
+        buffType: 'dragon_body' as any,
+        duration: 1,
+        value: 0.75  // 75%减伤
       }
     }],
     category: '龙中速流·防御',
-    tags: ['龙', '中速流', '防御', '护盾', '成长联动']
+    tags: ['龙', '中速流', '防御', '减伤', '必定暴击']
   };
   return new Skill(definition);
 })();
 
 /**
- * 【防御倾向2】龙之威严
- * 获得「龙威震慑」状态，持续2回合
- * 威慑范围内所有敌人，使敌方单体攻击-1级
- * 体现龙属性对敌人的压制力
+ * 【防御倾向2】龙之意志
+ * 获得「龙威护体」状态
+ * 龙威护体：受到伤害降低60%，本回合攻击时使敌人攻击-1级
  */
 export const DRAGON_AURA: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'dragon_aura',
-    name: '龙之威严',
-    description: '获得「龙威震慑」（持续2回合），使目标敌人攻击-1级',
+    name: '龙之意志',
+    description: '受到伤害降低60%，本回合攻击时敌人攻击-1级',
     type: 'action',
-    energyCost: EnergyCost.MEDIUM,
-    target: SkillTarget.SINGLE,
+    energyCost: EnergyCost.HIGH,
+    target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
-    effects: [],
+    effects: [{
+      applyBuff: {
+        buffType: 'dragon_aura_body' as any,
+        duration: 1,
+        value: 0.6  // 60%减伤
+      }
+    }],
     category: '龙中速流·防御',
-    tags: ['龙', '中速流', '防御', '弱化', '控制']
+    tags: ['龙', '中速流', '防御', '减伤', '削弱']
   };
   return new Skill(definition);
 })();
 
 /**
- * 【防御倾向3】龙魂觉醒
- * 获得「龙魂觉醒」状态，持续2回合
- * 免疫所有控制类状态（麻痹、睡眠、冰冻等）
- * 受到攻击时，反弹20%伤害给攻击者
- * 体现远古霸者的不屈意志
+ * 【防御倾向3】龙魂壁垒
+ * 获得「龙魂护壁」状态
+ * 龙魂护壁：受到伤害降低65%，本回合免疫所有负面状态
  */
 export const DRAGON_AWAKENING: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'dragon_awakening',
-    name: '龙魂觉醒',
-    description: '获得「龙魂觉醒」（持续2回合），免疫控制状态+受攻击时反弹20%伤害',
+    name: '龙魂壁垒',
+    description: '受到伤害降低65%，本回合免疫所有负面状态',
     type: 'action',
-    energyCost: EnergyCost.HIGH,
+    energyCost: EnergyCost.HIGH + 1, // 4能量
     target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
-    effects: [],
+    effects: [{
+      applyBuff: {
+        buffType: 'dragon_soul_barrier' as any,
+        duration: 1,
+        value: 0.65  // 65%减伤
+      }
+    }],
     category: '龙中速流·防御',
-    tags: ['龙', '中速流', '防御', '免疫', '反弹']
+    tags: ['龙', '中速流', '防御', '减伤', '免疫负面']
   };
   return new Skill(definition);
 })();

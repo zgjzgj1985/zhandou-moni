@@ -291,17 +291,19 @@ describe('Debuff 效果系统测试', () => {
   });
 
   describe('火属性 Debuff', () => {
-    it('BurnDebuff - 灼烧 (回合开始触发)', () => {
+    it('BurnDebuff - 灼烧 (回合结束触发)', () => {
       const mockUnit = createMockUnit(100);
-      const debuff = new BurnDebuff(1, 3, 5);
-      
+      // stacks=5 (5层), duration=3, damagePercentPerStack=0.02 (每层2%)
+      // 伤害 = 100 * 0.02 * 5 = 10
+      const debuff = new BurnDebuff(5, 3, 0.02);
+
       expect(debuff.name).toBe('灼烧');
       expect(debuff.type).toBe(DebuffType.BURN);
-      
-      // 回合开始触发
-      debuff.onTurnStart(mockUnit);
-      expect(mockUnit.currentHp).toBe(95); // 100 - 5*1
-      expect(debuff.stacks).toBe(0);
+
+      // 回合结束触发：100 - 100*0.02*5 = 100 - 10 = 90
+      debuff.onTurnEnd(mockUnit);
+      expect(mockUnit.currentHp).toBe(90);
+      expect(debuff.stacks).toBe(2); // 5/2 = 2.5 → 2
       expect(debuff.remainingDuration).toBe(2);
     });
 
@@ -386,23 +388,27 @@ describe('Debuff 效果系统测试', () => {
 describe('Buff/Debuff 工厂函数测试', () => {
   it('createBuff 工厂函数', async () => {
     const { createBuff } = await import('../index');
-    
+
     // 测试创建火焰蓄焰Buff
     const flameCharge = createBuff(BuffType.FLAME_CHARGE, 1, 3);
     expect(flameCharge.name).toBe('蓄焰');
-    
-    // 测试创建减速Debuff
-    const slow = createBuff(BuffType.SLOW, 1, 2);
-    expect(slow.name).toBe('减速');
+
+    // 测试创建速度提升Buff
+    const speedUp = createBuff(BuffType.SPEED_UP, 1, 2);
+    expect(speedUp.name).toBe('速度提升');
   });
 
   it('createDebuff 工厂函数', async () => {
     const { createDebuff } = await import('../index');
-    
+
     // 测试创建灼烧Debuff
     const burn = createDebuff(DebuffType.BURN, 1, 3);
     expect(burn.name).toBe('灼烧');
-    
+
+    // 测试创建减速Debuff
+    const slow = createDebuff(DebuffType.SLOW, 1, 2);
+    expect(slow.name).toBe('减速');
+
     // 测试创建潮湿Debuff
     const wet = createDebuff(DebuffType.WET, 1, 3);
     expect(wet.name).toBe('潮湿');

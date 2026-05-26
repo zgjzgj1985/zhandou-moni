@@ -73,14 +73,14 @@ export const WATER_JET: Skill = (() => {
 
 /**
  * 【攻击倾向2】水炮
- * 攻击目标，造成90威力伤害，20%概率使目标减速
+ * 攻击目标，造成90威力伤害，必定使目标减速
  * 减速：目标速度-1级，持续2回合
  */
 export const HYDRO_PUMP: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'hydro_pump',
     name: '水炮',
-    description: '攻击单体目标，造成90威力水属性伤害，20%概率使目标减速（速度-1级，持续2回合）',
+    description: '攻击单体目标，造成90威力水属性伤害，使目标减速（速度-1级，持续2回合）',
     type: 'action',
     energyCost: 3,
     target: SkillTarget.SINGLE,
@@ -95,7 +95,7 @@ export const HYDRO_PUMP: Skill = (() => {
         debuffType: 'slow' as any,
         duration: 2,
         stacks: 1,
-        successRate: 0.2
+        successRate: 1.0
       }
     }],
     category: '水属性控制流·攻击',
@@ -105,10 +105,9 @@ export const HYDRO_PUMP: Skill = (() => {
 })();
 
 /**
- * 【攻击倾向3】洪流冲击
- * 攻击目标，造成70威力伤害并使目标陷入「溺亡」状态
- * 溺亡：每回合损失最大HP的6%，持续3回合
- * 克制火属性：伤害×2
+ * 【攻击倾向2.5】洪流冲击
+ * 攻击目标，造成70威力伤害，对火属性目标伤害×2
+ * 附加「溺亡」DOT效果
  */
 export const TORRENT_CRASH: Skill = (() => {
   const definition: SkillDefinition = {
@@ -123,16 +122,52 @@ export const TORRENT_CRASH: Skill = (() => {
       damage: {
         basePower: 70,
         damageType: DamageType.SPECIAL,
-        element: ElementType.WATER
+        element: ElementType.WATER,
+        typeBonus: {
+          targetElement: ElementType.FIRE,
+          multiplier: 2
+        }
       },
       applyDebuff: {
         debuffType: 'drowning' as any,
         duration: 3,
-        stacks: 1
+        stacks: 1,
+        successRate: 1.0
       }
     }],
     category: '水属性控制流·攻击',
     tags: ['水', '控制流', '攻击', 'DOT', '克制火']
+  };
+  return new Skill(definition);
+})();
+
+/**
+ * 【攻击倾向3】水弹
+ * 攻击目标，造成70威力伤害，对火属性目标伤害×2
+ * 纯粹的克制火属性技能
+ */
+export const WATER_BULLET: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'water_bullet',
+    name: '水弹',
+    description: '攻击单体目标，造成70威力水属性伤害，对火属性目标伤害×2',
+    type: 'action',
+    energyCost: 3,
+    target: SkillTarget.SINGLE,
+    tendency: SkillTendency.ATTACK,
+    effects: [{
+      damage: {
+        basePower: 70,
+        damageType: DamageType.SPECIAL,
+        element: ElementType.WATER,
+        typeBonus: {
+          targetElement: ElementType.FIRE,
+          multiplier: 2
+        }
+      }
+    }],
+    category: '水属性控制流·攻击',
+    tags: ['水', '控制流', '攻击', '克制火']
   };
   return new Skill(definition);
 })();
@@ -147,7 +182,7 @@ export const ABYSS_VORTEX: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'abyss_vortex',
     name: '深渊漩涡',
-    description: '蓄力1回合后发动，造成120威力水属性伤害并附加「湍流」（所有技能消耗+1能量）【蓄力可被打断】',
+    description: '蓄力1回合后发动，造成120威力水属性伤害并附加「湍流」（湍流：所有技能消耗+1）【蓄力可被打断】',
     type: 'action',
     energyCost: 5,
     target: SkillTarget.SINGLE,
@@ -177,8 +212,9 @@ export const ABYSS_VORTEX: Skill = (() => {
 
 /**
  * 【防御倾向1】水之守护
- * 为己方单体生成80点护盾值
- * 护盾存在期间，若敌人攻击此目标则其下次技能伤害-20%
+ * 为己方单体生成80点护盾（持续整场）
+ * 护盾存在期间，每次被攻击时敌人下次技能伤害-20%
+ * 护盾被打破后，效果消失
  */
 export const AQUA_SHIELD: Skill = (() => {
   const definition: SkillDefinition = {
@@ -192,12 +228,11 @@ export const AQUA_SHIELD: Skill = (() => {
     effects: [{
       shield: {
         amount: 80,
-        duration: 999
+        duration: 999  // 持续整场
       },
-      applyBuff: {
-        buffType: 'water_shield' as any,
-        duration: 999,
-        value: 0.2  // 伤害削减20%
+      special: {
+        type: 'water_shield_counter',  // 受攻击时使敌人下次技能伤害-20%
+        value: 0.2
       }
     }],
     category: '水属性控制流·防御',
@@ -239,31 +274,31 @@ export const CLEAR_SPRING: Skill = (() => {
 
 /**
  * 【防御倾向3】涡流壁垒
- * 为己方全体生成50点护盾值，持续3回合
- * 护盾存在期间，所有友方受到的水属性伤害-30%
+ * 获得「涡流护体」状态，持续2回合
+ * 涡流护体：受到伤害降低60%，对攻击者附加减速（速度-1级，持续1回合）
  */
 export const VORTEX_BARRIER: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'vortex_barrier',
     name: '涡流壁垒',
-    description: '为己方全体生成50点护盾（持续3回合），期间对水属性伤害抗性+30%',
+    description: '受到伤害降低60%（持续2回合），对攻击者附加减速（速度-1级，持续1回合）',
     type: 'action',
-    energyCost: 4,
-    target: SkillTarget.ALLY_ALL,
+    energyCost: 3,
+    target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
     effects: [{
-      shield: {
-        amount: 50,
-        duration: 3
-      },
       applyBuff: {
-        buffType: 'water_resist' as any,
-        duration: 3,
-        value: 0.3  // 30%抗性
+        buffType: 'vortex_body' as any,
+        duration: 2,
+        value: 0.6  // 60%减伤
+      },
+      special: {
+        type: 'counter_slow',  // 反击减速
+        value: 1  // 速度-1级
       }
     }],
     category: '水属性控制流·防御',
-    tags: ['水', '控制流', '防御', '群体护盾', '抗性']
+    tags: ['水', '控制流', '防御', '减伤', '减速']
   };
   return new Skill(definition);
 })();
@@ -273,13 +308,12 @@ export const VORTEX_BARRIER: Skill = (() => {
 /**
  * 【辅助倾向1】治愈波动
  * 治疗己方单体目标，恢复量相当于最大HP的25%
- * 对处于「溺亡」状态的队友额外治疗20%
  */
 export const HEALING_WAVE: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'healing_wave',
     name: '治愈波动',
-    description: '治疗己方单体目标，恢复量相当于最大HP的25%，对「溺亡」状态的队友额外治疗20%',
+    description: '治疗己方单体目标，恢复量相当于最大HP的25%',
     type: 'action',
     energyCost: 1,
     target: SkillTarget.ALLY,
@@ -329,7 +363,7 @@ export const AQUA_THERAPY: Skill = (() => {
  * 【辅助倾向3】潮汐涌动
  * 指定1个敌方目标，3回合后触发「潮汐」效果
  * 潮汐效果：造成90点水属性伤害+使目标陷入「潮湿」状态
- * 
+ *
  * 高风险高回报的终极布局技能
  */
 export const TIDAL_SURGE: Skill = (() => {
@@ -341,17 +375,26 @@ export const TIDAL_SURGE: Skill = (() => {
     energyCost: 6,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.SUPPORT,
+    delay: {
+      turns: 3,
+      effect: {
+        damage: {
+          basePower: 90,
+          damageType: DamageType.SPECIAL,
+          element: ElementType.WATER
+        },
+        applyDebuff: {
+          debuffType: 'wet' as any,
+          duration: 3,
+          stacks: 1,
+          successRate: 1.0
+        }
+      }
+    },
     effects: [{
-      damage: {
-        basePower: 90,
-        damageType: DamageType.SPECIAL,
-        element: ElementType.WATER
-      },
-      applyDebuff: {
-        debuffType: 'wet' as any,
-        duration: 3,
-        stacks: 1,
-        successRate: 1.0
+      special: {
+        type: 'delay_damage',  // 标记为延迟伤害，用于注册延迟效果
+        value: 3  // 延迟3回合
       }
     }],
     category: '水属性控制流·辅助',

@@ -24,6 +24,10 @@ export interface SkillEffect {
     hits?: number;        // 攻击次数
     guaranteed?: boolean; // 是否必定触发（如爆炸烈焰的必定灼伤）
     extraEffect?: 'burn_mark' | 'ice_dot'; // 额外效果类型
+    typeBonus?: {         // 属性克制加成
+      targetElement: ElementType;
+      multiplier: number; // 倍率，如2表示克制时伤害翻倍
+    };
   };
   
   // 治疗效果
@@ -67,11 +71,18 @@ export interface SkillEffect {
     turns: number;
     canBeInterrupted: boolean;
   };
+
+  // 延迟效果
+  delay?: {
+    turns: number;          // 延迟回合数
+    effect: SkillEffect;    // 延迟触发的效果
+  };
   
   // 特殊效果
   special?: {
-    type: 'reflect' | 'counter' | 'drain' | 'chain' | 'cleanse';
+    type: 'reflect' | 'counter' | 'drain' | 'chain' | 'cleanse' | 'consume_buff_heal' | 'delay_damage' | 'water_shield_counter' | 'counter_slow' | 'static_charge' | 'chain_damage' | 'extra_attack_damage' | 'ice_shatter' | 'shatter_follow_up';
     value?: number;
+    targetElement?: ElementType;  // 用于破冰判定
   };
 
   // 属性抗性效果
@@ -110,6 +121,12 @@ export interface SkillDefinition {
   // 蓄力相关
   chargeTurns?: number;   // 蓄力回合数
   canBeInterrupted?: boolean; // 蓄力是否可被打断
+
+  // 延迟效果
+  delay?: {
+    turns: number;          // 延迟回合数
+    effect: SkillEffect;    // 延迟触发的效果
+  };
 }
 
 /**

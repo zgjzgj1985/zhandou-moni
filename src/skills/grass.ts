@@ -22,18 +22,22 @@ import {
   EnergyCost,
   SkillTendency,
   SKILL_TENDENCY_TEXT,
-  getEnergyCostText
+  getEnergyCostText,
+  BuffType
 } from '../types';
 import {
   Buff,
   Debuff,
-  GrassShieldBuff,
-  GrassResistBuff,
-  GrassRegenBuff,
-  VineTangleDebuff,
+  VineBodyBuff,
+  LifeBodyBuff,
+  VinePowerBuff,
+  GrowthBuff,
+  RootBoundBuff,
+  LeafBarrierBuff,
   ParasiteDebuff,
   LeafMarkDebuff,
-  RootBoundDebuff
+  ParasiteMarkDebuff,
+  TangleDebuff
 } from '../effects';
 import { CombatUnit } from '../battle/CombatUnit';
 
@@ -122,13 +126,13 @@ export function createGrassSupportSkill(
 /**
  * 【攻击倾向1】藤鞭连击
  * 攻击目标，造成55威力伤害，并获得1层「藤蔓之力」
- * 藤蔓之力：每层+1级攻击，最多叠加3层
+ * 藤蔓之力：每层+1级攻击（最多3层）
  */
 export const VINE_WHIP_COMBO: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'vine_whip_combo',
     name: '藤鞭连击',
-    description: '攻击单体目标，造成55威力草属性伤害，获得1层「藤蔓之力」（每层+1级攻击，最多叠加3层）',
+    description: '攻击单体目标，造成55威力草属性伤害，获得1层藤蔓之力（每层+1级攻击，最多3层）',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SINGLE,
@@ -138,6 +142,12 @@ export const VINE_WHIP_COMBO: Skill = (() => {
         basePower: 55,
         damageType: DamageType.SPECIAL,
         element: ElementType.GRASS
+      }
+    }, {
+      applyBuff: {
+        buffType: BuffType.VINE_POWER,
+        duration: 3,
+        stacks: 1
       }
     }],
     category: '草光环流·攻击',
@@ -166,6 +176,11 @@ export const PARASITIC_SEED: Skill = (() => {
         damageType: DamageType.SPECIAL,
         element: ElementType.GRASS
       }
+    }, {
+      applyDebuff: {
+        debuffType: 'parasite' as any,
+        duration: 3
+      }
     }],
     category: '草光环流·攻击',
     tags: ['草', '光环流', '攻击', '持续伤害', '吸血']
@@ -182,7 +197,7 @@ export const LEAF_BLADE: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'leaf_blade',
     name: '飞叶快刀',
-    description: '攻击单体目标，造成70威力草属性伤害，附加「叶片标记」（受到草属性攻击时+20%伤害，持续2回合）',
+    description: '攻击单体目标，造成70威力草属性伤害，附加「叶片标记」（受到草属性攻击时+20%伤害）',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SINGLE,
@@ -192,6 +207,11 @@ export const LEAF_BLADE: Skill = (() => {
         basePower: 70,
         damageType: DamageType.SPECIAL,
         element: ElementType.GRASS
+      }
+    }, {
+      applyDebuff: {
+        debuffType: 'leaf_mark' as any,
+        duration: 2
       }
     }],
     category: '草光环流·攻击',
@@ -234,18 +254,29 @@ export const SOLAR_BEAM: Skill = (() => {
 /**
  * 【防御倾向1】扎根之躯
  * 获得「扎根」状态，持续3回合
- * 扎根：每回合回复最大HP的8%，但速度永久降低1级
+ * 扎根：每回合回复最大HP的8%，但速度-1级
  */
 export const ROOT_BOUND: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'root_bound',
     name: '扎根之躯',
-    description: '获得「扎根」状态（持续3回合），每回合回复最大HP的8%，但速度永久-1级',
+    description: '获得「扎根」状态（持续3回合），每回合回复最大HP的8%，但速度-1级',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
-    effects: [],
+    effects: [{
+      applyBuff: {
+        buffType: BuffType.ROOT_BOUND,
+        duration: 3
+      }
+    }, {
+      statBoost: {
+        stat: 'speed',
+        stages: -1,
+        duration: 999
+      }
+    }],
     category: '草光环流·防御',
     tags: ['草', '光环流', '防御', '持续回复', '速度降低']
   };
@@ -254,46 +285,49 @@ export const ROOT_BOUND: Skill = (() => {
 
 /**
  * 【防御倾向2】藤蔓护甲
- * 为己方单体生成护盾，护盾值受自身「藤蔓之力」层数影响
- * 每层藤蔓之力额外+20点护盾值（最多+60点）
+ * 获得「藤蔓护体」状态
+ * 藤蔓护体：受到伤害降低50%，受到攻击时缠绕目标（速度-2级）
  */
 export const VINE_ARMOR: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'vine_armor',
     name: '藤蔓护甲',
-    description: '为己方单体生成50点护盾（持续3回合），每层「藤蔓之力」额外+20点护盾',
+    description: '受到伤害降低50%，受到攻击缠绕目标（速度-2级）',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
-    target: SkillTarget.ALLY,
+    target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
     effects: [{
-      shield: {
-        amount: 50
+      applyBuff: {
+        buffType: BuffType.VINE_BODY,
+        duration: 1,
+        value: 0.5  // 50%减伤
       }
     }],
     category: '草光环流·防御',
-    tags: ['草', '光环流', '防御', '护盾', '层数联动']
+    tags: ['草', '光环流', '防御', '减伤', '缠绕']
   };
   return new Skill(definition);
 })();
 
 /**
  * 【防御倾向3】绿叶屏障
- * 为己方全体生成护盾，并对草属性攻击抗性+25%
- * 持续2回合
+ * 获得「绿叶屏障」状态
+ * 绿叶屏障：己方全体获得40点护盾，对草属性攻击抗性+25%（持续2回合）
  */
 export const LEAF_BARRIER: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'leaf_barrier',
     name: '绿叶屏障',
-    description: '为己方全体生成40点护盾（持续2回合），期间对草属性攻击抗性+25%',
+    description: '己方全体获得40点护盾，对草属性攻击抗性+25%（持续2回合）',
     type: 'action',
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.ALLY_ALL,
     tendency: SkillTendency.DEFENSE,
     effects: [{
-      shield: {
-        amount: 40
+      applyBuff: {
+        buffType: BuffType.LEAF_BARRIER,
+        duration: 2
       }
     }],
     category: '草光环流·防御',
@@ -318,7 +352,12 @@ export const GROWTH_DANCE: Skill = (() => {
     energyCost: EnergyCost.LOW,
     target: SkillTarget.ALLY,
     tendency: SkillTendency.SUPPORT,
-    effects: [],
+    effects: [{
+      applyBuff: {
+        buffType: BuffType.GROWTH,
+        duration: 3
+      }
+    }],
     category: '草光环流·辅助',
     tags: ['草', '光环流', '辅助', '持续强化', '层数叠加']
   };
@@ -340,7 +379,12 @@ export const PARASITE_MARK: Skill = (() => {
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.SUPPORT,
-    effects: [],
+    effects: [{
+      applyDebuff: {
+        debuffType: 'parasite_mark' as any,
+        duration: 4
+      }
+    }],
     category: '草光环流·辅助',
     tags: ['草', '光环流', '辅助', '持续伤害', '吸血', '印记']
   };
@@ -351,18 +395,23 @@ export const PARASITE_MARK: Skill = (() => {
  * 【辅助倾向3】光合爆发
  * 消耗所有「藤蔓之力」和「成长」层数
  * 每消耗1层，回复施法者最大HP的15%
- * 同时清除己方全体的「寄生」状态
+ * 同时清除自身的所有负面状态
  */
 export const PHOTOSYNTHESIS_BURST: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'photosynthesis_burst',
     name: '光合爆发',
-    description: '消耗所有增益层（每层回复最大HP的15%），清除己方全体「寄生」状态【治愈型终极技能】',
+    description: '消耗所有增益，每层回复最大HP的15%，并清除自身所有负面状态【治愈型终极技能】',
     type: 'action',
     energyCost: EnergyCost.MEGA,
     target: SkillTarget.SELF,
     tendency: SkillTendency.SUPPORT,
-    effects: [],
+    effects: [{
+      special: {
+        type: 'consume_buff_heal',
+        value: 0.15  // 每层回复15%最大HP
+      }
+    }],
     category: '草光环流·辅助',
     tags: ['草', '光环流', '辅助', '消耗增益', '治疗', '净化', '终极技能']
   };

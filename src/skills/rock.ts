@@ -146,68 +146,81 @@ export const BOULDER_CRASH: Skill = (() => {
 
 /**
  * 【防御倾向1】岩盾
- * 为己方单体生成80点护盾值，持续整场
- * 护盾存在期间，受到攻击时反弹15%伤害给攻击者
+ * 获得「岩甲护体」状态
+ * 岩甲护体：受到伤害降低65%，本回合攻击+防御各+1级
  */
 export const ROCK_SHIELD: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'rock_shield',
     name: '岩盾',
-    description: '为己方单体生成80点护盾（持续整场），受攻击时反弹15%伤害给攻击者',
+    description: '受到伤害降低65%，本回合攻击+防御各+1级',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
-    target: SkillTarget.ALLY,
+    target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
     effects: [{
-      shield: {
-        amount: 80
+      applyBuff: {
+        buffType: 'rock_armor' as any,
+        duration: 1,
+        value: 0.65  // 65%减伤
       }
     }],
     category: '岩石防御流·防御',
-    tags: ['岩石', '防御流', '防御', '护盾', '反弹']
+    tags: ['岩石', '防御流', '防御', '减伤', '能力强化']
   };
   return new Skill(definition);
 })();
 
 /**
- * 【防御倾向2】铁壁
- * 自身防御+2级，持续5回合
- * 高防御的代表性技能
+ * 【防御倾向2】铁壁防御
+ * 获得「铁壁」状态
+ * 铁壁：受到伤害降低75%，本回合无法进行攻击
  */
 export const IRON_WALL: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'iron_wall',
-    name: '铁壁',
-    description: '自身防御+2级（持续5回合）',
+    name: '铁壁防御',
+    description: '受到伤害降低75%，本回合无法攻击',
     type: 'action',
-    energyCost: EnergyCost.MEDIUM,
+    energyCost: EnergyCost.HIGH,
     target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
-    effects: [],
+    effects: [{
+      applyBuff: {
+        buffType: 'iron_wall' as any,
+        duration: 1,
+        value: 0.75  // 75%减伤
+      }
+    }],
     category: '岩石防御流·防御',
-    tags: ['岩石', '防御流', '防御', '能力提升', '持久']
+    tags: ['岩石', '防御流', '防御', '减伤']
   };
   return new Skill(definition);
 })();
 
 /**
- * 【防御倾向3】反击姿态
- * 获得「反击姿态」状态，持续2回合
- * 反击姿态：受到攻击时反弹25%伤害给攻击者
- * 若本回合未被攻击则下回合自动保留1次
+ * 【防御倾向3】岩壁护盾
+ * 获得「震荡护体」状态
+ * 震荡护体：受到伤害降低55%，本回合攻击附带眩晕（30%概率使目标眩晕1回合）
  */
-export const COUNTER_STANCE: Skill = (() => {
+export const ROCK_BARRIER: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'counter_stance',
-    name: '反击姿态',
-    description: '获得「反击姿态」（持续2回合），受攻击时反弹25%伤害给攻击者【未被攻击时自动保留1次】',
+    id: 'rock_barrier',
+    name: '岩壁护盾',
+    description: '受到伤害降低55%，本回合攻击附带眩晕',
     type: 'action',
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
-    effects: [],
+    effects: [{
+      applyBuff: {
+        buffType: 'quake_body' as any,
+        duration: 1,
+        value: 0.55  // 55%减伤
+      }
+    }],
     category: '岩石防御流·防御',
-    tags: ['岩石', '防御流', '防御', '反击', '反弹']
+    tags: ['岩石', '防御流', '防御', '减伤', '眩晕']
   };
   return new Skill(definition);
 })();

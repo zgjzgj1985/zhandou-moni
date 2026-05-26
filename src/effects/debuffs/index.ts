@@ -10,6 +10,7 @@ import { DebuffType } from '../../types';
  */
 export type DebuffCombatUnit = {
   takeDamage(amount: number, type?: string): number;
+  maxHp: number;
 };
 
 /**
@@ -71,25 +72,25 @@ export class PoisonDebuff extends Debuff {
 
 /**
  * 灼烧DOT：以太术士风格
- * 每回合开始时触发，伤害=层数×每层伤害，然后层数-1
+ * 回合结束时触发，伤害=2%最大生命×层数，然后层数减半(向下取整)
  */
 export class BurnDebuff extends Debuff {
-  damagePerStack: number;
+  damagePercentPerStack: number;
 
-  constructor(stacks: number = 1, duration: number = 3, damagePerStack: number = 1) {
+  constructor(stacks: number = 1, duration: number = 3, damagePercentPerStack: number = 0.02) {
     super('灼烧', DebuffType.BURN, stacks, duration);
-    this.damagePerStack = damagePerStack;
+    this.damagePercentPerStack = damagePercentPerStack;
   }
 
-  onTurnStart(unit: DebuffCombatUnit): void {
-    const damage = this.stacks * this.damagePerStack;
+  onTurnEnd(unit: DebuffCombatUnit): void {
+    const damage = Math.floor(unit.maxHp * this.damagePercentPerStack * this.stacks);
     unit.takeDamage(damage, 'burn');
-    this.stacks = Math.max(0, this.stacks - 1);
+    this.stacks = Math.floor(Math.max(1, this.stacks / 2));
     this.remainingDuration = Math.max(0, this.remainingDuration - 1);
   }
 
   clone(): BurnDebuff {
-    return new BurnDebuff(this.stacks, this.duration, this.damagePerStack);
+    return new BurnDebuff(this.stacks, this.duration, this.damagePercentPerStack);
   }
 }
 
@@ -175,19 +176,23 @@ export class TerrorDebuff extends Debuff {
 
 /**
  * 麻痹debuff
- * 每回合25%概率无法行动
+ * 持续1回合，使目标无法使用攻击技能
  */
 export class ParalysisDebuff extends Debuff {
-  actionBlockChance: number = 0.25;
-  
-  constructor(duration: number = 3) {
+  blocksAttack: boolean = true;
+
+  constructor(duration: number = 1) {
     super('麻痹', DebuffType.PARALYSIS, 1, duration);
   }
-  
-  tryBlockAction(): boolean {
-    return Math.random() < this.actionBlockChance;
+
+  canAct(): boolean {
+    return true;
   }
-  
+
+  canAttack(): boolean {
+    return false;
+  }
+
   clone(): ParalysisDebuff {
     const cloned = new ParalysisDebuff(this.remainingDuration);
     return cloned;
@@ -253,6 +258,87 @@ export class FreezeDebuff extends Debuff {
   
   clone(): FreezeDebuff {
     return new FreezeDebuff();
+  }
+}
+
+/**
+ * 深冻debuff：冰属性·冻结破冰流v3.0
+ * 持续3回合，完全无法行动，每回合10%概率自动解冻
+ */
+export class DeepFreezeDebuff extends Debuff {
+  thawChance: number = 0.1;  // 设计文档要求10%解冻概率
+  
+  constructor() {
+    super('深冻', DebuffType.DEEP_FREEZE, 1, 3);  // 持续3回合
+  }
+  
+  tryThaw(): boolean {
+    if (Math.random() < this.thawChance) {
+      this.remainingDuration = 0;
+      this.stacks = 0;
+      return true;
+    }
+    return false;
+  }
+  
+  forceThaw(): void {
+    this.remainingDuration = 0;
+    this.stacks = 0;
+  }
+  
+  clone(): DeepFreezeDebuff {
+    return new DeepFreezeDebuff();
+  }
+}
+
+/**
+ * 绝对冻结debuff：冰属性·冻结破冰流v3.0
+ * 持续3回合，0%自动解冻概率，必须受伤才能解除
+ */
+export class AbsoluteFreezeDebuff extends Debuff {
+  constructor() {
+    super('绝对冻结', DebuffType.ABSOLUTE_FREEZE, 1, 3);  // 持续3回合
+  }
+  
+  tryThaw(): boolean {
+    // 0%自解概率，必须受伤解除
+    return false;
+  }
+  
+  forceThaw(): void {
+    this.remainingDuration = 0;
+    this.stacks = 0;
+  }
+  
+  clone(): AbsoluteFreezeDebuff {
+    return new AbsoluteFreezeDebuff();
+  }
+}
+
+/**
+ * 冰霜印记debuff：冰属性·冻结破冰流v3.0
+ * 下次受到冰属性攻击时，冻结概率+30%
+ */
+export class FrostMarkDebuff extends Debuff {
+  freezeBonus: number;
+  
+  constructor(duration: number = 3, freezeBonus: number = 0.3) {
+    super('冰霜印记', DebuffType.FROST_MARK, 1, duration);
+    this.freezeBonus = freezeBonus;
+  }
+  
+  getFreezeBonus(): number {
+    return this.freezeBonus;
+  }
+  
+  consume(): void {
+    this.remainingDuration = 0;
+    this.stacks = 0;
+  }
+  
+  clone(): FrostMarkDebuff {
+    const cloned = new FrostMarkDebuff(this.remainingDuration, this.freezeBonus);
+    return cloned;
   }
 }
 
@@ -590,6 +676,104 @@ export class ForbiddenDebuff extends Debuff {
   }
 }
 
+// ==================== 草属性·光环流专用Debuff ====================
+
+/**
+ * 缠绕debuff：草属性光环流
+ * 降低目标速度，速度-2级
+ */
+export class TangleDebuff extends Debuff {
+  speedStages: number;
+
+  constructor(stages: number = 2, duration: number = 2) {
+    super('缠绕', DebuffType.TANGLE, stages, duration);
+    this.speedStages = stages;
+  }
+
+  getSpeedStages(): number {
+    return this.speedStages;
+  }
+
+  clone(): TangleDebuff {
+    return new TangleDebuff(this.speedStages, this.remainingDuration);
+  }
+}
+
+/**
+ * 寄生debuff：草属性光环流
+ * 每回合受到草属性伤害，同时施法者回复等量HP
+ */
+export class ParasiteDebuff extends Debuff {
+  damagePerTurn: number;
+  casterId?: string;
+
+  constructor(duration: number = 3, damagePerTurn: number = 10) {
+    super('寄生', DebuffType.PARASITE, 1, duration);
+    this.damagePerTurn = damagePerTurn;
+  }
+
+  onTurnStart(unit: DebuffCombatUnit): void {
+    unit.takeDamage(this.damagePerTurn, 'parasite');
+  }
+
+  clone(): ParasiteDebuff {
+    const cloned = new ParasiteDebuff(this.remainingDuration, this.damagePerTurn);
+    cloned.casterId = this.casterId;
+    return cloned;
+  }
+}
+
+/**
+ * 叶片标记debuff：草属性光环流
+ * 受到草属性攻击时额外承受20%伤害
+ */
+export class LeafMarkDebuff extends Debuff {
+  damageBonus: number;
+
+  constructor(duration: number = 2, damageBonus: number = 0.2) {
+    super('叶片标记', DebuffType.LEAF_MARK, 1, duration);
+    this.damageBonus = damageBonus;
+  }
+
+  getGrassDamageMultiplier(): number {
+    return 1 + this.damageBonus;
+  }
+
+  clone(): LeafMarkDebuff {
+    return new LeafMarkDebuff(this.remainingDuration, this.damageBonus);
+  }
+}
+
+/**
+ * 寄生印记debuff：草属性光环流
+ * 每回合受到施法者最大HP的6%伤害，施法者回复等量HP
+ * 印记可叠加
+ */
+export class ParasiteMarkDebuff extends Debuff {
+  percentDamage: number;
+  casterId?: string;
+
+  constructor(duration: number = 4, percentDamage: number = 0.06) {
+    super('寄生印记', DebuffType.PARASITE_MARK, 1, duration);
+    this.percentDamage = percentDamage;
+  }
+
+  onTurnStart(unit: DebuffCombatUnit): void {
+    const damage = Math.floor(unit.maxHp * this.percentDamage);
+    unit.takeDamage(damage, 'parasite_mark');
+  }
+
+  getDamagePercent(): number {
+    return this.percentDamage;
+  }
+
+  clone(): ParasiteMarkDebuff {
+    const cloned = new ParasiteMarkDebuff(this.remainingDuration, this.percentDamage);
+    cloned.casterId = this.casterId;
+    return cloned;
+  }
+}
+
 /**
  * Debuff工厂函数
  */
@@ -626,6 +810,13 @@ export function createDebuff(
       return new IceSealDebuff(duration);
     case DebuffType.ICE_DOT:
       return new IceDotDebuff(duration);
+    // 冰属性·冻结破冰流v3.0专用Debuff
+    case DebuffType.DEEP_FREEZE:
+      return new DeepFreezeDebuff();
+    case DebuffType.ABSOLUTE_FREEZE:
+      return new AbsoluteFreezeDebuff();
+    case DebuffType.FROST_MARK:
+      return new FrostMarkDebuff(duration);
     // 火属性爆发流专用Debuff
     case DebuffType.BURN_MARK:
       return new BurnMarkDebuff();
@@ -648,6 +839,15 @@ export function createDebuff(
       return new MindWoundDebuff(duration);
     case DebuffType.FORBIDDEN:
       return new ForbiddenDebuff(duration);
+    // 草属性·光环流专用Debuff
+    case DebuffType.TANGLE:
+      return new TangleDebuff(stacks, duration);
+    case DebuffType.PARASITE:
+      return new ParasiteDebuff(duration);
+    case DebuffType.LEAF_MARK:
+      return new LeafMarkDebuff(duration);
+    case DebuffType.PARASITE_MARK:
+      return new ParasiteMarkDebuff(duration);
     default:
       throw new Error(`Unknown DebuffType: ${type}`);
   }

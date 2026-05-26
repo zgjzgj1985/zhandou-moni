@@ -209,25 +209,27 @@ export const VOID_PROPECY: Skill = (() => {
 
 /**
  * 【防御倾向1】心智护盾
- * 为己方单体生成60点护盾值
- * 护盾存在期间，若敌人攻击此目标则其减少1点能量
+ * 获得「心灵护体」状态
+ * 心灵护体：受到伤害降低50%，本回合免疫精神类攻击
  */
 export const MIND_SHIELD_SKILL: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'mind_shield_skill',
     name: '心智护盾',
-    description: '为己方单体生成60点护盾（持续整场），受攻击时敌人减少1点能量',
+    description: '受到伤害降低50%，本回合免疫精神类攻击',
     type: 'action',
-    energyCost: EnergyCost.MEDIUM,
-    target: SkillTarget.ALLY,
+    energyCost: EnergyCost.LOW,
+    target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
     effects: [{
-      shield: {
-        amount: 60
+      applyBuff: {
+        buffType: 'mind_body' as any,
+        duration: 1,
+        value: 0.5  // 50%减伤
       }
     }],
     category: '超能奥秘流·防御',
-    tags: ['超能', '奥秘流', '防御', '护盾', '能量削弱']
+    tags: ['超能', '奥秘流', '防御', '减伤', '精神免疫']
   };
   return new Skill(definition);
 })();
@@ -276,25 +278,27 @@ export const MIST_BODY: Skill = (() => {
 
 /**
  * 【防御倾向4】念动壁垒
- * 为己方全体生成40点护盾值，持续3回合
- * 护盾存在期间，所有友方对超能属性（精神类）攻击抗性+30%
+ * 获得「预知护体」状态
+ * 预知护体：受到伤害降低60%，本回合闪避率+50%
  */
 export const PSYCHIC_BARRIER: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'psychic_barrier',
     name: '念动壁垒',
-    description: '为己方全体生成40点护盾（持续3回合），期间对精神攻击抗性+30%',
+    description: '受到伤害降低60%，本回合闪避率+50%',
     type: 'action',
     energyCost: EnergyCost.HIGH + 1, // 4能量
-    target: SkillTarget.ALLY_ALL,
+    target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
     effects: [{
-      shield: {
-        amount: 40
+      applyBuff: {
+        buffType: 'precognition_body' as any,
+        duration: 1,
+        value: 0.6  // 60%减伤
       }
     }],
     category: '超能奥秘流·防御',
-    tags: ['超能', '奥秘流', '防御', '群体护盾', '抗性']
+    tags: ['超能', '奥秘流', '防御', '减伤', '闪避']
   };
   return new Skill(definition);
 })();

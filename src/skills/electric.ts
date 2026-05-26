@@ -36,29 +36,21 @@ import { CombatUnit } from '../battle/CombatUnit';
 // ==================== 电属性连击流专用Buff ====================
 
 /**
- * 静电护盾buff：电属性连击流
- * 吸收伤害的同时积累静电，下一次攻击附带额外伤害
+ * 蓄电护体buff：电属性连击流
+ * 受到伤害降低50%，受伤时积累静电，下次攻击额外+20威力
  */
-export class StaticShieldBuff extends Buff {
-  value: number;
-  maxValue: number;
-  staticCharge: number;  // 积累的静电充能
+export class StaticBodyBuff extends Buff {
+  damageReduction: number;
+  staticCharge: number;
 
-  constructor(value: number = 50) {
-    super('静电护盾', BuffType.STATIC_SHIELD, 1, 999);
-    this.maxValue = value;
-    this.value = value;
+  constructor(duration: number = 1, damageReduction: number = 0.5) {
+    super('蓄电护体', BuffType.STATIC_BODY, 1, duration);
+    this.damageReduction = damageReduction;
     this.staticCharge = 0;
   }
 
-  absorbDamage(damage: number): { absorbed: number; remaining: number } {
-    const absorbed = Math.min(this.value, damage);
-    this.value -= absorbed;
-    this.staticCharge += Math.floor(absorbed / 10); // 每吸收10点伤害积累1点静电
-    if (this.value <= 0) {
-      this.remainingDuration = 0;
-    }
-    return { absorbed, remaining: damage - absorbed };
+  addStaticCharge(amount: number): void {
+    this.staticCharge += amount;
   }
 
   consumeStaticCharge(): number {
@@ -67,10 +59,97 @@ export class StaticShieldBuff extends Buff {
     return charge;
   }
 
-  clone(): StaticShieldBuff {
-    const cloned = new StaticShieldBuff(this.maxValue);
-    cloned.value = this.value;
+  getDamageMultiplier(): number {
+    return 1 + (this.staticCharge * 0.2);  // 每层+20%
+  }
+
+  clone(): StaticBodyBuff {
+    const cloned = new StaticBodyBuff(this.remainingDuration, this.damageReduction);
     cloned.staticCharge = this.staticCharge;
+    return cloned;
+  }
+}
+
+/**
+ * 电磁偏转buff：电属性连击流
+ * 下一次受到攻击时，60%概率闪避并反弹50%伤害
+ */
+export class ElectricDeflectBuff extends Buff {
+  dodgeChance: number;
+  counterDamagePercent: number;
+  uses: number;
+
+  constructor(dodgeChance: number = 0.6, counterDamagePercent: number = 0.5) {
+    super('电磁偏转', BuffType.ELECTRIC_DEFLECT, 1, 2);
+    this.dodgeChance = dodgeChance;
+    this.counterDamagePercent = counterDamagePercent;
+    this.uses = 1;
+  }
+
+  tryDeflect(): { success: boolean; counterDamage: number } {
+    if (this.uses > 0 && Math.random() < this.dodgeChance) {
+      this.uses--;
+      if (this.uses <= 0) {
+        this.remainingDuration = 0;
+      }
+      return {
+        success: true,
+        counterDamage: this.counterDamagePercent
+      };
+    }
+    return { success: false, counterDamage: 0 };
+  }
+
+  clone(): ElectricDeflectBuff {
+    const cloned = new ElectricDeflectBuff(this.dodgeChance, this.counterDamagePercent);
+    cloned.uses = this.uses;
+    return cloned;
+  }
+}
+
+/**
+ * 电磁感应buff：电属性连击流
+ * 每次攻击后追加一次30威力电属性攻击
+ */
+export class ElectromagneticInductionBuff extends Buff {
+  extraDamagePower: number;
+
+  constructor(duration: number = 2, extraDamagePower: number = 30) {
+    super('电磁感应', BuffType.ELECTROMAGNETIC_INDUCTION, 1, duration);
+    this.extraDamagePower = extraDamagePower;
+  }
+
+  getExtraDamage(): number {
+    return this.extraDamagePower;
+  }
+
+  clone(): ElectromagneticInductionBuff {
+    return new ElectromagneticInductionBuff(this.remainingDuration, this.extraDamagePower);
+  }
+}
+
+/**
+ * 雷霆领域buff：电属性连击流
+ * 我方全体攻击必定命中，敌方每次行动后受到40威力电属性伤害
+ */
+export class ThunderDomainBuff extends Buff {
+  guaranteedHit: boolean;
+  counterDamage: number;
+  sourceId: string;
+
+  constructor(duration: number = 2, counterDamage: number = 40) {
+    super('雷霆领域', BuffType.THUNDER_DOMAIN, 1, duration);
+    this.guaranteedHit = true;
+    this.counterDamage = counterDamage;
+    this.sourceId = '';
+  }
+
+  getCounterDamage(): number {
+    return this.counterDamage;
+  }
+
+  clone(): ThunderDomainBuff {
+    const cloned = new ThunderDomainBuff(this.remainingDuration, this.counterDamage);
     return cloned;
   }
 }
@@ -99,8 +178,8 @@ export class ComboChargeBuff extends Buff {
   }
 
   getComboMultiplier(): number {
-    // 每层连击+20%伤害
-    return 1 + (this.comboCount * 0.2);
+    // 每层连击+10%
+    return 1 + (this.comboCount * 0.1);
   }
 
   clone(): ComboChargeBuff {
@@ -234,14 +313,14 @@ export class ElectricShockDebuff extends Debuff {
 
 /**
  * 【攻击倾向1】电光斩
- * 高速单体攻击，造成45威力伤害，35%概率使目标麻痹
+ * 高速单体攻击，造成45威力伤害，35%概率使目标麻痹（持续1回合无法使用攻击技能）
  * 先手优势：速度等级+1
  */
 export const ZAP_CUT: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'zap_cut',
     name: '电光斩',
-    description: '高速单体攻击，造成45威力电属性伤害，35%概率使目标麻痹【先手+1级速度】',
+    description: '高速单体攻击，造成45威力电属性伤害，35%概率使目标麻痹（持续1回合无法使用攻击技能）【先手+1级速度】',
     type: 'action',
     energyCost: EnergyCost.LOW,
     target: SkillTarget.SINGLE,
@@ -262,13 +341,12 @@ export const ZAP_CUT: Skill = (() => {
 /**
  * 【攻击倾向2】雷霆连击
  * 对目标连续攻击3次，每次威力25（总计75威力）
- * 每次命中后有25%概率触发额外连击
  */
 export const THUNDER_COMBO: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'thunder_combo',
     name: '雷霆连击',
-    description: '连续攻击目标3次（25×3威力=75），每次命中后25%概率追加1次攻击（追加攻击威力20）',
+    description: '连续攻击目标3次（25×3威力=75）',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SINGLE,
@@ -296,7 +374,7 @@ export const ELECTROMAGNETIC_HIT: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'electromagnetic_hit',
     name: '电磁冲击',
-    description: '单体攻击造成85威力电属性伤害，使目标速度-1级并附加「静电」（受攻击时释放反伤）',
+    description: '单段攻击，造成85威力电属性伤害，使目标速度-1级并附加「静电」（受攻击时对攻击者反伤）',
     type: 'action',
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.SINGLE,
@@ -317,13 +395,13 @@ export const ELECTROMAGNETIC_HIT: Skill = (() => {
 /**
  * 【攻击倾向4】雷霆万钧
  * 终极攻击技能，造成130威力伤害
- * 攻击后获得「雷霆之势」状态，下一次攻击附带连锁效果
+ * 攻击后触发连锁效果：对目标周围敌人造成60威力扩散伤害
  */
 export const THUNDER_CATASTROPHE: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'thunder_catastrophe',
     name: '雷霆万钧',
-    description: '终极单体攻击，造成130威力电属性伤害，攻击后获得「雷霆之势」（下次攻击附带连锁）',
+    description: '终极单体攻击，造成130威力电属性伤害，触发连锁效果：对周围敌人造成60威力扩散伤害',
     type: 'action',
     energyCost: EnergyCost.ULTIMATE,
     target: SkillTarget.SINGLE,
@@ -333,6 +411,10 @@ export const THUNDER_CATASTROPHE: Skill = (() => {
         basePower: 130,
         damageType: DamageType.SPECIAL,
         element: ElementType.ELECTRIC
+      },
+      special: {
+        type: 'chain_damage',
+        value: 60  // 60威力连锁伤害
       }
     }],
     category: '电属性连击流·攻击',
@@ -345,25 +427,31 @@ export const THUNDER_CATASTROPHE: Skill = (() => {
 
 /**
  * 【防御倾向1】静电护盾
- * 为己方单体生成50点护盾值
- * 护盾吸收伤害时积累静电，下次攻击附带额外伤害
+ * 获得「蓄电护体」状态
+ * 蓄电护体：受到伤害降低50%，本回合受伤时积累静电（下次攻击+30威力）
  */
 export const STATIC_SHIELD_SKILL: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'static_shield_skill',
     name: '静电护盾',
-    description: '为己方单体生成50点护盾，吸收伤害时积累静电（下次攻击附带额外伤害）',
+    description: '获得「蓄电护体」（受到伤害降低50%，受伤时积累静电，下次攻击+30威力）',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
-    target: SkillTarget.ALLY,
+    target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
     effects: [{
-      shield: {
-        amount: 50
+      applyBuff: {
+        buffType: BuffType.STATIC_BODY,
+        duration: 1,
+        value: 0.5  // 50%减伤
+      },
+      special: {
+        type: 'static_charge',
+        value: 30  // 积累静电，下次攻击+30威力
       }
     }],
     category: '电属性连击流·防御',
-    tags: ['电', '连击流', '防御', '护盾', '静电积累']
+    tags: ['电', '连击流', '防御', '减伤', '静电积累']
   };
   return new Skill(definition);
 })();
@@ -382,7 +470,13 @@ export const ELECTROMAGNETIC_DEFLECT: Skill = (() => {
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
-    effects: [],
+    effects: [{
+      applyBuff: {
+        buffType: BuffType.ELECTRIC_DEFLECT,
+        duration: 2,
+        value: 0.6  // 60%闪避概率
+      }
+    }],
     category: '电属性连击流·防御',
     tags: ['电', '连击流', '防御', '闪避', '反弹']
   };
@@ -410,7 +504,91 @@ export const ELECTRIC_OVERLOAD: Skill = (() => {
   return new Skill(definition);
 })();
 
+/**
+ * 【防御倾向3】放电壁垒
+ * 受到伤害降低65%，本回合每次攻击附带30威力追加伤害
+ */
+export const DISCHARGE_BARRIER: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'discharge_barrier',
+    name: '放电壁垒',
+    description: '获得「放电壁垒」状态：受到伤害降低65%，本回合每次攻击附带30威力追加伤害',
+    type: 'action',
+    energyCost: 4,
+    target: SkillTarget.SELF,
+    tendency: SkillTendency.DEFENSE,
+    effects: [{
+      applyBuff: {
+        buffType: 'discharge_barrier' as any,
+        duration: 1,
+        value: 0.65  // 65%减伤
+      },
+      special: {
+        type: 'extra_attack_damage',
+        value: 30  // 追加30威力
+      }
+    }],
+    category: '电属性连击流·防御',
+    tags: ['电', '连击流', '防御', '减伤', '追加伤害']
+  };
+  return new Skill(definition);
+})();
+
 // ==================== 辅助倾向技能（3种）====================
+
+/**
+ * 【辅助倾向4】连锁闪电
+ * 对目标造成40威力伤害
+ * 伤害的30%连锁弹射给随机敌方单位
+ */
+export const CHAIN_LIGHTNING: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'chain_lightning',
+    name: '连锁闪电',
+    description: '单体攻击造成40威力电属性伤害，伤害的30%连锁弹射给随机敌方目标',
+    type: 'action',
+    energyCost: EnergyCost.LOW,
+    target: SkillTarget.SINGLE,
+    tendency: SkillTendency.SUPPORT,
+    effects: [{
+      damage: {
+        basePower: 40,
+        damageType: DamageType.SPECIAL,
+        element: ElementType.ELECTRIC
+      }
+    }],
+    category: '电属性连击流·辅助',
+    tags: ['电', '连击流', '辅助', '连锁', 'AOE']
+  };
+  return new Skill(definition);
+})();
+
+/**
+ * 【辅助倾向5】伏特切换
+ * 攻击后强制切换到队友
+ * 对目标造成60威力伤害后，强制与后备队友交换位置
+ */
+export const VOLT_SWITCH: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'volt_switch',
+    name: '伏特切换',
+    description: '单体攻击造成60威力电属性伤害后，强制与后备队友交换位置【攻击型换人】',
+    type: 'action',
+    energyCost: EnergyCost.HIGH,
+    target: SkillTarget.SINGLE,
+    tendency: SkillTendency.SUPPORT,
+    effects: [{
+      damage: {
+        basePower: 60,
+        damageType: DamageType.SPECIAL,
+        element: ElementType.ELECTRIC
+      }
+    }],
+    category: '电属性连击流·辅助',
+    tags: ['电', '连击流', '辅助', 'Pivot', '强制切换']
+  };
+  return new Skill(definition);
+})();
 
 /**
  * 【辅助倾向1】充能加速
@@ -450,56 +628,55 @@ export const CHARGE_ACCELERATE: Skill = (() => {
 })();
 
 /**
- * 【辅助倾向2】连锁闪电
- * 对目标造成40威力伤害
- * 伤害的30%连锁弹射给随机敌方单位
+ * 【辅助倾向2】电磁感应
+ * 为友方单体施加电磁感应（持续2回合）
+ * 每次攻击后追加一次30威力电属性攻击
  */
-export const CHAIN_LIGHTNING: Skill = (() => {
+export const ELECTROMAGNETIC_INDUCTION: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'chain_lightning',
-    name: '连锁闪电',
-    description: '单体攻击造成40威力电属性伤害，伤害的30%连锁弹射给随机敌方目标',
+    id: 'electromagnetic_induction',
+    name: '电磁感应',
+    description: '为友方单体施加「电磁感应」（持续2回合）：每次攻击后追加一次30威力电属性攻击',
     type: 'action',
-    energyCost: EnergyCost.LOW,
-    target: SkillTarget.SINGLE,
+    energyCost: EnergyCost.HIGH,
+    target: SkillTarget.ALLY,
     tendency: SkillTendency.SUPPORT,
     effects: [{
-      damage: {
-        basePower: 40,
-        damageType: DamageType.SPECIAL,
-        element: ElementType.ELECTRIC
+      applyBuff: {
+        buffType: BuffType.ELECTROMAGNETIC_INDUCTION,
+        duration: 2,
+        value: 30  // 追加30威力攻击
       }
     }],
     category: '电属性连击流·辅助',
-    tags: ['电', '连击流', '辅助', '连锁', 'AOE']
+    tags: ['电', '连击流', '辅助', '追加攻击']
   };
   return new Skill(definition);
 })();
 
 /**
- * 【辅助倾向3】伏特切换
- * 攻击后强制切换到队友
- * 对目标造成60威力伤害后，强制与后备队友交换位置
- * 类似于U-turn/Volt Switch机制
+ * 【辅助倾向3】雷霆领域
+ * 释放雷霆领域（持续2回合）
+ * 我方全体攻击必定命中，敌方每次行动后受到40威力电属性伤害
  */
-export const VOLT_SWITCH: Skill = (() => {
+export const THUNDER_DOMAIN: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'volt_switch',
-    name: '伏特切换',
-    description: '单体攻击造成60威力电属性伤害后，强制与后备队友交换位置【攻击型换人】',
+    id: 'thunder_domain',
+    name: '雷霆领域',
+    description: '释放「雷霆领域」（持续2回合）：我方全体攻击必定命中，敌方每次行动后受到40威力电属性伤害',
     type: 'action',
-    energyCost: EnergyCost.HIGH,
-    target: SkillTarget.SINGLE,
+    energyCost: 6,
+    target: SkillTarget.SELF,
     tendency: SkillTendency.SUPPORT,
     effects: [{
-      damage: {
-        basePower: 60,
-        damageType: DamageType.SPECIAL,
-        element: ElementType.ELECTRIC
+      applyBuff: {
+        buffType: BuffType.THUNDER_DOMAIN,
+        duration: 2,
+        value: 40  // 敌方每次行动受伤40威力
       }
     }],
     category: '电属性连击流·辅助',
-    tags: ['电', '连击流', '辅助', 'Pivot', '强制切换']
+    tags: ['电', '连击流', '辅助', '领域', '必定命中']
   };
   return new Skill(definition);
 })();
@@ -522,14 +699,14 @@ export const ELECTRIC_COMBO_SKILLS = {
   DEFENSE: {
     STATIC_SHIELD_SKILL,
     ELECTROMAGNETIC_DEFLECT,
-    ELECTRIC_OVERLOAD
+    DISCHARGE_BARRIER
   },
 
   // 辅助倾向（3种）
   SUPPORT: {
     CHARGE_ACCELERATE,
-    CHAIN_LIGHTNING,
-    VOLT_SWITCH
+    ELECTROMAGNETIC_INDUCTION,
+    THUNDER_DOMAIN
   },
 
   // 全部技能
@@ -540,8 +717,10 @@ export const ELECTRIC_COMBO_SKILLS = {
     THUNDER_CATASTROPHE,
     STATIC_SHIELD_SKILL,
     ELECTROMAGNETIC_DEFLECT,
-    ELECTRIC_OVERLOAD,
+    DISCHARGE_BARRIER,
     CHARGE_ACCELERATE,
+    ELECTROMAGNETIC_INDUCTION,
+    THUNDER_DOMAIN,
     CHAIN_LIGHTNING,
     VOLT_SWITCH
   ]

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>战斗模拟</title>
+  <script src="skills-data.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #000; color: #fff; overflow: hidden; }
@@ -228,7 +229,8 @@
         energy: MAX_ENERGY,
         skills: [
           { id: 'flame_punch', name: '烈焰拳', type: 'special', energyCost: ENERGY_COST.medium, target: 'single_enemy', power: 75, element: 'fire',
-            strategy: 'counter_first', effect: 'burn', burnChance: 0.3, description: '攻击单体目标，造成75威力火属性伤害，30%概率使目标灼伤' },
+            strategy: 'counter_first', effect: 'combo', comboHits: 3, comboPower: 25, burnChance: 0.25,
+            description: '连续3次火属性攻击（共75威力），每次命中25%概率灼烧' },
           { id: 'fire_shield', name: '火盾', type: 'shield', energyCost: ENERGY_COST.medium, target: 'ally', power: 50, effect: 'reflect',
             strategy: 'lowest_hp', reflectDamage: 30, description: '为己方单体生成50点护盾，受攻击时对敌人造成30点火属性反伤' },
           { id: 'wall_of_flames', name: '烈焰壁垒', type: 'shield', energyCost: ENERGY_COST.high, target: 'ally_all', power: 35,
@@ -237,7 +239,7 @@
           { id: 'combustion', name: '燃尽', type: 'special', energyCost: ENERGY_COST.high, target: 'single_enemy', power: 0, element: 'fire',
             strategy: 'counter_first', effect: 'combustion', description: '指定敌人施加「燃尽印记」，3回合后扣除30%当前HP' },
           { id: 'flare_blitz', name: '大字爆炎', type: 'special', energyCost: ENERGY_COST.ultra, target: 'single_enemy', power: 120, element: 'fire',
-            strategy: 'counter_first', description: '攻击单体目标，造成120威力火属性伤害，并附加「灼伤印记」（下回合追加40威力火属性伤害）' }
+            strategy: 'counter_first', effect: 'burnMark', burnMarkPower: 20, description: '攻击单体目标，造成120威力火属性伤害，必定附加「灼伤印记」（每次行动前受到自身20威力火属性伤害）' }
         ]
       },
       {
@@ -271,18 +273,43 @@
         energy: MAX_ENERGY,
         skills: [
           { id: 'zap', name: '电光斩', type: 'special', energyCost: ENERGY_COST.low, target: 'single_enemy', power: 45, element: 'electric',
-            strategy: 'counter_first', effect: 'paralyze', paralyzeChance: 0.35, speedBoost: 1, description: '如闪电般快速的斩击，造成45威力伤害，35%概率使目标麻痹，先手攻击' },
+            strategy: 'counter_first', effect: 'paralyze', paralyzeChance: 0.35, speedBoost: 1, description: '如闪电般快速的斩击，造成45威力伤害，35%概率使目标麻痹（持续1回合无法使用攻击技能），先手攻击' },
           { id: 'combo', name: '雷霆连击', type: 'special', energyCost: ENERGY_COST.medium, target: 'single_enemy', power: 75, element: 'electric',
-            strategy: 'counter_first', effect: 'combo', comboHits: 3, comboPower: 25, comboChance: 0.25, description: '连续攻击造成大量伤害，共75威力（25×3），25%概率追加额外攻击' },
+            strategy: 'counter_first', effect: 'combo', comboHits: 3, comboPower: 25, description: '连续攻击造成大量伤害，共75威力（25×3）' },
           { id: 'static_shield', name: '静电护盾', type: 'shield', energyCost: ENERGY_COST.medium, target: 'ally', power: 50, effect: 'static',
             strategy: 'lowest_hp', description: '积累静电形成护盾，可反射50%特殊伤害，下次攻击附带额外伤害' },
           { id: 'charge', name: '充能加速', type: 'buff', energyCost: ENERGY_COST.medium, target: 'self', power: 0,
-            speedBoost: 2, comboCharge: true, description: '积蓄电荷，大幅提升自身速度（+2级），积累连击充能' }
+            speedBoost: 2, comboCharge: true, description: '积蓄电荷，大幅提升自身速度（+2级），获得「连击次数」状态（初始1层）' }
         ]
       }
     ];
 
-    // ==================== 敌人单位数据（怪物）====================
+    // 从共享数据源同步技能描述
+function syncSkillDescriptions() {
+  // 遍历所有属性
+  for (const element in SKILLS_DB) {
+    const elementData = SKILLS_DB[element];
+    // 遍历所有技能分类
+    ['attack', 'defense', 'support'].forEach(category => {
+      const skills = elementData[category] || [];
+      skills.forEach(skillData => {
+        // 在玩家单位中查找对应技能并更新描述
+        playerUnits.forEach(unit => {
+          if (unit.element === element) {
+            const skill = unit.skills.find(s => s.id === skillData.id);
+            if (skill && skillData.eff) {
+              skill.description = skillData.eff;
+            }
+          }
+        });
+      });
+    });
+  }
+}
+
+syncSkillDescriptions();
+
+// ==================== 敌人单位数据（怪物）====================
     const enemyUnits = [
       {
         id: 'flame_salamander',
@@ -987,6 +1014,16 @@
       const el = document.getElementById(action.id);
       if (el) el.classList.add('selected');
 
+      // 处理灼伤印记：行动前受到伤害
+      if (action.caster.burnMark && action.caster.currentHp > 0) {
+        await delay(200);
+        const burnMarkDamage = Math.floor(action.caster.burnMarkPower * (0.8 + Math.random() * 0.4));
+        action.caster.currentHp = Math.max(0, action.caster.currentHp - burnMarkDamage);
+        showDamageNumber(action.caster.id, burnMarkDamage, 'damage');
+        updateHpBar(action.caster);
+        addLog(`${action.caster.name} 的「灼伤印记」触发，受到 ${burnMarkDamage} 火属性伤害！`, 'damage');
+      }
+
       await delay(400);
 
       if (action.type === 'player') {
@@ -1080,6 +1117,13 @@
           addLog(`${target.name} 被施加「燃尽印记」（${target.combustionTurnsLeft}回合后扣除30%当前HP）`, 'debuff');
         }
 
+        // 灼伤印记：每次行动前受到自身威力计算的火属性伤害
+        if (skill.effect === 'burnMark') {
+          target.burnMark = true;
+          target.burnMarkPower = skill.burnMarkPower || 20;
+          addLog(`${target.name} 被施加「灼伤印记」（每次行动前受到自身${target.burnMarkPower}威力火属性伤害）`, 'debuff');
+        }
+
         // 灼烧效果（根据概率判定）
         if (skill.effect === 'burn' || skill.burnChance > 0) {
           const burnChance = skill.burnChance || (skill.effect === 'burn' ? 1 : 0);
@@ -1139,6 +1183,7 @@
           if (skill.effect === 'reflect' || skill.reflectDamage > 0) {
             target.fireShield = true;
             target.reflectDamage = skill.reflectDamage || 30;
+            target.reflectElement = caster.element;
             addLog(`${caster.name} 使用 ${skill.name}，为 ${target.name} 施加 ${skill.power} 点护盾（含反伤效果）`);
           } else {
             addLog(`${caster.name} 使用 ${skill.name}，为 ${target.name} 施加 ${skill.power} 点护盾`);
@@ -1250,7 +1295,17 @@
         showDamageNumber(actualTarget.id, damage, 'damage');
         updateHpBar(actualTarget);
         addLog(`${enemy.name} 攻击 ${actualTarget.name}，造成 ${damage} 伤害`, 'damage');
-        if (actualTarget.currentHp <= 0) addLog(`${actualTarget.name} 倒下了！`);
+
+        // 火盾反伤：基于施法者威力的火属性伤害
+        if (actualTarget.fireShield && actualTarget.reflectDamage > 0 && actualTarget.currentHp > 0) {
+          const reflectDmg = Math.floor(actualTarget.reflectDamage * (0.8 + Math.random() * 0.4));
+          enemy.currentHp = Math.max(0, enemy.currentHp - reflectDmg);
+          showDamageNumber(enemy.id, reflectDmg, 'damage');
+          updateHpBar(enemy);
+          addLog(`${actualTarget.name} 的火盾反伤触发，对 ${enemy.name} 造成 ${reflectDmg} 火属性伤害！`, 'damage');
+          if (enemy.currentHp <= 0) addLog(`${enemy.name} 倒下了！`);
+        }
+
         updateEnemyIntent(enemy);
       }
     }

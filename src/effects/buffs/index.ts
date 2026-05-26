@@ -53,41 +53,23 @@ export abstract class Buff {
 // ==================== 冰属性·减速流专用Buff ====================
 
 /**
- * 冰霜护甲buff：冰属性减速流
- * 护盾存在期间，对冰属性攻击抗性+30%
+ * 冰霜护甲buff：冰属性·冻结破冰流v3.0
+ * 受到伤害降低50%，本回合受伤时使攻击者冻结1回合
  */
 export class IceArmorBuff extends Buff {
-  shieldValue: number;
-  maxShieldValue: number;
-  iceResistBonus: number;
-
-  constructor(unit: BuffCombatUnit, shieldValue: number = 50, iceResistBonus: number = 0.3) {
-    super('冰霜护甲', BuffType.ICE_ARMOR, 1, 999);
-    this.maxShieldValue = shieldValue;
-    this.shieldValue = shieldValue;
-    this.iceResistBonus = iceResistBonus;
+  damageReduction: number;
+  
+  constructor(duration: number = 1, damageReduction: number = 0.5) {
+    super('冰霜护甲', BuffType.ICE_ARMOR, 1, duration);
+    this.damageReduction = damageReduction;
   }
 
-  onTurnStart(_unit: BuffCombatUnit): void {
-    // 护盾持续整场，不自动消失
-  }
-
-  absorbDamage(damage: number): { absorbed: number; remaining: number } {
-    const absorbed = Math.min(this.shieldValue, damage);
-    this.shieldValue -= absorbed;
-    if (this.shieldValue <= 0) {
-      this.remainingDuration = 0;
-    }
-    return { absorbed, remaining: damage - absorbed };
-  }
-
-  getIceResistMultiplier(): number {
-    return 1 - this.iceResistBonus;
+  getDamageReduction(): number {
+    return this.damageReduction;
   }
 
   clone(): IceArmorBuff {
-    const cloned = new IceArmorBuff({ maxHp: this.maxShieldValue * 2 } as BuffCombatUnit, this.maxShieldValue, this.iceResistBonus);
-    cloned.shieldValue = this.shieldValue;
+    const cloned = new IceArmorBuff(this.remainingDuration, this.damageReduction);
     return cloned;
   }
 }
@@ -147,6 +129,92 @@ export class IceResistBuff extends Buff {
 
   clone(): IceResistBuff {
     return new IceResistBuff(this.remainingDuration, this.slowResistBonus);
+  }
+}
+
+/**
+ * 冰墙buff：冰属性·冻结破冰流v3.0
+ * 50%闪避+格挡（冰墙存在期间敌方每次攻击有25%概率被格挡）
+ */
+export class IceWallBuff extends Buff {
+  dodgeChance: number;      // 本回合闪避概率
+  blockChance: number;       // 持续期间的格挡概率
+  
+  constructor(
+    duration: number = 2,
+    dodgeChance: number = 0.5,
+    blockChance: number = 0.25
+  ) {
+    super('冰墙', BuffType.ICE_WALL, 1, duration);
+    this.dodgeChance = dodgeChance;
+    this.blockChance = blockChance;
+  }
+
+  tryDodge(): boolean {
+    return Math.random() < this.dodgeChance;
+  }
+
+  tryBlock(): boolean {
+    return Math.random() < this.blockChance;
+  }
+
+  clone(): IceWallBuff {
+    const cloned = new IceWallBuff(this.remainingDuration, this.dodgeChance, this.blockChance);
+    return cloned;
+  }
+}
+
+/**
+ * 极寒领域buff：冰属性·冻结破冰流v3.0
+ * 受到伤害降低60%，敌方全体每次行动前有30%概率被冻结
+ */
+export class FrostFieldBuff extends Buff {
+  damageReduction: number;    // 减伤比例
+  freezeChance: number;      // 冻结概率
+  
+  constructor(
+    duration: number = 1,
+    damageReduction: number = 0.6,
+    freezeChance: number = 0.3
+  ) {
+    super('极寒领域', BuffType.FROST_FIELD, 1, duration);
+    this.damageReduction = damageReduction;
+    this.freezeChance = freezeChance;
+  }
+
+  getDamageReduction(): number {
+    return this.damageReduction;
+  }
+
+  tryFreeze(): boolean {
+    return Math.random() < this.freezeChance;
+  }
+
+  clone(): FrostFieldBuff {
+    const cloned = new FrostFieldBuff(this.remainingDuration, this.damageReduction, this.freezeChance);
+    return cloned;
+  }
+}
+
+/**
+ * 冰霜印记buff：冰属性·冻结破冰流v3.0
+ * 冻结概率+30%（用于显示在己方单位上的buff）
+ */
+export class FrostMarkBuff extends Buff {
+  freezeBonus: number;
+  
+  constructor(duration: number = 3, freezeBonus: number = 0.3) {
+    super('冰霜印记', BuffType.FROST_MARK, 1, duration);
+    this.freezeBonus = freezeBonus;
+  }
+
+  getFreezeBonus(): number {
+    return this.freezeBonus;
+  }
+
+  clone(): FrostMarkBuff {
+    const cloned = new FrostMarkBuff(this.remainingDuration, this.freezeBonus);
+    return cloned;
   }
 }
 
@@ -921,6 +989,201 @@ export class IntentBlurBuff extends Buff {
 }
 
 /**
+ * 藤蔓护体buff：草属性光环流
+ * 受到伤害降低50%，受到攻击时缠绕攻击者（速度-2级）
+ */
+export class VineBodyBuff extends Buff {
+  damageReduction: number;
+  slowStages: number;
+  slowDuration: number;
+
+  constructor(
+    damageReduction: number = 0.5,
+    slowStages: number = 2,
+    slowDuration: number = 2,
+    duration: number = 1
+  ) {
+    super('藤蔓护体', BuffType.VINE_BODY, 1, duration);
+    this.damageReduction = damageReduction;
+    this.slowStages = slowStages;
+    this.slowDuration = slowDuration;
+  }
+
+  getDamageReduction(): number {
+    return this.damageReduction;
+  }
+
+  getSlowInfo(): { stages: number; duration: number } {
+    return { stages: this.slowStages, duration: this.slowDuration };
+  }
+
+  clone(): VineBodyBuff {
+    return new VineBodyBuff(
+      this.damageReduction,
+      this.slowStages,
+      this.slowDuration,
+      this.remainingDuration
+    );
+  }
+}
+
+/**
+ * 生机护体buff：草属性光环流
+ * 受到伤害降低70%，本回合受伤时回复最大HP的10%
+ */
+export class LifeBodyBuff extends Buff {
+  damageReduction: number;
+  healPercent: number;
+
+  constructor(damageReduction: number = 0.7, healPercent: number = 0.1, duration: number = 1) {
+    super('生机护体', BuffType.LIFE_BODY, 1, duration);
+    this.damageReduction = damageReduction;
+    this.healPercent = healPercent;
+  }
+
+  getDamageReduction(): number {
+    return this.damageReduction;
+  }
+
+  getHealPercent(): number {
+    return this.healPercent;
+  }
+
+  clone(): LifeBodyBuff {
+    return new LifeBodyBuff(this.damageReduction, this.healPercent, this.remainingDuration);
+  }
+}
+
+// ==================== 草属性·光环流专用Buff ====================
+
+/**
+ * 藤蔓之力buff：草属性光环流
+ * 每层+1级攻击，最多叠加3层
+ */
+export class VinePowerBuff extends Buff {
+  maxStacks: number;
+
+  constructor(duration: number = 3, maxStacks: number = 3) {
+    super('藤蔓之力', BuffType.VINE_POWER, 1, duration);
+    this.maxStacks = maxStacks;
+  }
+
+  getAttackBonus(): number {
+    return this.stacks;
+  }
+
+  addStack(): void {
+    if (this.stacks < this.maxStacks) {
+      this.stacks++;
+    }
+  }
+
+  clone(): VinePowerBuff {
+    const cloned = new VinePowerBuff(this.remainingDuration, this.maxStacks);
+    cloned.stacks = this.stacks;
+    return cloned;
+  }
+}
+
+/**
+ * 成长buff：草属性光环流
+ * 每回合攻击+特攻各+1级，最多叠加3层
+ */
+export class GrowthBuff extends Buff {
+  maxStacks: number;
+
+  constructor(duration: number = 3, maxStacks: number = 3) {
+    super('成长', BuffType.GROWTH, 1, duration);
+    this.maxStacks = maxStacks;
+  }
+
+  onTurnStart(_unit: BuffCombatUnit): void {
+    this.addStack();
+  }
+
+  addStack(): void {
+    if (this.stacks < this.maxStacks) {
+      this.stacks++;
+    }
+  }
+
+  getAttackBonus(): number {
+    return this.stacks;
+  }
+
+  getSpAttackBonus(): number {
+    return this.stacks;
+  }
+
+  clone(): GrowthBuff {
+    const cloned = new GrowthBuff(this.remainingDuration, this.maxStacks);
+    cloned.stacks = this.stacks;
+    return cloned;
+  }
+}
+
+/**
+ * 扎根buff：草属性光环流
+ * 每回合回复最大HP的8%，但速度-1级
+ */
+export class RootBoundBuff extends Buff {
+  healPercent: number;
+
+  constructor(duration: number = 3, healPercent: number = 0.08) {
+    super('扎根', BuffType.ROOT_BOUND, 1, duration);
+    this.healPercent = healPercent;
+  }
+
+  onTurnStart(unit: BuffCombatUnit): void {
+    const healAmount = Math.floor(unit.maxHp * this.healPercent);
+    unit.heal(healAmount);
+  }
+
+  getHealPercent(): number {
+    return this.healPercent;
+  }
+
+  clone(): RootBoundBuff {
+    return new RootBoundBuff(this.remainingDuration, this.healPercent);
+  }
+}
+
+/**
+ * 绿叶屏障buff：草属性光环流
+ * 群体护盾40点，对草属性攻击抗性+25%
+ */
+export class LeafBarrierBuff extends Buff {
+  shieldValue: number;
+  resistBonus: number;
+
+  constructor(shieldValue: number = 40, resistBonus: number = 0.25, duration: number = 2) {
+    super('绿叶屏障', BuffType.LEAF_BARRIER, 1, duration);
+    this.shieldValue = shieldValue;
+    this.resistBonus = resistBonus;
+  }
+
+  absorbDamage(damage: number): { absorbed: number; remaining: number } {
+    const absorbed = Math.min(this.shieldValue, damage);
+    this.shieldValue -= absorbed;
+    if (this.shieldValue <= 0) {
+      this.remainingDuration = 0;
+    }
+    return { absorbed, remaining: damage - absorbed };
+  }
+
+  getGrassResistMultiplier(): number {
+    return 1 - this.resistBonus;
+  }
+
+  clone(): LeafBarrierBuff {
+    const cloned = new LeafBarrierBuff(this.shieldValue, this.resistBonus, this.remainingDuration);
+    return cloned;
+  }
+}
+
+// ==================== Buff工厂函数 ====================
+
+/**
  * Buff工厂函数
  */
 export function createBuff(type: BuffType, stacks: number = 1, duration: number = 3): Buff {
@@ -947,11 +1210,18 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
       return new SpeedUpBuff(stacks, duration);
     // 冰属性减速流专用Buff
     case BuffType.ICE_ARMOR:
-      throw new Error('IceArmorBuff需要CombatUnit参数');
+      return new IceArmorBuff(duration);
     case BuffType.ICE_REFLECT:
       return new IceReflectBuff();
     case BuffType.ICE_RESIST:
       return new IceResistBuff(duration);
+    // 冰属性·冻结破冰流v3.0专用Buff
+    case BuffType.ICE_WALL:
+      return new IceWallBuff(duration);
+    case BuffType.FROST_FIELD:
+      return new FrostFieldBuff(duration);
+    case BuffType.FROST_MARK:
+      return new FrostMarkBuff(duration);
     // 火属性爆发流专用Buff
     case BuffType.FIRE_SHIELD:
       throw new Error('FireShieldBuff需要CombatUnit参数');
@@ -992,6 +1262,19 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
       return new PsychicResistBuff(duration);
     case BuffType.INTENT_BLUR:
       return new IntentBlurBuff(duration);
+    // 草属性光环流专用Buff
+    case BuffType.VINE_BODY:
+      return new VineBodyBuff(0.5, 2, 2, duration);
+    case BuffType.LIFE_BODY:
+      return new LifeBodyBuff(0.7, 0.1, duration);
+    case BuffType.VINE_POWER:
+      return new VinePowerBuff(duration);
+    case BuffType.GROWTH:
+      return new GrowthBuff(duration);
+    case BuffType.ROOT_BOUND:
+      return new RootBoundBuff(duration);
+    case BuffType.LEAF_BARRIER:
+      return new LeafBarrierBuff();
     default:
       throw new Error(`Unknown BuffType: ${type}`);
   }
