@@ -71,7 +71,10 @@ export abstract class CombatUnit {
   
   // 护盾
   shield: number;
-  
+
+  // 属性抗性 { fire: 0.3, water: 0, ice: -0.2 } 正数=减伤，负数=增伤
+  resistances: Record<string, number>;
+
   // 技能和特性
   traits: Trait[];
   
@@ -111,7 +114,8 @@ export abstract class CombatUnit {
     this.buffs = [];
     this.debuffs = [];
     this.shield = 0;
-    
+    this.resistances = config.resistances ?? {};
+
     this.traits = config.traits ?? [];
     
     this.isDead = false;
@@ -334,7 +338,12 @@ export abstract class CombatUnit {
       const multiplier = getTypeMultiplier(element, target.elements);
       damage = Math.floor(damage * multiplier);
     }
-    
+
+    // 属性抗性（抗性为正数时减少伤害）
+    if (element && target.resistances[element] > 0) {
+      damage = Math.floor(damage * (1 - target.resistances[element]));
+    }
+
     // 考虑力量Buff
     const powerBuff = this.buffs.find(b => b.type === BuffType.POWER);
     if (powerBuff) {
@@ -371,6 +380,32 @@ export abstract class CombatUnit {
    */
   canBeAttacked(): boolean {
     return !this.isDead;
+  }
+
+  // ==================== 抗性管理 ====================
+
+  /**
+   * 添加属性抗性
+   * @param element 属性名称
+   * @param value 抗性值（正数=减伤，负数=增伤）
+   */
+  addResistance(element: string, value: number): void {
+    const current = this.resistances[element] ?? 0;
+    this.resistances[element] = current + value;
+  }
+
+  /**
+   * 设置属性抗性（覆盖）
+   */
+  setResistance(element: string, value: number): void {
+    this.resistances[element] = value;
+  }
+
+  /**
+   * 获取属性抗性
+   */
+  getResistance(element: string): number {
+    return this.resistances[element] ?? 0;
   }
   
   /**
@@ -409,6 +444,7 @@ export interface UnitConfig {
   elements?: ElementType[];
   stages?: StatStages;
   traits?: Trait[];
+  resistances?: Record<string, number>;  // 属性抗性 { fire: 0.3 }
 }
 
 /**

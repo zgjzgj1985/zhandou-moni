@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>技能图鉴</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      background: #000;
+      color: #fff;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 顶部导航 */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 44px;
+      background: rgba(0,0,0,0.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+    }
+    .nav-back {
+      color: #007aff;
+      font-size: 17px;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+    .nav-title {
+      font-size: 17px;
+      font-weight: 600;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    /* 主内容 */
+    .content {
+      padding-top: 44px;
+      min-height: 100vh;
+      background: #000;
+    }
+
+    /* 搜索栏 */
+    .search-wrap {
+      padding: 12px 16px 8px;
+      background: #000;
+    }
+    .search-box {
+      display: flex;
+      align-items: center;
+      background: rgba(142,142,147,0.12);
+      border-radius: 10px;
+      padding: 10px 12px;
+      gap: 8px;
+    }
+    .search-box svg { width: 16px; height: 16px; fill: #8e8e93; flex-shrink: 0; }
+    .search-input {
+      flex: 1;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 17px;
+      outline: none;
+    }
+    .search-input::placeholder { color: #8e8e93; }
+
+    /* 属性标签栏 */
+    .element-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      background: #000;
+    }
+    .element-scroll::-webkit-scrollbar { display: none; }
+    .element-tabs {
+      display: flex;
+      padding: 8px 16px 16px;
+      gap: 8px;
+    }
+    .element-tab {
+      flex-shrink: 0;
+      padding: 8px 16px;
+      border-radius: 16px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+    .element-tab.active {
+      background: #fff;
+      color: #000;
+    }
+
+    /* 属性颜色 */
+    .el-fire { background: rgba(255,69,58,0.15); color: #ff453a; }
+    .el-fire.active { background: #ff453a; color: #fff; }
+    .el-water { background: rgba(0,122,255,0.15); color: #0a84ff; }
+    .el-water.active { background: #0a84ff; color: #fff; }
+    .el-grass { background: rgba(52,199,89,0.15); color: #34c759; }
+    .el-grass.active { background: #34c759; color: #fff; }
+    .el-electric { background: rgba(255,204,0,0.15); color: #ffd60a; }
+    .el-electric.active { background: #ffd60a; color: #000; }
+    .el-ice { background: rgba(100,210,255,0.15); color: #64d2ff; }
+    .el-ice.active { background: #64d2ff; color: #000; }
+    .el-rock { background: rgba(172,142,119,0.15); color: #ac8e77; }
+    .el-rock.active { background: #ac8e77; color: #fff; }
+    .el-dragon { background: rgba(171,71,188,0.15); color: #bf5af2; }
+    .el-dragon.active { background: #bf5af2; color: #fff; }
+    .el-psychic { background: rgba(236,64,122,0.15); color: #ec407a; }
+    .el-psychic.active { background: #ec407a; color: #fff; }
+
+    /* 属性介绍 */
+    .element-intro {
+      padding: 16px;
+      background: rgba(255,255,255,0.03);
+      margin: 0 16px 8px;
+      border-radius: 12px;
+      display: none;
+    }
+    .element-intro.show { display: block; }
+    .intro-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .intro-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .intro-name { font-size: 17px; font-weight: 600; }
+    .intro-style { font-size: 13px; color: #8e8e93; margin-bottom: 8px; }
+    .intro-desc { font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.5; }
+
+    /* 分隔标题 */
+    .section-title {
+      padding: 24px 16px 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #8e8e93;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* 技能卡片 */
+    .skill-card {
+      margin: 0 16px 12px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .skill-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .skill-name {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .skill-energy {
+      font-size: 13px;
+      color: #34c759;
+      font-weight: 500;
+    }
+    .skill-meta {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .skill-badge {
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-attack { background: rgba(255,69,58,0.2); color: #ff453a; }
+    .badge-defense { background: rgba(0,122,255,0.2); color: #0a84ff; }
+    .badge-support { background: rgba(52,199,89,0.2); color: #34c759; }
+    .badge-target { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); }
+    .skill-effect {
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.5;
+    }
+    .skill-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .skill-tag {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.05);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    /* 底部留白 */
+    .bottom-space { height: 40px; }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航 -->
+  <nav class="nav">
+    <button class="nav-back" onclick="window.location.href='battle-simple.html'">返回</button>
+    <span class="nav-title">技能图鉴</span>
+  </nav>
+
+  <!-- 主内容 -->
+  <div class="content">
+    <!-- 搜索栏 -->
+    <div class="search-wrap">
+      <div class="search-box">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        <input type="text" class="search-input" id="searchInput" placeholder="搜索技能..." oninput="filterSkills()">
+      </div>
+    </div>
+
+    <!-- 属性标签 -->
+    <div class="element-scroll">
+      <div class="element-tabs">
+        <div class="element-tab el-fire active" data-el="fire">火</div>
+        <div class="element-tab el-water" data-el="water">水</div>
+        <div class="element-tab el-grass" data-el="grass">草</div>
+        <div class="element-tab el-electric" data-el="electric">电</div>
+        <div class="element-tab el-ice" data-el="ice">冰</div>
+        <div class="element-tab el-rock" data-el="rock">岩</div>
+        <div class="element-tab el-dragon" data-el="dragon">龙</div>
+        <div class="element-tab el-psychic" data-el="psychic">超能</div>
+      </div>
+    </div>
+
+    <!-- 属性介绍 -->
+    <div class="element-intro show" id="intro-fire">
+      <div class="intro-header">
+        <div class="intro-dot" style="background:#ff453a"></div>
+        <div class="intro-name">火属性</div>
+      </div>
+      <div class="intro-style">爆发流 / OTK流</div>
+      <div class="intro-desc">烈焰焚城的暴力美学，一击必杀的极致追求。核心机制：高伤害单体爆发、蓄力后伤害大幅提升、灼烧DOT持续伤害压力。</div>
+    </div>
+
+    <div class="element-intro" id="intro-water">
+      <div class="intro-header">
+        <div class="intro-dot" style="background:#0a84ff"></div>
+        <div class="intro-name">水属性</div>
+      </div>
+      <div class="intro-style">控制流</div>
+      <div class="intro-desc">以静制动的深潭宰相，用韧性消磨一切攻势。核心机制：治疗续航、护盾保护、软解控制、持久消耗。</div>
+    </div>
+
+    <div class="element-intro" id="intro-grass">
+      <div class="intro-header">
+        <div class="intro-dot" style="background:#34c759"></div>
+        <div class="intro-name">草属性</div>
+      </div>
+      <div class="intro-style">光环流 / 增益流</div>
+      <div class="intro-desc">厚积薄发的自然之力，以时间换力量。核心机制：层数叠加、持续增益、消耗型爆发。</div>
+    </div>
+
+    <div class="element-intro" id="intro-electric">
+      <div class="intro-header">
+        <div class="intro-dot" style="background:#ffd60a"></div>
+        <div class="intro-name">电属性</div>
+      </div>
+      <div class="intro-style">多段伤害流 / 快攻流</div>
+      <div class="intro-desc">雷霆万钧的多段艺术，用速度淹没一切。核心机制：多段伤害、连击次数加成、速度压制。</div>
+    </div>
+
+    <div class="element-intro" id="intro-ice">
+      <div class="intro-header">
+        <div class="intro-dot" style="background:#64d2ff"></div>
+        <div class="intro-name">冰属性</div>
+      </div>
+      <div class="intro-style">减速流 / 控制流</div>
+      <div class="intro-desc">凛冬将至的绝对统治，让敌人寸步难行。核心机制：冻结控制、减速压制、节奏统治。</div>
+    </div>
+
+    <div class="element-intro" id="intro-rock">
+      <div class="intro-header">
+        <div class="intro-dot" style="background:#ac8e77"></div>
+        <div class="intro-name">岩石属性</div>
+      </div>
+      <div class="intro-style">防御流</div>
+      <div class="intro-desc">坚如磐石的铜墙铁壁，让敌人绝望的叹息。核心机制：高防御、固定减伤、护甲积累、反击反弹。</div>
+    </div>
+
+    <div class="element-intro" id="intro-dragon">
+      <div class="intro-header">
+        <div class="intro-dot" style="background:#bf5af2"></div>
+        <div class="intro-name">龙属性</div>
+      </div>
+      <div class="intro-style">中速流 / 爆发流</div>
+      <div class="intro-desc">翱翔苍穹的远古霸者，需要时间成长的王者。核心机制：成长叠加、高伤害输出、阵容联动。</div>
+    </div>
+
+    <div class="element-intro" id="intro-psychic">
+      <div class="intro-header">
+        <div class="intro-dot" style="background:#ec407a"></div>
+        <div class="intro-name">超能属性</div>
+      </div>
+      <div class="intro-style">奥秘流 / 心理博弈</div>
+      <div class="intro-desc">心灵异能的迷雾，让对手在猜谜中犯错。核心机制：延迟触发、信息操控、心理博弈。</div>
+    </div>
+
+    <!-- 技能内容 -->
+    <div id="skillsContainer"></div>
+    <div class="bottom-space"></div>
+  </div>
+
+<script>
+const DB = {
+  fire: {
+    name: '火属性', color: '#ff453a',
+    attack: [
+      { name: '火花', e: 1, p: 40, t: '单体敌人', eff: '攻击单体目标，造成40威力火属性伤害，20%概率使目标灼伤', tags: ['火', '爆发流', '灼伤'] },
+      { name: '烈焰拳', e: 2, p: 75, t: '单体敌人', eff: '攻击单体目标，造成75威力火属性伤害，30%概率使目标灼伤', tags: ['火', '爆发流', '灼伤', '物理伤害'] },
+      { name: '大字爆炎', e: 4, p: 120, t: '单体敌人', eff: '攻击单体目标，造成120威力火属性伤害，并附加灼伤印记', tags: ['火', '爆发流', '高威力', '灼伤印记'] },
+      { name: '爆炸烈焰', e: 5, p: 150, t: '单体敌人', eff: '蓄力1回合后发动，造成150威力火属性伤害，必定使目标灼伤【蓄力可被打断】', tags: ['火', '爆发流', '终极', '蓄力'] }
+    ],
+    defense: [
+      { name: '火盾', e: 2, s: 50, t: '己方单体', eff: '为己方单体生成50点护盾（持续整场），受攻击时对敌人造成30点火属性反伤', tags: ['火', '爆发流', '护盾', '反伤'] },
+      { name: '烈焰壁垒', e: 3, s: 35, t: '己方全体', eff: '为己方全体生成35点护盾（持续2回合），期间对草/冰属性抗性+30%', tags: ['火', '爆发流', '群体护盾'] },
+      { name: '灼热反击', e: 3, t: '自身', eff: '获得灼热反击状态（持续2回合），受攻击时反弹50%伤害的火属性反击', tags: ['火', '爆发流', '反击', '反伤'] }
+    ],
+    support: [
+      { name: '蓄焰', e: 2, t: '己方单体', eff: '为己方单体施加蓄焰（持续3回合），下次火属性攻击威力+50%', tags: ['火', '爆发流', '增伤'] },
+      { name: '燃尽', e: 4, t: '单体敌人', eff: '指定敌人施加燃尽印记，3回合后扣除30%当前HP【延迟伤害】', tags: ['火', '爆发流', '延迟伤害'] },
+      { name: '炎之意志', e: 5, t: '己方全体', eff: '为己方全体施加炎之意志（持续2回合）：攻击+1级，速度+1级，火属性伤害+15%', tags: ['火', '爆发流', '群体强化', '终极'] }
+    ]
+  },
+  water: {
+    name: '水属性', color: '#0a84ff',
+    attack: [
+      { name: '水流冲击', e: 2, p: 60, t: '单体敌人', eff: '攻击单体目标，造成60威力水属性伤害，附加潮湿', tags: ['水', '控制流', '潮湿'] },
+      { name: '水炮', e: 3, p: 90, t: '单体敌人', eff: '攻击单体目标，造成90威力水属性伤害，20%概率使目标减速', tags: ['水', '控制流', '减速'] },
+      { name: '洪流冲击', e: 3, p: 70, t: '单体敌人', eff: '攻击单体目标，造成70威力水属性伤害，对火属性目标伤害x2，附加溺亡', tags: ['水', '控制流', 'DOT', '克制火'] },
+      { name: '深渊漩涡', e: 5, p: 120, t: '单体敌人', eff: '蓄力1回合后发动，造成120威力水属性伤害并附加湍流【蓄力可被打断】', tags: ['水', '控制流', '蓄力'] }
+    ],
+    defense: [
+      { name: '水之守护', e: 2, s: 80, t: '己方单体', eff: '为己方单体生成80点护盾（持续整场），受攻击时使敌人下次技能伤害-20%', tags: ['水', '控制流', '护盾'] },
+      { name: '清泉护盾', e: 3, t: '自身', eff: '获得清泉状态（持续3回合），每回合恢复10%HP并清除1个负面状态', tags: ['水', '控制流', '持续治疗', '净化'] },
+      { name: '涡流壁垒', e: 4, s: 50, t: '己方全体', eff: '为己方全体生成50点护盾（持续3回合），期间对水属性伤害抗性+30%', tags: ['水', '控制流', '群体护盾'] }
+    ],
+    support: [
+      { name: '治愈波动', e: 1, t: '己方单体', eff: '治疗己方单体目标，恢复量相当于最大HP的25%', tags: ['水', '控制流', '治疗'] },
+      { name: '水疗之术', e: 3, t: '己方全体', eff: '治疗己方全体目标（恢复15%HP），并使全体获得流水状态（速度+1级）', tags: ['水', '控制流', '群体治疗', '加速'] },
+      { name: '潮汐涌动', e: 6, p: 90, t: '单体敌人', eff: '指定敌人，3回合后造成90水属性伤害并使其陷入潮湿状态【终极布局技能】', tags: ['水', '控制流', '延迟效果', '终极'] }
+    ]
+  },
+  grass: {
+    name: '草属性', color: '#34c759',
+    attack: [
+      { name: '藤鞭连击', e: 2, p: 55, t: '单体敌人', eff: '攻击单体目标，造成55威力草属性伤害，获得1层藤蔓之力', tags: ['草', '光环流', '层数叠加'] },
+      { name: '寄生种子', e: 3, p: 50, t: '单体敌人', eff: '攻击单体目标，造成50威力草属性伤害，附加寄生（每回合敌人受伤+施法者回复）', tags: ['草', '光环流', '持续伤害', '吸血'] },
+      { name: '飞叶快刀', e: 2, p: 70, t: '单体敌人', eff: '攻击单体目标，造成70威力草属性伤害，附加叶片标记', tags: ['草', '光环流', '标记', '增伤'] },
+      { name: '阳光烈焰', e: 5, p: 130, t: '单体敌人', eff: '蓄力1回合后发动，消耗所有增益层造成伤害（每层+30%伤害）【终极爆发技能】', tags: ['草', '光环流', '蓄力', '终极'] }
+    ],
+    defense: [
+      { name: '扎根之躯', e: 2, t: '自身', eff: '获得扎根状态（持续3回合），每回合回复最大HP的8%，但速度永久-1级', tags: ['草', '光环流', '持续回复'] },
+      { name: '藤蔓护甲', e: 2, s: 50, t: '己方单体', eff: '为己方单体生成50点护盾（持续3回合），每层藤蔓之力额外+20点护盾', tags: ['草', '光环流', '护盾'] },
+      { name: '绿叶屏障', e: 3, s: 40, t: '己方全体', eff: '为己方全体生成40点护盾（持续2回合），期间对草属性攻击抗性+25%', tags: ['草', '光环流', '群体护盾'] }
+    ],
+    support: [
+      { name: '成长之舞', e: 1, t: '己方单体', eff: '为己方单体施加成长（每回合攻击+特攻各+1级，最多叠加3层）', tags: ['草', '光环流', '持续强化'] },
+      { name: '寄生印记', e: 3, t: '单体敌人', eff: '对单体敌人施加寄生印记（每回合敌人受到施法者HP的6%伤害+施法者回复，持续4回合）', tags: ['草', '光环流', '持续伤害', '印记'] },
+      { name: '光合爆发', e: 6, t: '自身', eff: '消耗所有增益层（每层回复最大HP的15%），清除己方全体寄生状态【治愈型终极技能】', tags: ['草', '光环流', '治疗', '终极'] }
+    ]
+  },
+  electric: {
+    name: '电属性', color: '#ffd60a',
+    attack: [
+      { name: '电光斩', e: 1, p: 45, t: '单体敌人', eff: '单段攻击。35%概率使目标陷入麻痹，先手+1级速度', tags: ['电', '多段伤害流', '单段', '先手'] },
+      { name: '雷霆连击', e: 2, p: '75(25x3)', t: '单体敌人', eff: '多段伤害。造成3次25威力攻击，每次命中后25%概率追加一次攻击。连击次数+1/次', tags: ['电', '多段伤害流', '多段'] },
+      { name: '电磁冲击', e: 3, p: 85, t: '单体敌人', eff: '单段攻击。造成85威力伤害，降速+静电（反伤）', tags: ['电', '多段伤害流', '单段', '减速'] },
+      { name: '雷霆万钧', e: 5, p: 130, t: '单体敌人', eff: '单段终极攻击。造成130威力伤害后，触发连锁效果：对目标周围敌人造成60威力扩散伤害', tags: ['电', '多段伤害流', '连锁效果', '终极'] }
+    ],
+    defense: [
+      { name: '静电护盾', e: 2, s: 50, t: '己方单体', eff: '获得50点护盾+静电积累。吸收伤害时积累静电，攻击时附带额外伤害', tags: ['电', '多段伤害流', '护盾'] },
+      { name: '电磁偏转', e: 3, t: '自身', eff: '获得60%闪避+50%伤害反弹，持续2回合', tags: ['电', '多段伤害流', '闪避', '反弹'] },
+      { name: '电流过载', e: 0, t: '自身', eff: '以HP换取能量（消耗10%当前HP获得3能量）', tags: ['电', '多段伤害流', '能量转换'] }
+    ],
+    support: [
+      { name: '充能加速', e: 2, t: '自身', eff: '速度+2级，获得连击次数状态（初始1层）', tags: ['电', '多段伤害流', '加速', '连击次数'] },
+      { name: '连锁闪电', e: 1, p: 40, t: '单体敌人', eff: '单段攻击。造成40威力伤害后，30%概率触发连锁弹射：弹射至随机敌方目标再造成30威力伤害', tags: ['电', '多段伤害流', '连锁弹射'] },
+      { name: '伏特切换', e: 3, p: 60, t: '单体敌人', eff: '单段攻击。造成60威力伤害后，强制与队友交换位置', tags: ['电', '多段伤害流', '换位'] }
+    ]
+  },
+  ice: {
+    name: '冰属性', color: '#64d2ff',
+    attack: [
+      { name: '冰冻之风', e: 2, p: 55, t: '单体敌人', eff: '攻击单体目标，造成55威力冰系伤害，使目标减速（速度-1级，持续2回合）', tags: ['冰', '减速流', '软控制'] },
+      { name: '绝对零度', e: 3, p: 80, t: '单体敌人', eff: '攻击单体目标，造成80威力冰系伤害，20%概率使目标冻结（无法行动，每回合20%解冻）', tags: ['冰', '减速流', '硬控制', '冻结'] },
+      { name: '冰晶贯穿', e: 4, p: 100, t: '单体敌人', eff: '攻击单体目标，造成100威力冰系伤害，对已减速目标伤害+30%', tags: ['冰', '减速流', '无视抗性'] },
+      { name: '凛冬之怒', e: 5, p: 60, t: '敌方全体', eff: '蓄力1回合后对敌方全体造成60威力伤害，使所有敌人减速【蓄力可被打断】', tags: ['冰', '减速流', '群体', '蓄力'] }
+    ],
+    defense: [
+      { name: '冰霜护甲', e: 2, s: 50, t: '己方单体', eff: '为己方单体生成50点护盾（持续3回合），期间对冰属性攻击抗性+30%', tags: ['冰', '减速流', '护盾'] },
+      { name: '冰晶反射', e: 3, t: '自身', eff: '获得冰晶反射（持续2回合），反弹下次冰属性攻击并使攻击者减速', tags: ['冰', '减速流', '反射', '减速'] },
+      { name: '极寒领域', e: 3, s: 30, t: '己方全体', eff: '为己方全体生成30点护盾（持续2回合），期间对减速抗性+50%', tags: ['冰', '减速流', '群体护盾'] }
+    ],
+    support: [
+      { name: '寒气凝聚', e: 1, t: '己方单体', eff: '为己方单体赋予寒气凝聚，速度+2级（持续3回合）', tags: ['冰', '减速流', '加速'] },
+      { name: '冰封禁制', e: 3, t: '单体敌人', eff: '指定敌人，施加冰封禁制（持续2回合）：无法使用能量>=3的技能', tags: ['冰', '减速流', '封印'] },
+      { name: '绝对零域', e: 6, t: '敌方全体', eff: '全场敌人速度-2级（持续3回合），每回合受到20点冰系持续伤害【终极减速技能】', tags: ['冰', '减速流', '群体减速', '终极'] }
+    ]
+  },
+  rock: {
+    name: '岩石属性', color: '#ac8e77',
+    attack: [
+      { name: '尖石攻击', e: 2, p: 75, t: '单体敌人', eff: '攻击单体目标，造成75威力岩石伤害，30%概率使目标防御-1级', tags: ['岩', '防御流', '防御下降'] },
+      { name: '落石冲击', e: 3, p: 90, t: '单体敌人', eff: '攻击单体目标，造成90威力岩石伤害', tags: ['岩', '防御流', '高威力'] },
+      { name: '地震', e: 4, p: 100, t: '所有敌方单位', eff: '对所有敌方单位造成100威力岩石伤害（全体攻击）', tags: ['岩', '防御流', '全体伤害'] },
+      { name: '磐石崩落', e: 5, p: 130, t: '单体敌人', eff: '蓄力1回合后发动，造成130威力岩石伤害【蓄力可被打断】', tags: ['岩', '防御流', '终极', '蓄力'] }
+    ],
+    defense: [
+      { name: '岩盾', e: 2, s: 80, t: '己方单体', eff: '为己方单体生成80点护盾（持续整场），受攻击时反弹15%伤害给攻击者', tags: ['岩', '防御流', '护盾', '反弹'] },
+      { name: '铁壁', e: 2, t: '自身', eff: '自身防御+2级（持续5回合）', tags: ['岩', '防御流', '能力提升'] },
+      { name: '反击姿态', e: 3, t: '自身', eff: '获得反击姿态（持续2回合），受攻击时反弹25%伤害给攻击者', tags: ['岩', '防御流', '反击', '反弹'] }
+    ],
+    support: [
+      { name: '沙尘掩体', e: 1, t: '自身', eff: '本回合闪避率+30%，并清除自身灼烧状态', tags: ['岩', '防御流', '闪避', '驱散'] },
+      { name: '磐石之躯', e: 3, t: '自身', eff: '驱散自身所有弱化状态，进入磐石形态（持续3回合）：受到伤害-20%，速度-1级', tags: ['岩', '防御流', '净化', '减伤'] },
+      { name: '山岳守护', e: 4, s: 50, t: '己方全体', eff: '为己方全体生成50点护盾（持续3回合），期间对岩石属性攻击抗性+25%', tags: ['岩', '防御流', '群体护盾'] }
+    ]
+  },
+  dragon: {
+    name: '龙属性', color: '#bf5af2',
+    attack: [
+      { name: '龙之波动', e: 2, p: 75, t: '单体敌人', eff: '基础高威力技能，造成75威力龙属性伤害', tags: ['龙', '中速流'] },
+      { name: '龙之俯冲', e: 3, p: 90, t: '单体敌人', eff: '低HP目标+50%威力，对血量低于50%的目标伤害增加50%', tags: ['龙', '中速流', '斩杀'] },
+      { name: '龙息', e: 3, p: 50, t: '敌方全体', eff: 'AOE攻击，造成50威力伤害，并附加龙息灼烧DOT', tags: ['龙', '中速流', 'AOE'] },
+      { name: '逆鳞', e: 5, p: 120, t: '单体敌人', eff: '高威力攻击，造成120威力伤害，但副作用（2回合混乱）', tags: ['龙', '中速流', '终极', '副作用'] }
+    ],
+    defense: [
+      { name: '龙鳞守护', e: 2, t: '自身', eff: '护盾值=50+攻击等级x15，基于自身攻击等级获得额外护盾', tags: ['龙', '中速流', '护盾'] },
+      { name: '龙之威严', e: 2, t: '单体敌人', eff: '使敌人攻击-1级，持续2回合', tags: ['龙', '中速流', '弱化'] },
+      { name: '龙魂觉醒', e: 3, t: '自身', eff: '免疫控制+反弹20%伤害，持续2回合', tags: ['龙', '中速流', '免疫', '反弹'] }
+    ],
+    support: [
+      { name: '龙之舞', e: 1, t: '自身', eff: '攻击+1级+速度+1级', tags: ['龙', '中速流', '强化'] },
+      { name: '祖传之力', e: 2, t: '自身', eff: '龙属性队友在场时+攻击、+速度', tags: ['龙', '中速流', '阵容联动'] },
+      { name: '古龙之怒', e: 5, t: '单体敌人', eff: '消耗龙之舞层数爆发，每层+30%伤害', tags: ['龙', '中速流', '消耗层数', '终极'] }
+    ]
+  },
+  psychic: {
+    name: '超能属性', color: '#ec407a',
+    attack: [
+      { name: '迷心刺', e: 2, p: 55, t: '单体敌人', eff: '攻击单体目标，造成55威力超能伤害，附加心灵创伤（攻击命中率50%击中自己）', tags: ['超能', '奥秘流', '软控制'] },
+      { name: '精神冲击', e: 3, p: 80, t: '单体敌人', eff: '攻击单体目标，造成80威力混合伤害，无视目标当前护盾', tags: ['超能', '奥秘流', '无视护盾'] },
+      { name: '虚空预言', e: 5, p: 120, t: '单体敌人', eff: '蓄力1回合后发动，造成120威力伤害并附加禁忌（所有能力等级-2）【蓄力可被打断】', tags: ['超能', '奥秘流', '蓄力'] }
+    ],
+    defense: [
+      { name: '心智护盾', e: 2, s: 60, t: '己方单体', eff: '为己方单体生成60点护盾（持续整场），受攻击时敌人减少1点能量', tags: ['超能', '奥秘流', '护盾'] },
+      { name: '灵镜反照', e: 3, t: '自身', eff: '获得灵镜反照状态，反弹下一次攻击（反弹伤害x1.5）', tags: ['超能', '奥秘流', '反射'] },
+      { name: '迷雾之躯', e: 2, t: '自身', eff: '获得迷雾闪避（持续2回合），每回合60%概率闪避攻击，闪避成功后速度+1级', tags: ['超能', '奥秘流', '闪避', '加速'] },
+      { name: '念动壁垒', e: 4, s: 40, t: '己方全体', eff: '为己方全体生成40点护盾（持续3回合），期间对精神攻击抗性+30%', tags: ['超能', '奥秘流', '群体护盾'] }
+    ],
+    support: [
+      { name: '气味伪装', e: 1, t: '自身', eff: '本回合内，我方所有单位意图可信度降低30%（敌人更难判断真实意图）', tags: ['超能', '奥秘流', '信息干扰'] },
+      { name: '心智同步', e: 3, t: '己方单体', eff: '指定两个己方单位，交换所有强化/弱化状态（净化自身+转移负面状态）', tags: ['超能', '奥秘流', '状态交换', '净化'] },
+      { name: '命运编织', e: 6, p: 100, t: '单体敌人', eff: '指定敌人，3回合后造成100真实伤害并使其所有能力等级-2【终极预言技能】', tags: ['超能', '奥秘流', '延迟效果', '终极'] }
+    ]
+  }
+};
+
+let current = 'fire';
+let query = '';
+
+document.querySelectorAll('.element-tab').forEach(tab => {
+  tab.addEventListener('click', () => switchEl(tab.dataset.el));
+});
+
+function switchEl(el) {
+  current = el;
+  document.querySelectorAll('.element-tab').forEach(t => t.classList.toggle('active', t.dataset.el === el));
+  document.querySelectorAll('.element-intro').forEach(i => i.classList.toggle('show', i.id === 'intro-' + el));
+  document.getElementById('searchInput').value = '';
+  query = '';
+  render();
+}
+
+function matches(s) {
+  if (!query) return true;
+  const q = query.toLowerCase();
+  return s.name.toLowerCase().includes(q) || s.eff.toLowerCase().includes(q) || s.tags.some(t => t.toLowerCase().includes(q));
+}
+
+function render() {
+  const d = DB[current];
+  let html = '';
+  const sections = [
+    { key: 'attack', label: '攻击' },
+    { key: 'defense', label: '防御' },
+    { key: 'support', label: '辅助' }
+  ];
+  sections.forEach(sec => {
+    const skills = (d[sec.key] || []).filter(matches);
+    if (skills.length === 0) return;
+    html += `<div class="section-title">${sec.label}</div>`;
+    skills.forEach(s => {
+      const badge = sec.key === 'attack' ? 'badge-attack' : (sec.key === 'defense' ? 'badge-defense' : 'badge-support');
+      let powerHtml = '';
+      if (s.p) powerHtml = `<div style="color:#ff453a;font-size:14px;font-weight:600;margin-bottom:8px">威力 ${s.p}</div>`;
+      else if (s.s) powerHtml = `<div style="color:#0a84ff;font-size:14px;font-weight:600;margin-bottom:8px">护盾 ${s.s}</div>`;
+      const tagsHtml = s.tags.map(t => `<span class="skill-tag">${t}</span>`).join('');
+      html += `
+        <div class="skill-card">
+          <div class="skill-header">
+            <div>
+              <div class="skill-name">${s.name}</div>
+              <div class="skill-energy">${s.e === 0 ? '免费' : s.e + ' 能量'}</div>
+            </div>
+          </div>
+          <div class="skill-meta">
+            <span class="skill-badge ${badge}">${sec.label}</span>
+            <span class="skill-badge badge-target">${s.t}</span>
+          </div>
+          ${powerHtml}
+          <div class="skill-effect">${s.eff}</div>
+          <div class="skill-tags">${tagsHtml}</div>
+        </div>`;
+    });
+  });
+  document.getElementById('skillsContainer').innerHTML = html || '<div style="text-align:center;color:#8e8e93;padding:40px">未找到匹配技能</div>';
+}
+
+function filterSkills() {
+  query = document.getElementById('searchInput').value.trim();
+  render();
+}
+
+switchEl('fire');
+</script>
+</body>
+</html>

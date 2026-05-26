@@ -2740,6 +2740,189 @@
             </ul>
         </section>
 
+        <!-- 附录：能量消耗系统设计 -->
+        <section class="card" id="energy-system">
+            <h2 class="section-title">附录：能量消耗系统设计</h2>
+            
+            <blockquote style="margin: 16px 0; padding: 12px 16px; background: rgba(0, 122, 255, 0.06); border-radius: 8px; border-left: 3px solid var(--primary); font-size: 14px; color: var(--text-secondary);">
+                本节内容同步自「06_战斗系统详细设计_01.md」，是循迹之境项目的核心能量设计思路。
+            </blockquote>
+
+            <h3 class="section-title">核心设计理念</h3>
+            <p class="archetype-desc">
+                循迹之境采用<strong>共享能量池系统</strong>，取代传统的PP系统。玩家进入战斗时拥有固定能量，每回合开始时回复至满。这种设计简化了资源管理，让玩家更专注于战斗策略而非资源分配。
+            </p>
+
+            <h3 class="section-title">能量系统参数</h3>
+            <div class="table-wrapper">
+                <table style="font-size: 12px;">
+                    <thead>
+                        <tr>
+                            <th>参数</th>
+                            <th>值</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>初始能量</strong></td>
+                            <td>10点</td>
+                            <td>进入战斗时的能量值</td>
+                        </tr>
+                        <tr>
+                            <td><strong>每回合回复</strong></td>
+                            <td>10点（至满）</td>
+                            <td>每回合开始时能量恢复至满</td>
+                        </tr>
+                        <tr>
+                            <td><strong>能量上限</strong></td>
+                            <td>10点</td>
+                            <td>无法超过最大值</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="section-title">能量消耗设计原则</h3>
+            <div class="table-wrapper">
+                <table style="font-size: 12px;">
+                    <thead>
+                        <tr>
+                            <th>能量消耗</th>
+                            <th>威力范围</th>
+                            <th>示例技能</th>
+                            <th>设计理由</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>0能量（免费）</strong></td>
+                            <td>威力≤40</td>
+                            <td>撞击、电光一闪</td>
+                            <td>基础动作，保证每回合都有事可做</td>
+                        </tr>
+                        <tr>
+                            <td><strong>1能量（低消耗）</strong></td>
+                            <td>威力40-60</td>
+                            <td>火花</td>
+                            <td>轻度消耗，提供选择空间</td>
+                        </tr>
+                        <tr>
+                            <td><strong>2能量（中消耗）</strong></td>
+                            <td>威力60-90</td>
+                            <td>飞叶快刀，寒冰羽刃</td>
+                            <td>主流技能消耗，平衡威力与资源</td>
+                        </tr>
+                        <tr>
+                            <td><strong>3能量（高消耗）</strong></td>
+                            <td>威力90-120</td>
+                            <td>雷电、冰冻光线</td>
+                            <td>高威力技能，风险与回报并存</td>
+                        </tr>
+                        <tr>
+                            <td><strong>4能量（超高）</strong></td>
+                            <td>威力120+或特殊效果</td>
+                            <td>水炮、地震</td>
+                            <td>极高威力或附带效果</td>
+                        </tr>
+                        <tr>
+                            <td><strong>5能量（终极）</strong></td>
+                            <td>威力130-150</td>
+                            <td>雷霆万钧</td>
+                            <td>终极技能，需要充分准备</td>
+                        </tr>
+                        <tr>
+                            <td><strong>6能量（MEGA）</strong></td>
+                            <td>特殊机制</td>
+                            <td>爆炸烈焰等</td>
+                            <td>最高消耗，极限爆发或特殊机制</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="section-title">与其他游戏能量系统对比</h3>
+            <div class="table-wrapper">
+                <table style="font-size: 11px;">
+                    <thead>
+                        <tr>
+                            <th>特性</th>
+                            <th>宝可梦PP</th>
+                            <th>OT SP</th>
+                            <th>FF MP</th>
+                            <th>循迹之境</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>资源池</strong></td>
+                            <td>每个技能独立PP</td>
+                            <td>全角色共享SP池</td>
+                            <td>全角色共享MP</td>
+                            <td>全队共享能量池</td>
+                        </tr>
+                        <tr>
+                            <td><strong>恢复方式</strong></td>
+                            <td>每回合+5</td>
+                            <td>道具/休息</td>
+                            <td>休息/道具</td>
+                            <td>每回合重置至满</td>
+                        </tr>
+                        <tr>
+                            <td><strong>消耗单位</strong></td>
+                            <td>次数</td>
+                            <td>点数</td>
+                            <td>点数</td>
+                            <td>0-6能量点数</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="section-title">能量使用策略</h3>
+            <div class="table-wrapper">
+                <table style="font-size: 12px;">
+                    <thead>
+                        <tr>
+                            <th>策略类型</th>
+                            <th>描述</th>
+                            <th>典型做法</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>激进型</strong></td>
+                            <td>首回合消耗大量能量快速击杀</td>
+                            <td>6能量全开高威力技能</td>
+                        </tr>
+                        <tr>
+                            <td><strong>稳健型</strong></td>
+                            <td>每回合保留部分能量应对突发</td>
+                            <td>每回合留3-4能量备用</td>
+                        </tr>
+                        <tr>
+                            <td><strong>爆发型</strong></td>
+                            <td>积蓄能量等待时机</td>
+                            <td>等待最佳时机释放终极技能</td>
+                        </tr>
+                        <tr>
+                            <td><strong>均衡型</strong></td>
+                            <td>根据局势灵活分配</td>
+                            <td>根据敌人意图调整能量使用</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="section-title">设计要点总结</h3>
+            <ul class="feature-list">
+                <li><strong>威力-消耗挂钩</strong>：技能威力越大，能量消耗越高，保持平衡性</li>
+                <li><strong>免费技能保底</strong>：低威力技能设为0-1能量，保证每回合都有行动选项</li>
+                <li><strong>终极技能门槛</strong>：5-6能量技能设定为终极/特殊机制，不应过于普遍</li>
+                <li><strong>流派差异化</strong>：不同流派可以有不同的能量使用风格</li>
+            </ul>
+        </section>
+
         <footer class="footer">
             <p>回合制卡牌游戏流派设计百科</p>
             <p style="margin-top: 8px; font-size: 12px;">

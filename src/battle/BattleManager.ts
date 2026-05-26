@@ -188,6 +188,8 @@ export class BattleManager {
   private processTurnStartEffects(): void {
     // 玩家单位回合开始
     for (const player of this.players) {
+      // 回复能量至满
+      player.regenerateEnergy();
       player.onTurnStart();
     }
     

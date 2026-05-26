@@ -170,7 +170,33 @@ export enum BuffType {
   HEAL_UP = 'heal_up',       // 治疗提升
   DEFEND_UP = 'defend_up',   // 防御提升
   ATTACK_UP = 'attack_up',   // 攻击提升
-  SPEED_UP = 'speed_up'      // 速度提升
+  SPEED_UP = 'speed_up',     // 速度提升
+  // 冰属性·减速流专用Buff
+  ICE_ARMOR = 'ice_armor',           // 冰霜护甲：冰属性抗性+30%
+  ICE_REFLECT = 'ice_reflect',       // 冰晶反射：反弹冰属性攻击并减速
+  ICE_RESIST = 'ice_resist',         // 极寒抗性：减速抗性+50%
+  // 火属性·爆发流专用Buff
+  FIRE_SHIELD = 'fire_shield',       // 火盾：受攻击时反伤30点
+  WALL_OF_FIRE = 'wall_of_fire',    // 烈焰壁垒：草/冰属性抗性+30%
+  HEAT_COUNTER = 'heat_counter',    // 灼热反击：反弹50%伤害
+  FLAME_CHARGE = 'flame_charge',    // 蓄焰：下次火攻+50%
+  BLAZE_WILL = 'blaze_will',        // 炎之意志：攻击+速度+火伤提升
+  // 水属性·控制流专用Buff
+  WATER_SHIELD = 'water_shield',     // 水之守护：敌人下次技能伤害-20%
+  CLEAR_SPRING = 'clear_spring',     // 清泉：每回合治疗+净化
+  FLOW = 'flow',                    // 流水：速度+1级
+  WATER_RESIST = 'water_resist',    // 水属性抗性：对水属性伤害抗性
+  // 电属性·连击流专用Buff
+  STATIC_SHIELD = 'static_shield',  // 静电护盾：积累静电，下次攻击额外伤害
+  COMBO_CHARGE = 'combo_charge',    // 连击充能：连击次数提升伤害
+  ELECTRIC_FIELD = 'electric_field', // 电场加速：积累电场提升速度
+  THUNDER_FURY = 'thunder_fury',    // 雷霆之势：攻击附带连锁
+  // 超能属性奥秘流专用Buff
+  MIND_SHIELD = 'mind_shield',       // 心智护盾：受攻击时减少敌人PP
+  REFLECT = 'reflect',               // 灵镜反照：反弹攻击
+  PSYCHIC_DODGE = 'psychic_dodge',   // 迷雾闪避：概率闪避+加速
+  PSYCHIC_RESIST = 'psychic_resist', // 超能抗性：抗精神攻击
+  INTENT_BLUR = 'intent_blur'         // 意图模糊：降低己方意图可信度
 }
 
 /**
@@ -178,18 +204,84 @@ export enum BuffType {
  */
 export enum DebuffType {
   POISON = 'poison',         // 中毒
-  BURN = 'burn',             // 灼烧
+  BURN = 'burn',             // 灼烧：每回合损失HP
   BLEED = 'bleed',           // 流血
   WEAKNESS = 'weakness',     // 虚弱
   TERROR = 'terror',         // 恐惧
   PARALYSIS = 'paralysis',   // 麻痹
   SLEEP = 'sleep',           // 睡眠
-  FREEZE = 'freeze',         // 冰冻
-  CONFUSION = 'confusion',   // 混乱
-  BIND = 'bind'              // 束缚
+  FREEZE = 'freeze',         // 冰冻：完全无法行动
+  CONFUSION = 'confusion',   // 混乱/迷茫
+  BIND = 'bind',             // 束缚
+  // 冰属性·减速流专用Debuff
+  SLOW = 'slow',             // 减速：速度-1级
+  ICE_SEAL = 'ice_seal',     // 冰封禁制：封印≥3能量技能
+  ICE_DOT = 'ice_dot',       // 冰冻伤害：每回合受到冰系伤害
+  // 火属性·爆发流专用Debuff
+  BURN_MARK = 'burn_mark',    // 灼伤印记：下回合追加伤害
+  COMBUSTION_MARK = 'combustion_mark', // 燃尽印记：延迟伤害
+  // 水属性·控制流专用Debuff
+  WET = 'wet',               // 潮湿：电属性攻击额外30%伤害
+  DROWNING = 'drowning',      // 溺亡：每回合损失HP
+  TURBULENCE = 'turbulence', // 湍流：技能消耗+1能量
+  // 电属性·连击流专用Debuff
+  STATIC = 'static',         // 静电：受攻击时反伤
+  ELECTRIC_SHOCK = 'electric_shock', // 电疗：回合开始受伤+速度提升
+  // 超能属性奥秘流专用Debuff
+  MIND_WOUND = 'mind_wound',     // 心灵创伤：攻击命中率下降
+  FORBIDDEN = 'forbidden'         // 禁忌：能力等级下降
 }
 
+// ==================== 能量系统 ====================
+
+/**
+ * 战斗能量配置
+ */
+export interface EnergyConfig {
+  maxEnergy: number;     // 最大能量值，默认5点
+  currentEnergy: number;  // 当前能量值
+  perTurnRegen: number;   // 每回合回复能量
+}
+
+/**
+ * 默认能量配置
+ */
+export const DEFAULT_ENERGY: EnergyConfig = {
+  maxEnergy: 10,
+  currentEnergy: 10,
+  perTurnRegen: 10  // 每回合回复至满
+};
+
 // ==================== 技能相关 ====================
+
+/**
+ * 技能能量消耗等级
+ */
+export enum EnergyCost {
+  FREE = 0,      // 免费技能（如基础攻击）
+  LOW = 1,       // 低消耗（1能量）
+  MEDIUM = 2,     // 中消耗（2能量）
+  HIGH = 3,       // 高消耗（3能量）
+  ULTRA = 4,      // 超高消耗（4能量）
+  ULTIMATE = 5,   // 终极技能（5能量）
+  MEGA = 6        // mega级技能（6能量，通常为特殊效果技能）
+}
+
+/**
+ * 获取能量消耗的显示文本
+ */
+export function getEnergyCostText(cost: number): string {
+  switch (cost) {
+    case 0: return '免费';
+    case 1: return '1能量';
+    case 2: return '2能量';
+    case 3: return '3能量';
+    case 4: return '4能量';
+    case 5: return '5能量';
+    case 6: return '6能量';
+    default: return `${cost}能量`;
+  }
+}
 
 /**
  * 技能伤害类型
@@ -197,7 +289,7 @@ export enum DebuffType {
 export enum DamageType {
   PHYSICAL = 'physical',  // 物理伤害
   SPECIAL = 'special',    // 特殊伤害
-  STATUS = 'status',     // 变化技能
+  STATUS = 'status',      // 变化技能
   TRUE = 'true'          // 真实伤害
 }
 
@@ -205,12 +297,49 @@ export enum DamageType {
  * 技能目标类型
  */
 export enum SkillTarget {
-  SINGLE = 'single',     // 单体
-  ALL = 'all',           // 全体
+  SINGLE = 'single',     // 单体敌人
+  ALL = 'all',           // 全体（敌方或己方，根据使用场景）
   SELF = 'self',         // 自身
   ALLY = 'ally',         // 己方单体
-  ALLY_ALL = 'ally_all'  // 己方全体
+  ALLY_ALL = 'ally_all', // 己方全体
+  ENEMY_ALL = 'enemy_all' // 敌方全体
 }
+
+/**
+ * 技能倾向分类
+ * 用于区分技能的战术定位
+ */
+export enum SkillTendency {
+  ATTACK = 'attack',     // 攻击倾向
+  DEFENSE = 'defense',   // 防御倾向
+  SUPPORT = 'support'    // 辅助倾向
+}
+
+/**
+ * 技能倾向配置
+ */
+export interface SkillTendencyConfig {
+  tendency: SkillTendency;
+  description: string;
+}
+
+/**
+ * 技能倾向描述映射
+ */
+export const SKILL_TENDENCY_TEXT: Record<SkillTendency, SkillTendencyConfig> = {
+  [SkillTendency.ATTACK]: {
+    tendency: SkillTendency.ATTACK,
+    description: '攻击倾向：造成直接伤害或附加控制效果'
+  },
+  [SkillTendency.DEFENSE]: {
+    tendency: SkillTendency.DEFENSE,
+    description: '防御倾向：提供护盾、闪避、反射等生存能力'
+  },
+  [SkillTendency.SUPPORT]: {
+    tendency: SkillTendency.SUPPORT,
+    description: '辅助倾向：状态管理、信息操控、团队增益'
+  }
+};
 
 // ==================== 战斗状态 ====================
 

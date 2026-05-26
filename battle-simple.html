@@ -17,12 +17,12 @@
     .player-side { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 40px; }
     .enemy-side { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 40px; }
 
-    .unit { position: relative; cursor: pointer; }
+    .unit { position: relative; cursor: pointer; display: flex; align-items: flex-start; gap: 6px; }
     .target-indicator { display: none; }
     .unit.selected .target-indicator { display: block; position: absolute; inset: -4px; border: 2px solid #007aff; border-radius: 12px; }
     .unit.targetable .target-indicator { display: block; position: absolute; inset: -4px; border: 2px dashed #ff453a; border-radius: 12px; }
 
-    .unit-avatar { width: 64px; height: 64px; background: #1c1c1e; border-radius: 14px; display: flex; align-items: center; justify-content: center; }
+    .unit-avatar { width: 64px; height: 64px; background: #1c1c1e; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .unit-avatar.dead { opacity: 0.3; filter: grayscale(1); }
     .unit.has-command .unit-avatar { box-shadow: 0 0 0 2px #30d158; }
     .unit.has-command .unit-name::after { content: ' ✓'; color: #30d158; font-size: 10px; }
@@ -41,17 +41,22 @@
 
     .intent-display { position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
     .intent-icon { width: 12px; height: 12px; }
+    .intent-char { font-size: 11px; font-weight: 700; color: #fff; }
     .intent-attack { background: #ff453a; }
     .intent-buff { background: #30d158; }
     .intent-heal { background: #0a84ff; }
     .intent-defend { background: #8e8e93; }
 
+    .energy-bar-container { display: flex; flex-direction: column; gap: 1px; align-items: center; padding-top: 8px; }
+    .energy-orb { width: 6px; height: 6px; border-radius: 50%; background: rgba(48, 209, 88, 0.2); border: 1px solid rgba(48, 209, 88, 0.5); }
+    .energy-orb.filled { background: #30d158; border-color: #30d158; }
+
     .skill-panel { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; padding: 14px 20px; background: rgba(30, 30, 30, 0.95); border-radius: 14px; opacity: 0; visibility: hidden; z-index: 100; }
     .skill-panel.visible { opacity: 1; visibility: visible; }
     .skill-card { width: 60px; height: 76px; background: #3a3a3c; border-radius: 10px; padding: 6px; cursor: grab; display: flex; flex-direction: column; align-items: center; gap: 3px; }
     .skill-card:hover { transform: scale(1.03); }
-    .skill-card.no-pp { opacity: 0.4; cursor: not-allowed; }
-    .skill-card.no-pp:hover { transform: none; }
+    .skill-card.no-energy { opacity: 0.4; cursor: not-allowed; }
+    .skill-card.no-energy:hover { transform: none; }
     .skill-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
     .skill-icon.fire { background: #ff453a; }
     .skill-icon.psychic { background: #bf5af2; }
@@ -60,6 +65,8 @@
     .skill-icon svg { width: 16px; height: 16px; fill: #fff; }
     .skill-name { font-size: 10px; font-weight: 500; color: #fff; text-align: center; }
     .skill-pp { font-size: 9px; color: #8e8e93; text-align: center; }
+    .skill-energy { font-size: 9px; color: #30d158; text-align: center; }
+    .energy-display { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); background: rgba(48, 209, 88, 0.9); color: #000; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
 
     .battle-log { position: fixed; top: 80px; right: 12px; width: 140px; background: rgba(30, 30, 30, 0.9); border-radius: 10px; padding: 10px; }
     .log-title { font-size: 10px; font-weight: 600; color: #8e8e93; margin-bottom: 6px; }
@@ -109,11 +116,29 @@
     .action-order-icon.player { background: #0a84ff; }
     .action-order-icon.enemy { background: #ff453a; }
 
-    .skill-tooltip { position: fixed; background: rgba(30, 30, 30, 0.98); border-radius: 10px; padding: 12px 16px; color: #fff; font-size: 12px; z-index: 10001; pointer-events: none; min-width: 140px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-    .skill-tooltip .skill-tooltip-name { font-weight: 600; font-size: 13px; margin-bottom: 6px; }
-    .skill-tooltip .skill-tooltip-info { color: #8e8e93; font-size: 11px; margin-bottom: 4px; }
-    .skill-tooltip .skill-tooltip-power { color: #ff6b6b; font-weight: 600; }
-    .skill-tooltip .skill-tooltip-pp { color: #30d158; }
+    .skill-tooltip { position: fixed; background: rgba(30, 30, 30, 0.98); border-radius: 10px; padding: 12px 16px; color: #fff; font-size: 12px; z-index: 10001; pointer-events: none; min-width: 160px; max-width: 220px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); line-height: 1.5; }
+    .skill-tooltip .skill-tooltip-name { font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #fff; }
+    .skill-tooltip .skill-tooltip-info { color: #8e8e93; font-size: 11px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .skill-tooltip .skill-tooltip-power { color: #ff6b6b; font-weight: 600; font-size: 12px; margin-bottom: 4px; }
+    .skill-tooltip .skill-tooltip-shield { color: #0a84ff; font-weight: 600; font-size: 12px; margin-bottom: 4px; }
+    .skill-tooltip .skill-tooltip-heal { color: #30d158; font-weight: 600; font-size: 12px; margin-bottom: 4px; }
+    .skill-tooltip .skill-tooltip-energy { color: #fff; font-weight: 500; font-size: 12px; margin-bottom: 6px; }
+    .skill-tooltip .skill-tooltip-effect { color: #fff; font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #3a3a3c; }
+    .skill-tooltip .skill-tooltip-desc { color: #fff; font-size: 11px; margin-top: 6px; }
+    
+    /* 技能类型标签 */
+    .skill-type-badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+    .skill-type-badge.fire { background: #ff453a; color: #fff; }
+    .skill-type-badge.heal { background: #30d158; color: #fff; }
+    .skill-type-badge.shield { background: #0a84ff; color: #fff; }
+    .skill-type-badge.buff { background: #30d158; color: #fff; }
+    .skill-type-badge.special { background: #bf5af2; color: #fff; }
+    .skill-type-badge.debuff { background: #ff9f0a; color: #fff; }
+    
+    /* 属性标签 */
+    .skill-element-badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 500; background: #3a3a3c; color: #fff; }
+
+    .intent-tooltip { position: fixed; background: rgba(30, 30, 30, 0.98); border-radius: 8px; padding: 8px 12px; color: #fff; font-size: 11px; z-index: 10001; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.5); line-height: 1.4; }
 
     .drag-preview { position: fixed; pointer-events: none; z-index: 10000; opacity: 0.9; background: #3a3a3c; border-radius: 10px; padding: 8px; width: 60px; height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; box-shadow: 0 8px 25px rgba(0,0,0,0.5); }
     .drag-preview .skill-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
@@ -122,10 +147,15 @@
     .drag-preview .skill-icon.heal { background: #30d158; }
     .drag-preview .skill-icon.shield { background: #0a84ff; }
     .drag-preview .skill-icon svg { width: 16px; height: 16px; fill: #fff; }
+
+    .skill-book-btn { position: absolute; top: 40px; right: 16px; background: rgba(30, 30, 30, 0.95); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; z-index: 50; }
+    .skill-book-btn:hover { background: rgba(50, 50, 50, 0.95); }
   </style>
 </head>
 <body>
   <div class="battle-container">
+    <button class="skill-book-btn" onclick="window.location.href='skill-book.html'">图鉴</button>
+
     <div class="turn-info">
       <div class="turn-number" id="turnNumber">第 1 回合</div>
       <div class="phase-text" id="phaseText">准备阶段 (0/3)</div>
@@ -164,56 +194,95 @@
   </div>
 
   <script>
-    // ==================== 玩家单位数据 ====================
+    // ==================== 常量配置 ====================
+    const MAX_ENERGY = 10;  // 最大能量值
+
+    // ==================== 能量消耗配置 ====================
+    // 能量消耗设计：威力越高/效果越强，消耗越多
+    const ENERGY_COST = {
+      tackle: 0,
+      low: 1,
+      medium: 2,
+      high: 3,
+      ultra: 4,
+      ultimate: 5,
+      mega: 6
+    };
+
+    // 能量消耗显示文本
+    function getEnergyText(cost) {
+      if (cost === 0) return '免费';
+      return cost + '能量';
+    }
+
+    // ==================== 玩家单位数据（伙伴）====================
     const playerUnits = [
       {
-        id: 'wind_sparrow',
-        name: '风语雀',
+        id: 'flame_bear',
+        name: '焰爪熊',
         level: 10,
-        maxHp: 85,
-        currentHp: 85,
-        speed: 95,
-        element: 'grass',
+        maxHp: 110,
+        currentHp: 110,
+        speed: 70,
+        element: 'fire',
+        energy: MAX_ENERGY,
         skills: [
-          { id: 'gale_seed', name: '疾风种子', type: 'fire', pp: 15, ppMax: 15, target: 'single_enemy', power: 60, element: 'grass',
-            strategy: 'counter_first' },
-          { id: 'parasitic_seed', name: '寄生之种', type: 'heal', pp: 10, ppMax: 10, target: 'ally', power: 20, effect: 'drain',
-            strategy: 'lowest_hp' }
+          { id: 'flame_punch', name: '烈焰拳', type: 'special', energyCost: ENERGY_COST.medium, target: 'single_enemy', power: 75, element: 'fire',
+            strategy: 'counter_first', effect: 'burn', burnChance: 0.3, description: '攻击单体目标，造成75威力火属性伤害，30%概率使目标灼伤' },
+          { id: 'fire_shield', name: '火盾', type: 'shield', energyCost: ENERGY_COST.medium, target: 'ally', power: 50, effect: 'reflect',
+            strategy: 'lowest_hp', reflectDamage: 30, description: '为己方单体生成50点护盾，受攻击时对敌人造成30点火属性反伤' },
+          { id: 'wall_of_flames', name: '烈焰壁垒', type: 'shield', energyCost: ENERGY_COST.high, target: 'ally_all', power: 35,
+            description: '为己方全体生成35点护盾（持续2回合），期间对草/冰属性抗性+30%',
+            resistances: [{ element: 'grass', value: 0.3, duration: 2 }, { element: 'ice', value: 0.3, duration: 2 }] },
+          { id: 'combustion', name: '燃尽', type: 'special', energyCost: ENERGY_COST.high, target: 'single_enemy', power: 0, element: 'fire',
+            strategy: 'counter_first', effect: 'combustion', description: '指定敌人施加「燃尽印记」，3回合后扣除30%当前HP' },
+          { id: 'flare_blitz', name: '大字爆炎', type: 'special', energyCost: ENERGY_COST.ultra, target: 'single_enemy', power: 120, element: 'fire',
+            strategy: 'counter_first', description: '攻击单体目标，造成120威力火属性伤害，并附加「灼伤印记」（下回合追加40威力火属性伤害）' }
         ]
       },
       {
-        id: 'thunder_stag',
-        name: '雷角鹿',
+        id: 'torrent_crab',
+        name: '激流蟹',
         level: 10,
-        maxHp: 95,
-        currentHp: 95,
+        maxHp: 100,
+        currentHp: 100,
+        speed: 60,
+        element: 'water',
+        energy: MAX_ENERGY,
+        skills: [
+          { id: 'hydro_pump', name: '水炮', type: 'water', energyCost: ENERGY_COST.high, target: 'single_enemy', power: 90, element: 'water',
+            strategy: 'counter_first', effect: 'slow', slowChance: 0.2, description: '攻击单体目标，造成90威力水属性伤害，20%概率使目标减速（速度-1级，持续2回合）' },
+          { id: 'armor', name: '蟹钳加固', type: 'shield', energyCost: ENERGY_COST.medium, target: 'self', power: 40,
+            description: '强化自身防御，施加40点护盾' },
+          { id: 'water_jet', name: '水流冲击', type: 'water', energyCost: ENERGY_COST.medium, target: 'single_enemy', power: 60, element: 'water',
+            strategy: 'counter_first', effect: 'wet', description: '攻击单体目标，造成60威力水属性伤害，附加「潮湿」（受到电属性攻击时额外承受30%伤害）' },
+          { id: 'tide_shield', name: '潮汐护盾', type: 'shield', energyCost: ENERGY_COST.medium, target: 'ally', power: 60,
+            strategy: 'lowest_hp', description: '召唤潮汐之力保护队友，施加60点护盾' }
+        ]
+      },
+      {
+        id: 'lightning_marten',
+        name: '闪电貂',
+        level: 10,
+        maxHp: 75,
+        currentHp: 75,
         speed: 120,
         element: 'electric',
+        energy: MAX_ENERGY,
         skills: [
-          { id: 'thunder_strike', name: '雷霆万钧', type: 'fire', pp: 15, ppMax: 15, target: 'single_enemy', power: 90, element: 'electric',
-            strategy: 'counter_first' },
-          { id: 'static_shield', name: '静电护体', type: 'shield', pp: 12, ppMax: 12, target: 'ally', power: 50,
-            strategy: 'lowest_hp' }
-        ]
-      },
-      {
-        id: 'frost_crane',
-        name: '霜羽鹤',
-        level: 10,
-        maxHp: 80,
-        currentHp: 80,
-        speed: 85,
-        element: 'ice',
-        skills: [
-          { id: 'frost_feather', name: '寒冰羽刃', type: 'fire', pp: 15, ppMax: 15, target: 'single_enemy', power: 50, element: 'ice',
-            strategy: 'counter_first' },
-          { id: 'frost_bloom', name: '霜华绽放', type: 'fire', pp: 10, ppMax: 10, target: 'single_enemy', power: 70, element: 'ice',
-            strategy: 'counter_first' }
+          { id: 'zap', name: '电光斩', type: 'special', energyCost: ENERGY_COST.low, target: 'single_enemy', power: 45, element: 'electric',
+            strategy: 'counter_first', effect: 'paralyze', paralyzeChance: 0.35, speedBoost: 1, description: '如闪电般快速的斩击，造成45威力伤害，35%概率使目标麻痹，先手攻击' },
+          { id: 'combo', name: '雷霆连击', type: 'special', energyCost: ENERGY_COST.medium, target: 'single_enemy', power: 75, element: 'electric',
+            strategy: 'counter_first', effect: 'combo', comboHits: 3, comboPower: 25, comboChance: 0.25, description: '连续攻击造成大量伤害，共75威力（25×3），25%概率追加额外攻击' },
+          { id: 'static_shield', name: '静电护盾', type: 'shield', energyCost: ENERGY_COST.medium, target: 'ally', power: 50, effect: 'static',
+            strategy: 'lowest_hp', description: '积累静电形成护盾，可反射50%特殊伤害，下次攻击附带额外伤害' },
+          { id: 'charge', name: '充能加速', type: 'buff', energyCost: ENERGY_COST.medium, target: 'self', power: 0,
+            speedBoost: 2, comboCharge: true, description: '积蓄电荷，大幅提升自身速度（+2级），积累连击充能' }
         ]
       }
     ];
 
-    // ==================== 敌人单位数据 ====================
+    // ==================== 敌人单位数据（怪物）====================
     const enemyUnits = [
       {
         id: 'flame_salamander',
@@ -221,29 +290,29 @@
         level: 8,
         maxHp: 100,
         currentHp: 100,
-        speed: 80,
+        speed: 75,
         element: 'fire',
-        intent: { type: 'attack', power: 80, targetId: 'frost_crane' }
+        intent: { type: 'attack', power: 75, targetId: 'lightning_marten' }
       },
       {
-        id: 'venom_spider',
-        name: '毒液蛛',
-        level: 6,
-        maxHp: 70,
-        currentHp: 70,
-        speed: 110,
-        element: 'poison',
-        intent: { type: 'attack', power: 50, targetId: 'thunder_stag' }
+        id: 'deep_fish',
+        name: '深海鱼',
+        level: 7,
+        maxHp: 85,
+        currentHp: 85,
+        speed: 85,
+        element: 'water',
+        intent: { type: 'attack', power: 65, targetId: 'flame_bear' }
       },
       {
-        id: 'frost_wolf',
-        name: '寒霜狼',
-        level: 10,
-        maxHp: 110,
-        currentHp: 110,
-        speed: 130,
-        element: 'ice',
-        intent: { type: 'attack', power: 70, targetId: 'wind_sparrow' }
+        id: 'rock_armadillo',
+        name: '岩甲兽',
+        level: 8,
+        maxHp: 120,
+        currentHp: 120,
+        speed: 50,
+        element: 'rock',
+        intent: { type: 'attack', power: 70, targetId: 'torrent_crab' }
       }
     ];
 
@@ -263,12 +332,14 @@
 
     // 属性克制表
     const typeChart = {
-      grass: { fire: 0.5, water: 2, grass: 0.5, electric: 1, ice: 1, poison: 0.5 },
-      fire: { fire: 0.5, water: 0.5, grass: 2, electric: 1, ice: 2, rock: 0.5 },
-      water: { fire: 2, water: 0.5, grass: 0.5, electric: 0.5, ice: 1, rock: 2 },
-      electric: { fire: 1, water: 2, grass: 0.5, electric: 0.5, ice: 1, rock: 1 },
-      ice: { fire: 0.5, water: 0.5, grass: 2, electric: 1, ice: 0.5, rock: 1 },
-      poison: { fire: 1, water: 1, grass: 2, electric: 1, ice: 1, poison: 0.5 }
+      grass: { fire: 0.5, water: 2, grass: 0.5, electric: 1, ice: 1, poison: 0.5, rock: 2 },
+      fire: { fire: 0.5, water: 0.5, grass: 2, electric: 1, ice: 2, rock: 0.5, psychic: 1, dragon: 1 },
+      water: { fire: 2, water: 0.5, grass: 0.5, electric: 0.5, ice: 1, rock: 2, dragon: 1 },
+      electric: { fire: 1, water: 2, grass: 0.5, electric: 0.5, ice: 1, rock: 0, dragon: 0.5 },
+      ice: { fire: 0.5, water: 0.5, grass: 2, electric: 1, ice: 0.5, rock: 1, dragon: 1 },
+      rock: { fire: 2, water: 0.5, grass: 0.5, electric: 1, ice: 2, rock: 1, flying: 2 },
+      psychic: { fire: 1, water: 1, grass: 1, electric: 1, ice: 1, psychic: 0.5, dragon: 1 },
+      dragon: { fire: 1, water: 1, grass: 1, electric: 1, ice: 1, psychic: 2, dragon: 2 }
     };
 
     // 检查属性克制
@@ -460,6 +531,7 @@
         if (hasCommand) div.classList.add('has-command');
 
         const isDead = unit.currentHp <= 0;
+        
         div.innerHTML = `
           <div class="target-indicator"></div>
           <div class="unit-avatar ${isDead ? 'dead' : ''}">
@@ -472,6 +544,10 @@
             <div class="unit-level">Lv.${unit.level} <span style="color: #30d158; margin-left: 4px;">速:${unit.speed}</span></div>
             <div class="hp-bar-container"><div class="hp-bar ${isDead ? 'critical' : ''}" style="width:${isDead ? 0 : (unit.currentHp/unit.maxHp)*100}%"></div></div>
             <div class="hp-text">${isDead ? '倒下' : `${unit.currentHp} / ${unit.maxHp}`}</div>
+          </div>
+          <div class="energy-bar-container">
+            ${Array.from({length: Math.min(unit.energy, 10)}, () => '<div class="energy-orb filled"></div>').join('')}
+            ${Array.from({length: Math.max(0, MAX_ENERGY - unit.energy)}, () => '<div class="energy-orb"></div>').join('')}
           </div>
         `;
         div.onclick = () => onPlayerClick(unit);
@@ -488,11 +564,13 @@
         div.className = 'unit enemy';
         const isDead = unit.currentHp <= 0;
 
+        // 获取意图目标的名字首字
+        const intentTarget = playerUnits.find(p => p.id === unit.intent.targetId);
+        const intentChar = intentTarget ? intentTarget.name.charAt(0) : '?';
+        
         div.innerHTML = `
           <div class="intent-display intent-${unit.intent.type}" data-intent='${JSON.stringify(unit.intent)}'>
-            <svg class="intent-icon" viewBox="0 0 24 24" fill="#fff">
-              ${unit.intent.type === 'attack' ? '<path d="M7 2v11h3v9l7-12h-4l4-8z"/>' : '<path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>'}
-            </svg>
+            <span class="intent-char">${intentChar}</span>
           </div>
           <div class="unit-avatar enemy-avatar ${isDead ? 'dead' : ''}">
             <div class="enemy-icon">
@@ -535,20 +613,107 @@
     // ==================== 技能卡悬停提示 ====================
     let skillTooltip = null;
 
+    // 获取属性名称
+    function getElementName(element) {
+      const map = { fire: '火', water: '水', grass: '草', electric: '电', ice: '冰', rock: '岩', psychic: '超能', dragon: '龙' };
+      return map[element] || '无';
+    }
+
+    // 获取技能类型文本
+    function getSkillTypeName(type) {
+      const map = { fire: '攻击', heal: '治疗', shield: '护盾', buff: '强化', special: '特殊', debuff: '弱化' };
+      return map[type] || '特殊';
+    }
+
+    // 获取技能类型样式
+    function getSkillTypeClass(type) {
+      const map = { fire: 'fire', heal: 'heal', shield: 'shield', buff: 'buff', special: 'special', debuff: 'debuff' };
+      return map[type] || 'special';
+    }
+
+    // 获取目标类型文本
+    function getTargetText(target) {
+      const map = { single_enemy: '单体敌人', ally: '单体队友', all_enemy: '全体敌人', all_ally: '全体队友', self: '自身' };
+      return map[target] || target;
+    }
+
+    // 获取能量消耗文本
+    function getEnergyCostText(cost) {
+      if (cost === 0) return '免费';
+      return `${cost}能量`;
+    }
+
     function showSkillTooltip(e, skill, card) {
       hideSkillTooltip();
       skillTooltip = document.createElement('div');
       skillTooltip.className = 'skill-tooltip';
-      const targetText = skill.target === 'single_enemy' ? '单体敌人' : skill.target === 'ally' ? '单体队友' : '全体敌人';
-      const typeText = skill.type === 'fire' ? '攻击' : skill.type === 'heal' ? '治疗' : skill.type === 'shield' ? '护盾' : '特殊';
-      skillTooltip.innerHTML = `
+
+      // 基础信息行
+      let html = `
         <div class="skill-tooltip-name">${skill.name}</div>
-        <div class="skill-tooltip-info">类型: ${typeText}</div>
-        <div class="skill-tooltip-power">威力: ${skill.power || '-'}</div>
-        <div class="skill-tooltip-info">目标: ${targetText}</div>
-        <div class="skill-tooltip-pp">PP: ${skill.pp}/${skill.ppMax}</div>
+        <div class="skill-tooltip-info">
+          <span class="skill-type-badge ${getSkillTypeClass(skill.type)}">${getSkillTypeName(skill.type)}</span>
+          ${skill.element ? `<span class="skill-element-badge">${getElementName(skill.element)}属性</span>` : ''}
+        </div>
       `;
+
+      // 根据技能类型显示不同信息
+      // 攻击技能（包括fire、special、water、electric等有威力的攻击技能）显示威力
+      if (skill.type === 'fire' || skill.type === 'special' || skill.type === 'water' ||
+          skill.type === 'electric' || skill.type === 'debuff' || skill.type === 'ice') {
+        // 雷霆连击：多段攻击显示
+        if (skill.effect === 'combo' && skill.comboHits && skill.comboPower) {
+          html += `<div class="skill-tooltip-power">威力: ${skill.comboPower}×${skill.comboHits}（共${skill.comboPower * skill.comboHits}）</div>`;
+        } else if (skill.power && skill.power > 0) {
+          html += `<div class="skill-tooltip-power">威力: ${skill.power}</div>`;
+        }
+      } else if (skill.type === 'shield') {
+        // 护盾技能 - 显示护盾值
+        if (skill.power && skill.power > 0) {
+          html += `<div class="skill-tooltip-shield">护盾值: ${skill.power}</div>`;
+        }
+      } else if (skill.type === 'heal') {
+        // 治疗技能 - 显示治疗量
+        if (skill.power && skill.power > 0) {
+          html += `<div class="skill-tooltip-heal">治疗量: ${skill.power}</div>`;
+        }
+      } else if (skill.type === 'buff') {
+        // 强化技能 - 显示效果说明
+        if (skill.power && skill.power > 0) {
+          html += `<div class="skill-tooltip-power">强化: +${skill.power}</div>`;
+        }
+      }
+
+      // 目标
+      html += `<div class="skill-tooltip-info">目标: ${getTargetText(skill.target)}</div>`;
+
+      // 能量消耗
+      html += `<div class="skill-tooltip-energy">消耗: ${getEnergyCostText(skill.energyCost)}</div>`;
+
+      // 特殊效果描述
+      if (skill.effect) {
+        const effectNames = {
+          drain: '每回合吸取目标12%HP',
+          burn: '目标灼烧，每回合受到10%最大HP伤害',
+          poison: '目标中毒，每回合受到8%最大HP伤害',
+          freeze: '20%概率冻结目标',
+          slow: '目标速度-1级',
+          stun: '30%概率使目标昏迷1回合',
+          reflect: '反射50%受到的特殊伤害',
+          barrier: '免疫下一次攻击'
+        };
+        const effectText = effectNames[skill.effect] || skill.effect;
+        html += `<div class="skill-tooltip-effect">效果: ${effectText}</div>`;
+      }
+
+      // 技能描述（如果有）
+      if (skill.description) {
+        html += `<div class="skill-tooltip-desc">${skill.description}</div>`;
+      }
+
+      skillTooltip.innerHTML = html;
       document.body.appendChild(skillTooltip);
+
       const rect = card.getBoundingClientRect();
       skillTooltip.style.left = (rect.left + rect.width / 2) + 'px';
       skillTooltip.style.top = (rect.top - 10) + 'px';
@@ -567,13 +732,17 @@
         panel.innerHTML = '<div class="action-hint" id="actionHint">点击左侧伙伴选择技能</div>';
         return;
       }
+      
+      // 获取当前能量
+      const currentEnergy = unit.energy;
+      
       panel.innerHTML = unit.skills.map(skill => `
-        <div class="skill-card ${skill.pp <= 0 ? 'no-pp' : ''}" data-skill-id="${skill.id}">
+        <div class="skill-card ${skill.energyCost > currentEnergy ? 'no-energy' : ''}" data-skill-id="${skill.id}">
           <div class="skill-icon ${skill.type}">
             <svg viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
           </div>
           <div class="skill-name">${skill.name}</div>
-          <div class="skill-pp">${skill.pp}/${skill.ppMax}</div>
+          <div class="skill-energy">${getEnergyText(skill.energyCost)}</div>
         </div>
       `).join('') + '<div class="action-hint" id="actionHint">拖动技能到目标</div>';
       panel.classList.add('visible');
@@ -590,7 +759,7 @@
 
         // 拖拽开始
         card.onmousedown = (e) => {
-          if (!skill || skill.pp <= 0) return;
+          if (!skill || skill.energyCost > currentEnergy) return;
           e.preventDefault();
 
           draggedSkill = skillId;
@@ -688,8 +857,14 @@
 
     // ==================== 指令系统 ====================
     function addCommand(caster, skill, targetId) {
-      // 消耗 PP
-      skill.pp--;
+      // 检查能量是否足够
+      if (caster.energy < skill.energyCost) {
+        addLog(`${caster.name} 能量不足，无法使用 ${skill.name}`);
+        return;
+      }
+      
+      // 消耗能量
+      caster.energy -= skill.energyCost;
 
       // 添加指令
       playerCommands.push({
@@ -702,6 +877,7 @@
       addLog(`${caster.name} 下达指令：${skill.name}`);
       renderCommandList();
       renderSkillPanel(caster);
+      renderPlayerUnits();  // 更新能量显示
       updateTurnDisplay();
     }
 
@@ -848,18 +1024,196 @@
       if (!target || target.currentHp <= 0) return;
 
       if (skill.target === 'single_enemy') {
-        const damage = Math.floor(skill.power * (0.8 + Math.random() * 0.4));
-        target.currentHp = Math.max(0, target.currentHp - damage);
-        showDamageNumber(target.id, damage, 'damage');
+        // 攻击技能
+        let totalDamage = 0;
+
+        // 检查蓄焰增伤buff
+        let powerMultiplier = 1;
+        if (caster.flameCharge && skill.element === 'fire') {
+          powerMultiplier = 1.5;
+          caster.flameCharge = false;
+          addLog(`${caster.name} 的蓄焰效果生效，伤害提升50%！`, 'buff');
+        }
+
+        // 雷霆连击：多段攻击
+        if (skill.effect === 'combo') {
+          const hits = skill.comboHits || 3;
+          const powerPerHit = skill.comboPower || Math.floor(skill.power / hits);
+          let comboCount = caster.comboCount || 0;
+
+          for (let i = 0; i < hits; i++) {
+            const hitDamage = Math.floor(powerPerHit * (0.8 + Math.random() * 0.4) * powerMultiplier);
+            totalDamage += hitDamage;
+            target.currentHp = Math.max(0, target.currentHp - hitDamage);
+            showDamageNumber(target.id, hitDamage, 'damage');
+            addLog(`${caster.name} 使用 ${skill.name}，第${i + 1}段攻击造成 ${hitDamage} 伤害`, 'damage');
+            await delay(200);
+          }
+
+          // 25%概率追加额外攻击
+          if (Math.random() < (skill.comboChance || 0.25)) {
+            const extraDamage = Math.floor(powerPerHit * (0.8 + Math.random() * 0.4) * powerMultiplier);
+            totalDamage += extraDamage;
+            target.currentHp = Math.max(0, target.currentHp - extraDamage);
+            showDamageNumber(target.id, extraDamage, 'damage');
+            addLog(`雷霆连击追加攻击！造成 ${extraDamage} 额外伤害`, 'damage');
+          }
+
+          // 连击充能
+          comboCount += hits;
+          caster.comboCount = comboCount;
+          addLog(`${caster.name} 积累 ${hits} 层连击（总共 ${comboCount} 层）`);
+
+        } else {
+          // 普通单次攻击
+          const damage = Math.floor(skill.power * (0.8 + Math.random() * 0.4) * powerMultiplier);
+          totalDamage = damage;
+          target.currentHp = Math.max(0, target.currentHp - damage);
+          showDamageNumber(target.id, damage, 'damage');
+          addLog(`${caster.name} 使用 ${skill.name}，对 ${target.name} 造成 ${damage} 伤害`, 'damage');
+        }
+
+        // 燃尽：延迟伤害（3回合后扣除30%当前HP）
+        if (skill.effect === 'combustion') {
+          target.combustionStacks = (target.combustionStacks || 0) + 1;
+          target.combustionTurnsLeft = 3;
+          addLog(`${target.name} 被施加「燃尽印记」（${target.combustionTurnsLeft}回合后扣除30%当前HP）`, 'debuff');
+        }
+
+        // 灼烧效果（根据概率判定）
+        if (skill.effect === 'burn' || skill.burnChance > 0) {
+          const burnChance = skill.burnChance || (skill.effect === 'burn' ? 1 : 0);
+          if (Math.random() < burnChance) {
+            target.burning = true;
+            target.burnTurns = 3;
+            addLog(`${target.name} 陷入灼烧状态！（每回合损失12.5%最大HP，持续3回合）`, 'damage');
+          }
+        }
+
+        // 麻痹效果
+        if (skill.paralyzeChance > 0) {
+          if (Math.random() < skill.paralyzeChance) {
+            target.paralyzed = true;
+            target.paralyzeTurns = 2;
+            addLog(`${target.name} 被麻痹了！（速度-1级，持续2回合）`, 'debuff');
+          }
+        }
+
+        // 减速效果
+        if (skill.slowChance > 0) {
+          if (Math.random() < skill.slowChance) {
+            target.slowed = true;
+            target.slowTurns = 2;
+            addLog(`${target.name} 速度下降了！（速度-1级，持续${target.slowTurns}回合）`, 'debuff');
+          }
+        }
+
+        // 潮湿效果
+        if (skill.effect === 'wet') {
+          target.wet = true;
+          target.wetTurns = 3;
+          addLog(`${target.name} 陷入潮湿状态！（受到电属性攻击额外承受30%伤害，速度-10%）`, 'debuff');
+        }
+
         updateHpBar(target);
-        addLog(`${caster.name} 使用 ${skill.name}，对 ${target.name} 造成 ${damage} 伤害`, 'damage');
         if (target.currentHp <= 0) addLog(`${target.name} 倒下了！`);
+
       } else if (skill.target === 'ally') {
-        const heal = Math.floor(skill.power * (0.8 + Math.random() * 0.4));
-        target.currentHp = Math.min(target.maxHp, target.currentHp + heal);
-        showDamageNumber(target.id, heal, 'heal');
-        updateHpBar(target);
-        addLog(`${caster.name} 使用 ${skill.name}，恢复 ${target.name} ${heal} HP`, 'heal');
+        // 队友目标
+        if (skill.type === 'shield') {
+          // 护盾技能 - 给队友添加护盾
+          target.shield = (target.shield || 0) + skill.power;
+
+          // 属性抗性效果
+          if (skill.resistances) {
+            skill.resistances.forEach(r => {
+              target.resistances = target.resistances || {};
+              target.resistances[r.element] = (target.resistances[r.element] || 0) + r.value;
+              target.resistanceTurns = target.resistanceTurns || {};
+              target.resistanceTurns[r.element] = r.duration;
+              addLog(`${target.name} 获得 ${r.element} 属性抗性 +${Math.round(r.value * 100)}%`, 'buff');
+            });
+          }
+
+          // 火盾：反伤效果
+          if (skill.effect === 'reflect' || skill.reflectDamage > 0) {
+            target.fireShield = true;
+            target.reflectDamage = skill.reflectDamage || 30;
+            addLog(`${caster.name} 使用 ${skill.name}，为 ${target.name} 施加 ${skill.power} 点护盾（含反伤效果）`);
+          } else {
+            addLog(`${caster.name} 使用 ${skill.name}，为 ${target.name} 施加 ${skill.power} 点护盾`);
+          }
+        } else if (skill.type === 'heal') {
+          // 治疗技能
+          const heal = Math.floor(skill.power * (0.8 + Math.random() * 0.4));
+          target.currentHp = Math.min(target.maxHp, target.currentHp + heal);
+          showDamageNumber(target.id, heal, 'heal');
+          updateHpBar(target);
+          addLog(`${caster.name} 使用 ${skill.name}，恢复 ${target.name} ${heal} HP`, 'heal');
+        }
+
+      } else if (skill.target === 'self') {
+        // 自身目标
+        if (skill.type === 'shield') {
+          target.shield = (target.shield || 0) + skill.power;
+
+          // 属性抗性效果
+          if (skill.resistances) {
+            skill.resistances.forEach(r => {
+              target.resistances = target.resistances || {};
+              target.resistances[r.element] = (target.resistances[r.element] || 0) + r.value;
+              target.resistanceTurns = target.resistanceTurns || {};
+              target.resistanceTurns[r.element] = r.duration;
+              addLog(`${target.name} 获得 ${r.element} 属性抗性 +${Math.round(r.value * 100)}%`, 'buff');
+            });
+          }
+          addLog(`${caster.name} 使用 ${skill.name}，为自身施加 ${skill.power} 点护盾`);
+        }
+        if (skill.type === 'buff') {
+          // 充能加速：速度+2级
+          if (skill.speedBoost) {
+            target.speedBoost = (target.speedBoost || 0) + skill.speedBoost;
+            addLog(`${caster.name} 使用 ${skill.name}，速度提升 ${skill.speedBoost} 级！`, 'buff');
+          }
+          // 连击充能
+          if (skill.comboCharge) {
+            target.comboCharge = true;
+            addLog(`${caster.name} 积累连击充能，下次攻击享受增伤！`, 'buff');
+          }
+          // 属性抗性效果
+          if (skill.resistances) {
+            skill.resistances.forEach(r => {
+              target.resistances = target.resistances || {};
+              target.resistances[r.element] = (target.resistances[r.element] || 0) + r.value;
+              target.resistanceTurns = target.resistanceTurns || {};
+              target.resistanceTurns[r.element] = r.duration;
+              addLog(`${target.name} 获得 ${r.element} 属性抗性 +${Math.round(r.value * 100)}%`, 'buff');
+            });
+          }
+        }
+      } else if (skill.target === 'ally_all') {
+        // 全体队友目标
+        if (skill.type === 'shield') {
+          playerUnits.forEach(unit => {
+            if (unit.currentHp <= 0) return;
+            unit.shield = (unit.shield || 0) + skill.power;
+            // 属性抗性效果
+            if (skill.resistances) {
+              skill.resistances.forEach(r => {
+                unit.resistances = unit.resistances || {};
+                unit.resistances[r.element] = (unit.resistances[r.element] || 0) + r.value;
+                unit.resistanceTurns = unit.resistanceTurns || {};
+                unit.resistanceTurns[r.element] = r.duration;
+              });
+            }
+          });
+          addLog(`${caster.name} 使用 ${skill.name}，为全体施加 ${skill.power} 点护盾`);
+          if (skill.resistances) {
+            skill.resistances.forEach(r => {
+              addLog(`全体获得 ${r.element} 属性抗性 +${Math.round(r.value * 100)}%`, 'buff');
+            });
+          }
+        }
       }
 
       await delay(300);
@@ -883,7 +1237,15 @@
       }
 
       if (enemy.intent.type === 'attack') {
-        const damage = Math.floor(enemy.intent.power * (0.8 + Math.random() * 0.4));
+        let damage = Math.floor(enemy.intent.power * (0.8 + Math.random() * 0.4));
+        // 属性抗性
+        if (enemy.intent.element && actualTarget.resistances) {
+          const resist = actualTarget.resistances[enemy.intent.element] || 0;
+          if (resist > 0) {
+            damage = Math.floor(damage * (1 - resist));
+            addLog(`${actualTarget.name} 的抗性生效，伤害降低至 ${damage}`, 'buff');
+          }
+        }
         actualTarget.currentHp = Math.max(0, actualTarget.currentHp - damage);
         showDamageNumber(actualTarget.id, damage, 'damage');
         updateHpBar(actualTarget);
@@ -925,7 +1287,77 @@
 
       hideActionOrder();
 
-      // 回合结束
+      // 回合结束 - 处理状态效果
+      await delay(300);
+
+      // 处理灼烧效果
+      for (const unit of [...playerUnits, ...enemyUnits]) {
+        if (unit.burning && unit.currentHp > 0) {
+          const burnDamage = Math.floor(unit.maxHp * 0.125); // 12.5%最大HP
+          unit.currentHp = Math.max(0, unit.currentHp - burnDamage);
+          showDamageNumber(unit.id, burnDamage, 'damage');
+          updateHpBar(unit);
+          addLog(`${unit.name} 受到灼烧伤害 ${burnDamage} HP`, 'damage');
+          unit.burnTurns--;
+          if (unit.burnTurns <= 0) {
+            unit.burning = false;
+            addLog(`${unit.name} 的灼烧状态消失了`);
+          }
+        }
+
+        // 处理燃尽印记
+        if (unit.combustionStacks > 0 && unit.currentHp > 0) {
+          unit.combustionTurnsLeft--;
+          if (unit.combustionTurnsLeft <= 0) {
+            const combustionDamage = Math.floor(unit.currentHp * 0.3); // 30%当前HP
+            unit.currentHp = Math.max(0, unit.currentHp - combustionDamage);
+            showDamageNumber(unit.id, combustionDamage, 'damage');
+            updateHpBar(unit);
+            addLog(`${unit.name} 的「燃尽印记」触发，受到 ${combustionDamage} 真实伤害！`, 'damage');
+            unit.combustionStacks = 0;
+          }
+        }
+
+        // 处理减速状态
+        if (unit.slowed && unit.currentHp > 0) {
+          unit.slowTurns--;
+          if (unit.slowTurns <= 0) {
+            unit.slowed = false;
+            addLog(`${unit.name} 的减速状态消失了`);
+          }
+        }
+
+        // 处理麻痹状态
+        if (unit.paralyzed && unit.currentHp > 0) {
+          unit.paralyzeTurns--;
+          if (unit.paralyzeTurns <= 0) {
+            unit.paralyzed = false;
+            addLog(`${unit.name} 的麻痹状态消失了`);
+          }
+        }
+
+        // 处理潮湿状态
+        if (unit.wet && unit.currentHp > 0) {
+          unit.wetTurns--;
+          if (unit.wetTurns <= 0) {
+            unit.wet = false;
+            addLog(`${unit.name} 的潮湿状态消失了`);
+          }
+        }
+
+        // 处理属性抗性倒计时
+        if (unit.resistanceTurns && unit.currentHp > 0) {
+          for (const el in unit.resistanceTurns) {
+            unit.resistanceTurns[el]--;
+            if (unit.resistanceTurns[el] <= 0) {
+              unit.resistances[el] = 0;
+              delete unit.resistanceTurns[el];
+              addLog(`${unit.name} 的 ${el} 属性抗性消失了`);
+            }
+          }
+        }
+      }
+
       await delay(500);
 
       if (!checkBattleEnd()) {
@@ -938,11 +1370,16 @@
 
         // 进入下一回合
         currentTurn++;
+        
+        // 所有玩家单位回复能量至满
+        playerUnits.forEach(u => { u.energy = MAX_ENERGY; });
+        
         playerCommands = []; // 清空指令
         isPreparing = true;
         isExecuting = false;
 
         renderEnemyUnits();
+        renderPlayerUnits();  // 更新能量显示
         document.getElementById('commandList').style.display = 'block';
         renderCommandList();
         updateTurnDisplay();
@@ -959,7 +1396,8 @@
       enemy.intent = {
         type: intent === 'heal' ? 'heal' : intent === 'buff' ? 'buff' : 'attack',
         power: intent === 'attack' ? 40 + Math.floor(Math.random() * 50) : 20 + Math.floor(Math.random() * 20),
-        targetId: intent === 'heal' ? enemy.id : target.id
+        targetId: intent === 'heal' ? enemy.id : target.id,
+        element: enemy.element
       };
       renderEnemyUnits();
     }
@@ -991,12 +1429,16 @@
       overlay.classList.add('visible');
     }
 
+    // 初始配置（用于重置）
+    const INITIAL_PLAYER_CONFIG = JSON.parse(JSON.stringify(playerUnits));
+    const INITIAL_ENEMY_CONFIG = JSON.parse(JSON.stringify(enemyUnits));
+
     function restartBattle() {
-      playerUnits.forEach(u => { u.currentHp = u.maxHp; u.skills.forEach(s => s.pp = s.ppMax); });
-      enemyUnits.forEach((u, i) => {
-        u.currentHp = u.maxHp;
-        u.intent = { type: 'attack', power: 50 + i * 15, targetId: playerUnits[i % playerUnits.length].id };
-      });
+      // 深拷贝恢复初始状态
+      playerUnits.length = 0;
+      INITIAL_PLAYER_CONFIG.forEach(u => playerUnits.push(JSON.parse(JSON.stringify(u))));
+      enemyUnits.length = 0;
+      INITIAL_ENEMY_CONFIG.forEach(u => enemyUnits.push(JSON.parse(JSON.stringify(u))));
       currentTurn = 1;
       isPlayerTurn = true;
       battleEnded = false;

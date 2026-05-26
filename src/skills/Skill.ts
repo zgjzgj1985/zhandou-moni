@@ -5,7 +5,9 @@
 import {
   SkillTarget,
   DamageType,
-  ElementType
+  ElementType,
+  EnergyCost,
+  SkillTendency
 } from '../types';
 import { Buff } from '../effects';
 import { Debuff } from '../effects';
@@ -20,6 +22,8 @@ export interface SkillEffect {
     damageType: DamageType;
     element?: ElementType;
     hits?: number;        // 攻击次数
+    guaranteed?: boolean; // 是否必定触发（如爆炸烈焰的必定灼伤）
+    extraEffect?: 'burn_mark' | 'ice_dot'; // 额外效果类型
   };
   
   // 治疗效果
@@ -31,19 +35,50 @@ export interface SkillEffect {
   // 护盾效果
   shield?: {
     amount: number;
+    duration?: number;    // 持续回合，默认999（整场）
   };
   
   // Buff效果
   applyBuff?: {
-    buff: Buff;
-    target: SkillTarget;
+    buffType: BuffType;
+    duration?: number;
+    stacks?: number;
+    value?: number;       // 效果值（如护盾量、增伤比例等）
   };
   
   // Debuff效果
   applyDebuff?: {
-    debuff: Debuff;
-    target: SkillTarget;
-    successRate?: number; // 命中率
+    debuffType: DebuffType;
+    duration?: number;
+    stacks?: number;
+    successRate?: number; // 命中率/触发率
+    value?: number;       // 效果值（如伤害百分比等）
+  };
+  
+  // 状态提升效果（速度、攻击等）
+  statBoost?: {
+    stat: 'attack' | 'defense' | 'spAttack' | 'spDefense' | 'speed';
+    stages: number;
+    duration?: number;
+  };
+  
+  // 蓄力效果
+  charge?: {
+    turns: number;
+    canBeInterrupted: boolean;
+  };
+  
+  // 特殊效果
+  special?: {
+    type: 'reflect' | 'counter' | 'drain' | 'chain' | 'cleanse';
+    value?: number;
+  };
+
+  // 属性抗性效果
+  resistance?: {
+    element: string;      // 属性名称
+    value: number;       // 抗性值（正数=减伤百分比，如0.3=减伤30%）
+    duration: number;     // 持续回合
   };
 }
 
@@ -56,9 +91,8 @@ export interface SkillDefinition {
   description: string;
   type: 'action' | 'trait';
   
-  // PP系统
-  pp: number;            // 当前PP
-  ppMax: number;         // PP上限
+  // 能量消耗系统（替代PP）
+  energyCost: number;      // 能量消耗值
   
   // 目标
   target: SkillTarget;
@@ -69,6 +103,13 @@ export interface SkillDefinition {
   // 元数据
   category?: string;     // 分类
   tags?: string[];       // 标签
+  
+  // 技能倾向
+  tendency?: SkillTendency;
+  
+  // 蓄力相关
+  chargeTurns?: number;   // 蓄力回合数
+  canBeInterrupted?: boolean; // 蓄力是否可被打断
 }
 
 /**
@@ -98,44 +139,26 @@ export class Skill {
   }
   
   /**
-   * 检查PP是否足够
+   * 获取能量消耗
    */
-  canUse(): boolean {
-    return this.definition.pp > 0;
+  get energyCost(): number {
+    return this.definition.energyCost;
   }
   
   /**
-   * 使用技能
+   * 检查能量是否足够
+   * @param currentEnergy 当前拥有的能量
    */
-  use(): void {
-    if (!this.canUse()) {
-      throw new Error(`技能 ${this.name} PP不足`);
-    }
-    this.definition.pp--;
+  canUse(currentEnergy: number): boolean {
+    return currentEnergy >= this.definition.energyCost;
   }
   
   /**
-   * 恢复PP
+   * 使用技能后消耗能量
+   * @returns 消耗的能量值
    */
-  restorePP(amount: number): void {
-    this.definition.pp = Math.min(this.definition.pp + amount, this.definition.ppMax);
-  }
-  
-  /**
-   * 重置PP
-   */
-  resetPP(): void {
-    this.definition.pp = this.definition.ppMax;
-  }
-  
-  /**
-   * 获取PP信息
-   */
-  getPPInfo(): { current: number; max: number } {
-    return {
-      current: this.definition.pp,
-      max: this.definition.ppMax
-    };
+  getEnergyConsumption(): number {
+    return this.definition.energyCost;
   }
 }
 
