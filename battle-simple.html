@@ -22,6 +22,12 @@
     .target-indicator { display: none; }
     .unit.selected .target-indicator { display: block; position: absolute; inset: -4px; border: 2px solid #007aff; border-radius: 12px; }
     .unit.targetable .target-indicator { display: block; position: absolute; inset: -4px; border: 2px dashed #ff453a; border-radius: 12px; }
+    .unit.targetable.matchup-super .target-indicator { border-color: #ff453a; box-shadow: 0 0 10px rgba(255, 69, 58, 0.6); }
+    .unit.targetable.matchup-weak .target-indicator { border-color: #8e8e93; opacity: 0.7; }
+    .unit .matchup-hint { position: absolute; right: -70px; top: 50%; transform: translateY(-50%); background: rgba(30, 30, 30, 0.95); border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 600; white-space: nowrap; z-index: 100; }
+    .unit .matchup-hint.super { color: #ff453a; border: 1px solid #ff453a; }
+    .unit .matchup-hint.weak { color: #8e8e93; border: 1px solid #8e8e93; }
+    .unit .matchup-hint.normal { color: #30d158; border: 1px solid #30d158; }
 
     .unit-avatar { width: 64px; height: 64px; background: #1c1c1e; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .unit-avatar.dead { opacity: 0.3; filter: grayscale(1); }
@@ -127,6 +133,9 @@
     .skill-tooltip .skill-tooltip-energy { color: #fff; font-weight: 500; font-size: 12px; margin-bottom: 6px; }
     .skill-tooltip .skill-tooltip-effect { color: #fff; font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #3a3a3c; }
     .skill-tooltip .skill-tooltip-desc { color: #fff; font-size: 11px; margin-top: 6px; }
+    .skill-tooltip .skill-tooltip-matchup { font-weight: 600; font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #3a3a3c; }
+    .skill-tooltip .skill-tooltip-matchup.super-effective { color: #ff453a; }
+    .skill-tooltip .skill-tooltip-matchup.not-effective { color: #8e8e93; }
     
     /* 技能类型标签 */
     .skill-type-badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
@@ -139,6 +148,13 @@
     
     /* 属性标签 */
     .skill-element-badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 500; background: #3a3a3c; color: #fff; }
+
+    /* 单位状态图标 */
+    .status-icons { display: flex; gap: 4px; margin-top: 4px; }
+    .status-icon { padding: 2px 4px; border-radius: 4px; font-size: 9px; font-weight: 600; }
+    .status-icon.shield-icon { background: #0a84ff; color: #fff; }
+    .status-icon.reduction-icon { background: #bf5af2; color: #fff; }
+    .status-icon.resistance-icon { background: #30d158; color: #fff; }
 
     .intent-tooltip { position: fixed; background: rgba(30, 30, 30, 0.98); border-radius: 8px; padding: 8px 12px; color: #fff; font-size: 11px; z-index: 10001; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.5); line-height: 1.4; }
 
@@ -198,6 +214,18 @@
   <script>
     // ==================== 常量配置 ====================
     const MAX_ENERGY = 10;  // 最大能量值
+
+    // 属性克制表
+    const TYPE_CHART = {
+      fire: { grass: 2, water: 0.5, rock: 0.5, ice: 2 },
+      water: { fire: 2, grass: 0.5, electric: 0.5, rock: 2 },
+      grass: { water: 2, fire: 0.5, rock: 2, poison: 0.5 },
+      electric: { water: 2, grass: 0.5, flying: 2 },
+      ice: { grass: 2, water: 0.5, ground: 2, flying: 2 },
+      rock: { fire: 2, ice: 2, flying: 2 },
+      psychic: { fighting: 2, poison: 2 },
+      dragon: { dragon: 2 }
+    };
 
     // ==================== 能量消耗配置 ====================
     // 能量消耗设计：威力越高/效果越强，消耗越多
@@ -282,7 +310,11 @@
 
     // 根据生物属性，从 skills-data.js 随机获取4个技能
     function assignSkillsByElement(element, creatureId) {
-      const elementData = SKILLS_DB[element];
+      // 岩石属性映射到地属性（兼容旧数据）
+      const elementMap = { rock: 'ground' };
+      const mappedElement = elementMap[element] || element;
+      
+      const elementData = SKILLS_DB[mappedElement];
       if (!elementData) return [];
 
       const skills = [];
@@ -296,20 +328,20 @@
         const attackPool = shuffleArray(elementData.attack);
         const numAttack = Math.min(2, attackPool.length);
         for (let i = 0; i < numAttack; i++) {
-          skills.push(convertSkillToBattleFormat(attackPool[i], element));
+          skills.push(convertSkillToBattleFormat(attackPool[i], mappedElement));
         }
       }
 
       // 防御技能池
       if (elementData.defense && elementData.defense.length > 0) {
         const defPool = shuffleArray(elementData.defense);
-        skills.push(convertSkillToBattleFormat(defPool[0], element));
+        skills.push(convertSkillToBattleFormat(defPool[0], mappedElement));
       }
 
       // 辅助技能池
       if (elementData.support && elementData.support.length > 0) {
         const supPool = shuffleArray(elementData.support);
-        skills.push(convertSkillToBattleFormat(supPool[0], element));
+        skills.push(convertSkillToBattleFormat(supPool[0], mappedElement));
       }
 
       return skills;
@@ -334,7 +366,7 @@
       if (skillData.t) {
         if (skillData.t.includes('自身')) target = 'self';
         else if (skillData.t.includes('己方单体')) target = 'ally';
-        else if (skillData.t.includes('己方全体')) target = 'ally_all';
+        else if (skillData.t.includes('己方全体')) target = 'all_ally';
         else if (skillData.t.includes('敌方全体') || skillData.t.includes('全体敌人')) target = 'all_enemy';
         else target = 'single_enemy';
       }
@@ -369,6 +401,9 @@
       let burnStacks = null;
       let burnChance = null;
       let burnMarkPower = null;
+      // 减伤百分比（直接从数据读取）
+      const damageReduction = skillData.damageReduction || 0;
+
       if (skillData.eff) {
         // 灼伤印记优先判断（更具体）
         if (skillData.eff.includes('灼伤印记')) {
@@ -416,6 +451,7 @@
         burnStacks: burnStacks,
         burnChance: burnChance,
         burnMarkPower: burnMarkPower,
+        damageReduction: damageReduction, // 减伤百分比
         description: skillData.eff || ''
       };
     }
@@ -427,16 +463,25 @@
       });
     }
 
-    // 为所有敌人分配技能
+    // 为所有敌人分配技能并生成初始意图
     function initializeEnemySkills() {
       enemyUnits.forEach(unit => {
         unit.skills = assignSkillsByElement(unit.element, unit.id);
       });
+      console.log('=== 敌人技能分配 ===');
+      enemyUnits.forEach(unit => {
+        console.log(`${unit.name} (${unit.element}):`, unit.skills.map(s => `${s.name}[${s.energyCost}能量]`).join(', '));
+      });
+      // 为每个敌人生成初始意图
+      enemyUnits.forEach(unit => {
+        if (!unit.intent.skillId) {
+          updateEnemyIntent(unit);
+        }
+      });
     }
 
-    // 初始化时分配技能
+    // 初始化时分配技能（玩家）
     initializeCompanionSkills();
-    initializeEnemySkills();
     
     // 调试日志：检查技能分配结果
     console.log('=== 技能分配调试 ===');
@@ -506,6 +551,9 @@ syncSkillDescriptions();
       }
     ];
 
+    // 为所有敌人分配技能
+    initializeEnemySkills();
+
     // ==================== 状态变量 ====================
     let selectedPlayer = null;
     let selectedUnitId = null;
@@ -513,6 +561,7 @@ syncSkillDescriptions();
     let isPlayerTurn = true;
     let isDragging = false;
     let draggedSkill = null;
+    let wasDragReleased = false;  // 标记拖拽释放（未命中目标）
     let battleEnded = false;
     let playerCommands = [];  // 玩家指令列表
     let isPreparing = true;  // 是否处于准备阶段
@@ -732,7 +781,16 @@ syncSkillDescriptions();
         if (hasCommand) div.classList.add('has-command');
 
         const isDead = unit.currentHp <= 0;
-        
+
+        // 状态图标
+        let statusIcons = '';
+        if (unit.shield && unit.shield > 0) {
+          statusIcons += `<div class="status-icon shield-icon" title="护盾: ${unit.shield}">盾</div>`;
+        }
+        if (unit.damageReduction && unit.damageReduction > 0) {
+          statusIcons += `<div class="status-icon reduction-icon" title="减伤: ${Math.round(unit.damageReduction * 100)}%">减${Math.round(unit.damageReduction * 100)}%</div>`;
+        }
+
         div.innerHTML = `
           <div class="target-indicator"></div>
           <div class="unit-avatar ${isDead ? 'dead' : ''}">
@@ -745,6 +803,7 @@ syncSkillDescriptions();
             <div class="unit-level">Lv.${unit.level} <span style="color: #30d158; margin-left: 4px;">速:${unit.speed}</span></div>
             <div class="hp-bar-container"><div class="hp-bar ${isDead ? 'critical' : ''}" style="width:${isDead ? 0 : (unit.currentHp/unit.maxHp)*100}%"></div></div>
             <div class="hp-text">${isDead ? '倒下' : `${unit.currentHp} / ${unit.maxHp}`}</div>
+            <div class="status-icons">${statusIcons}</div>
           </div>
           <div class="energy-bar-container">
             ${Array.from({length: Math.min(unit.energy, 10)}, () => '<div class="energy-orb filled"></div>').join('')}
@@ -765,19 +824,38 @@ syncSkillDescriptions();
         div.className = 'unit enemy';
         const isDead = unit.currentHp <= 0;
 
-        // 获取意图目标：优先使用 intent.targetId，fallback 到随机存活玩家
-        let intentTarget = playerUnits.find(p => p.id === unit.intent.targetId && p.currentHp > 0);
-        if (!intentTarget) {
-          const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
-          if (alivePlayers.length > 0) {
-            intentTarget = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+        // 意图图标：直接使用 intent.targetId 判断目标
+        // 如果 targetId 等于敌人自己的 id，说明是自身技能（如火盾），显示"自"
+        // 否则显示 targetId 对应单位的名字首字
+        let intentTargetName = '';
+        if (unit.intent.targetId === unit.id) {
+          // 自身技能：防御/治疗/强化类
+          intentTargetName = '自';
+        } else {
+          // 攻击类：显示目标敌人名称
+          let target = playerUnits.find(p => p.id === unit.intent.targetId && p.currentHp > 0);
+          if (!target) {
+            const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
+            if (alivePlayers.length > 0) {
+              target = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+            }
           }
+          intentTargetName = target ? target.name.charAt(0) : '?';
         }
-        const intentChar = intentTarget ? intentTarget.name.charAt(0) : '?';
-        
+
+        // 状态图标
+        let statusIcons = '';
+        if (unit.shield && unit.shield > 0) {
+          statusIcons += `<div class="status-icon shield-icon" title="护盾: ${unit.shield}">盾</div>`;
+        }
+        if (unit.damageReduction && unit.damageReduction > 0) {
+          statusIcons += `<div class="status-icon reduction-icon" title="减伤: ${Math.round(unit.damageReduction * 100)}%">减${Math.round(unit.damageReduction * 100)}%</div>`;
+        }
+
         div.innerHTML = `
+          <div class="target-indicator"></div>
           <div class="intent-display intent-${unit.intent.type}" data-intent='${JSON.stringify(unit.intent)}'>
-            <span class="intent-char">${intentChar}</span>
+            <span class="intent-char">${intentTargetName}</span>
           </div>
           <div class="unit-avatar enemy-avatar ${isDead ? 'dead' : ''}">
             <div class="enemy-icon">
@@ -789,6 +867,7 @@ syncSkillDescriptions();
             <div class="unit-level">Lv.${unit.level} <span style="color: #ff453a; margin-left: 4px;">速:${unit.speed}</span></div>
             <div class="hp-bar-container"><div class="hp-bar ${isDead ? 'critical' : ''}" style="width:${isDead ? 0 : (unit.currentHp/unit.maxHp)*100}%"></div></div>
             <div class="hp-text">${isDead ? '倒下' : `${unit.currentHp} / ${unit.maxHp}`}</div>
+            <div class="status-icons">${statusIcons}</div>
           </div>
         `;
         if (!isDead) {
@@ -802,20 +881,32 @@ syncSkillDescriptions();
     function setupIntentTooltip(el, unit) {
       const icon = el.querySelector('.intent-display');
       icon.onmouseenter = (e) => {
+        // 1. 显示基本意图信息
         const tooltip = document.createElement('div');
         tooltip.className = 'intent-tooltip';
-        // 获取意图目标：优先使用 intent.targetId，fallback 到随机存活玩家
-        let target = playerUnits.find(p => p.id === unit.intent.targetId && p.currentHp > 0);
-        if (!target) {
-          const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
-          if (alivePlayers.length > 0) {
-            target = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+        // 直接使用 intent.targetId 判断目标
+        let targetName = '';
+        let targetUnit = null;
+        if (unit.intent.targetId === unit.id) {
+          // 自身技能：显示施法者自己的名字
+          targetName = unit.name;
+          targetUnit = unit; // 自身技能的目标是敌人自己
+        } else {
+          // 攻击类：显示目标敌人名称
+          targetUnit = playerUnits.find(p => p.id === unit.intent.targetId && p.currentHp > 0);
+          if (!targetUnit) {
+            const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
+            if (alivePlayers.length > 0) {
+              targetUnit = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+            }
           }
+          targetName = targetUnit ? targetUnit.name : '未知目标';
         }
         // 获取技能名称
         let skillName = '';
+        let skill = null;
         if (unit.intent.skillId && unit.skills) {
-          const skill = unit.skills.find(s => s.id === unit.intent.skillId);
+          skill = unit.skills.find(s => s.id === unit.intent.skillId);
           if (skill) {
             skillName = skill.name;
           }
@@ -825,11 +916,14 @@ syncSkillDescriptions();
         if (skillName) {
           intentHtml = `<strong>${skillName}</strong>`;
         }
-        if (unit.intent.power) {
+        if (unit.intent.power && unit.intent.type === 'attack') {
           intentHtml += `<br>威力: ${unit.intent.power}`;
         }
-        if (target) {
-          intentHtml += `<br>目标: ${target.name}`;
+        // 直接使用 targetId 判断：自身技能显示施法者，治疗/防御/强化技能显示自身
+        if (unit.intent.targetId === unit.id) {
+          intentHtml += `<br>目标: ${unit.name}`;
+        } else if (targetName) {
+          intentHtml += `<br>目标: ${targetName}`;
         }
         tooltip.innerHTML = intentHtml;
         document.body.appendChild(tooltip);
@@ -837,9 +931,15 @@ syncSkillDescriptions();
         tooltip.style.left = (rect.right + 10) + 'px';
         tooltip.style.top = rect.top + 'px';
         icon._tooltip = tooltip;
+
+        // 2. 显示技能详细信息框（引用技能卡悬停的显示逻辑）
+        if (skill) {
+          showSkillTooltip(e, skill, icon, targetUnit);
+        }
       };
       icon.onmouseleave = () => {
         if (icon._tooltip) { icon._tooltip.remove(); delete icon._tooltip; }
+        hideSkillTooltip();
       };
     }
 
@@ -876,7 +976,7 @@ syncSkillDescriptions();
       return `${cost}能量`;
     }
 
-    function showSkillTooltip(e, skill, card) {
+    function showSkillTooltip(e, skill, card, target = null) {
       hideSkillTooltip();
       skillTooltip = document.createElement('div');
       skillTooltip.className = 'skill-tooltip';
@@ -963,6 +1063,25 @@ syncSkillDescriptions();
         }
       }
 
+      // 属性克制关系提示（仅攻击技能且有目标时显示）
+      if (target && skill.element && (skill.type === 'fire' || skill.type === 'special' || skill.type === 'water' ||
+          skill.type === 'electric' || skill.type === 'debuff' || skill.type === 'ice')) {
+        const skillElement = skill.element;
+        const targetElements = target.elements || [target.element];
+        const multiplier = calculateDamageMultiplier(skillElement, targetElements);
+
+        // 根据实际倍率显示提示
+        if (multiplier >= 4) {
+          html += `<div class="skill-tooltip-matchup super-effective">⚠️ 效果绝佳！造成${multiplier}倍伤害</div>`;
+        } else if (multiplier >= 2) {
+          html += `<div class="skill-tooltip-matchup super-effective">⚠️ 效果拔群！造成${multiplier}倍伤害</div>`;
+        } else if (multiplier <= 0.25) {
+          html += `<div class="skill-tooltip-matchup not-effective">效果微乎其微...伤害仅${multiplier}倍</div>`;
+        } else if (multiplier < 1) {
+          html += `<div class="skill-tooltip-matchup not-effective">效果微弱...伤害仅${multiplier}倍</div>`;
+        }
+      }
+
       // 技能描述
       if (skill.description) {
         html += `<div class="skill-tooltip-desc">${skill.description}</div>`;
@@ -1018,6 +1137,7 @@ syncSkillDescriptions();
         card.onmousedown = (e) => {
           if (!skill || skill.energyCost > currentEnergy) return;
           e.preventDefault();
+          isDragging = true;
 
           draggedSkill = skillId;
           updateTargetIndicators(skill);
@@ -1038,22 +1158,58 @@ syncSkillDescriptions();
           const upHandler = (e) => {
             document.removeEventListener('mousemove', moveHandler);
             document.removeEventListener('mouseup', upHandler);
+            isDragging = false;
             if (dragPreview) { dragPreview.remove(); dragPreview = null; }
 
-            // 检查是否在目标上释放（self 类型的技能无需目标）
+            // 查找鼠标位置下的单位元素
+            const elementAtPoint = document.elementFromPoint(e.clientX, e.clientY);
+            const findUnitElement = (selector) => {
+              // 先检查元素本身
+              if (elementAtPoint && elementAtPoint.matches && elementAtPoint.matches(selector)) {
+                return elementAtPoint;
+              }
+              // 再检查祖先元素
+              return elementAtPoint?.closest(selector);
+            };
+
+            // 检查是否在有效目标上释放
+            let targetUnit = null;
+            let cmdSuccess = false;
+
             if (skill.target === 'self') {
               // 自身目标技能直接释放
-              addCommand(unit, skill, unit.id);
-            } else {
-              const target = document.elementFromPoint(e.clientX, e.clientY);
-              const targetUnit = target?.closest('.unit.enemy.targetable') || target?.closest('.unit.player.targetable');
+              cmdSuccess = addCommand(unit, skill, unit.id);
+            } else if (skill.target === 'all_enemy') {
+              // 全体敌人技能：必须在敌人身上释放
+              targetUnit = findUnitElement('.unit.enemy');
               if (targetUnit) {
-                const targetId = targetUnit.id;
-                addCommand(unit, skill, targetId);
+                cmdSuccess = addCommand(unit, skill, targetUnit.id);
+              }
+            } else if (skill.target === 'all_ally') {
+              // 全体队友技能：必须在队友身上释放
+              targetUnit = findUnitElement('.unit.player');
+              if (targetUnit) {
+                cmdSuccess = addCommand(unit, skill, targetUnit.id);
+              }
+            } else {
+              // 单体技能：必须在有效目标上释放
+              targetUnit = findUnitElement('.unit.enemy.targetable') || findUnitElement('.unit.player.targetable');
+              if (targetUnit) {
+                cmdSuccess = addCommand(unit, skill, targetUnit.id);
               }
             }
+
             draggedSkill = null;
-            deselectPlayer();
+            // 取消抓取时清除克制关系提示
+            clearDragIndicators();
+
+            // 只有成功下达指令才完全取消选择，否则保留技能面板
+            if (!cmdSuccess) {
+              // 技能未成功使用，标记为拖拽释放，跳过 click 事件处理
+              wasDragReleased = true;
+            } else {
+              deselectPlayer();
+            }
           };
 
           document.addEventListener('mousemove', moveHandler);
@@ -1068,18 +1224,55 @@ syncSkillDescriptions();
     }
 
     function updateTargetIndicators(skill) {
-      document.querySelectorAll('.unit').forEach(el => el.classList.remove('targetable'));
-      if (skill.target === 'single_enemy') {
+      // 移除所有高亮和克制关系样式
+      document.querySelectorAll('.unit').forEach(el => {
+        el.classList.remove('targetable', 'matchup-super', 'matchup-weak');
+      });
+      // 移除所有克制关系提示
+      document.querySelectorAll('.matchup-hint').forEach(el => el.remove());
+
+      if (skill.target === 'single_enemy' || skill.target === 'all_enemy') {
+        // 对敌人技能：根据克制关系高亮
         enemyUnits.filter(e => e.currentHp > 0).forEach(e => {
-          document.getElementById(e.id)?.classList.add('targetable');
+          const el = document.getElementById(e.id);
+          if (el) {
+            el.classList.add('targetable');
+            // 计算克制关系
+            if (skill.element) {
+              const multiplier = calculateDamageMultiplier(skill.element, e.elements || [e.element]);
+              if (multiplier >= 2) {
+                el.classList.add('matchup-super');
+              } else if (multiplier < 1) {
+                el.classList.add('matchup-weak');
+              }
+              // 在敌人信息框右侧显示克制关系
+              const hint = document.createElement('div');
+              hint.className = 'matchup-hint';
+              if (multiplier >= 4) {
+                hint.classList.add('super');
+                hint.textContent = `效果绝佳 ×${multiplier}`;
+              } else if (multiplier >= 2) {
+                hint.classList.add('super');
+                hint.textContent = `效果拔群 ×${multiplier}`;
+              } else if (multiplier < 1) {
+                hint.classList.add('weak');
+                hint.textContent = `逆属性 ×${multiplier}`;
+              } else {
+                hint.classList.add('normal');
+                hint.textContent = `普通 ×${multiplier}`;
+              }
+              el.appendChild(hint);
+            }
+          }
         });
       } else if (skill.target === 'ally') {
         playerUnits.filter(p => p.currentHp > 0).forEach(p => {
           document.getElementById(p.id)?.classList.add('targetable');
         });
-      } else if (skill.target === 'all_enemy') {
-        enemyUnits.filter(e => e.currentHp > 0).forEach(e => {
-          document.getElementById(e.id)?.classList.add('targetable');
+      } else if (skill.target === 'all_ally') {
+        // 全体队友技能：所有存活的队友都可作为释放目标
+        playerUnits.filter(p => p.currentHp > 0).forEach(p => {
+          document.getElementById(p.id)?.classList.add('targetable');
         });
       }
     }
@@ -1112,9 +1305,17 @@ syncSkillDescriptions();
     function deselectPlayer() {
       selectedPlayer = null;
       draggedSkill = null;
-      document.querySelectorAll('.unit').forEach(el => el.classList.remove('targetable', 'selected'));
+      document.querySelectorAll('.unit').forEach(el => el.classList.remove('targetable', 'selected', 'matchup-super', 'matchup-weak'));
+      // 移除所有克制关系提示
+      document.querySelectorAll('.matchup-hint').forEach(el => el.remove());
       renderPlayerUnits();
       renderSkillPanel(null);
+    }
+
+    // 清除拖拽相关的指示器（克制关系边框和提示），保留伙伴选择状态
+    function clearDragIndicators() {
+      document.querySelectorAll('.unit').forEach(el => el.classList.remove('targetable', 'matchup-super', 'matchup-weak'));
+      document.querySelectorAll('.matchup-hint').forEach(el => el.remove());
     }
 
     // ==================== 指令系统 ====================
@@ -1330,7 +1531,24 @@ syncSkillDescriptions();
           let comboCount = caster.comboCount || 0;
 
           for (let i = 0; i < hits; i++) {
-            const hitDamage = Math.floor(powerPerHit * (0.8 + Math.random() * 0.4) * powerMultiplier);
+            let hitDamage = Math.floor(powerPerHit * (0.8 + Math.random() * 0.4) * powerMultiplier);
+
+            // 检查目标的减伤效果
+            if (target.damageReduction && target.damageReduction > 0) {
+              hitDamage = Math.floor(hitDamage * (1 - target.damageReduction));
+            }
+
+            // 检查目标的护盾
+            if (target.shield && target.shield > 0) {
+              if (hitDamage > target.shield) {
+                hitDamage -= target.shield;
+                target.shield = 0;
+              } else {
+                target.shield -= hitDamage;
+                hitDamage = 0;
+              }
+            }
+
             totalDamage += hitDamage;
             target.currentHp = Math.max(0, target.currentHp - hitDamage);
             showDamageNumber(target.id, hitDamage, 'damage');
@@ -1340,7 +1558,22 @@ syncSkillDescriptions();
 
           // 25%概率追加额外攻击
           if (Math.random() < (skill.comboChance || 0.25)) {
-            const extraDamage = Math.floor(powerPerHit * (0.8 + Math.random() * 0.4) * powerMultiplier);
+            let extraDamage = Math.floor(powerPerHit * (0.8 + Math.random() * 0.4) * powerMultiplier);
+
+            // 检查目标的减伤和护盾
+            if (target.damageReduction && target.damageReduction > 0) {
+              extraDamage = Math.floor(extraDamage * (1 - target.damageReduction));
+            }
+            if (target.shield && target.shield > 0) {
+              if (extraDamage > target.shield) {
+                extraDamage -= target.shield;
+                target.shield = 0;
+              } else {
+                target.shield -= extraDamage;
+                extraDamage = 0;
+              }
+            }
+
             totalDamage += extraDamage;
             target.currentHp = Math.max(0, target.currentHp - extraDamage);
             showDamageNumber(target.id, extraDamage, 'damage');
@@ -1354,7 +1587,28 @@ syncSkillDescriptions();
 
         } else {
           // 普通单次攻击
-          const damage = Math.floor(skill.power * (0.8 + Math.random() * 0.4) * powerMultiplier);
+          let damage = Math.floor(skill.power * (0.8 + Math.random() * 0.4) * powerMultiplier);
+
+          // 检查目标的减伤效果
+          if (target.damageReduction && target.damageReduction > 0) {
+            const originalDamage = damage;
+            damage = Math.floor(damage * (1 - target.damageReduction));
+            addLog(`${target.name} 的减伤效果生效，伤害从 ${originalDamage} 降低至 ${damage}`, 'buff');
+          }
+
+          // 检查目标的护盾
+          if (target.shield && target.shield > 0) {
+            if (damage > target.shield) {
+              damage -= target.shield;
+              addLog(`${target.name} 的护盾吸收了 ${target.shield} 点伤害`);
+              target.shield = 0;
+            } else {
+              target.shield -= damage;
+              addLog(`${target.name} 的护盾完全吸收了 ${damage} 点伤害`);
+              damage = 0;
+            }
+          }
+
           totalDamage = damage;
           target.currentHp = Math.max(0, target.currentHp - damage);
           showDamageNumber(target.id, damage, 'damage');
@@ -1432,6 +1686,13 @@ syncSkillDescriptions();
           // 护盾技能 - 给队友添加护盾
           target.shield = (target.shield || 0) + skill.power;
 
+          // 减伤效果（如冰墙的50%减伤）
+          if (skill.damageReduction && skill.damageReduction > 0) {
+            target.damageReduction = (target.damageReduction || 0) + skill.damageReduction;
+            target.damageReductionTurns = 2; // 默认持续2回合
+            addLog(`${target.name} 获得 ${Math.round(skill.damageReduction * 100)}% 伤害减免（持续${target.damageReductionTurns}回合）`, 'buff');
+          }
+
           // 属性抗性效果
           if (skill.resistances) {
             skill.resistances.forEach(r => {
@@ -1500,7 +1761,7 @@ syncSkillDescriptions();
             });
           }
         }
-      } else if (skill.target === 'ally_all') {
+      } else if (skill.target === 'all_ally') {
         // 全体队友目标
         if (skill.type === 'shield') {
           playerUnits.forEach(unit => {
@@ -1547,6 +1808,14 @@ syncSkillDescriptions();
 
       if (enemy.intent.type === 'attack') {
         let damage = Math.floor(enemy.intent.power * (0.8 + Math.random() * 0.4));
+
+        // 减伤效果
+        if (actualTarget.damageReduction && actualTarget.damageReduction > 0) {
+          const originalDamage = damage;
+          damage = Math.floor(damage * (1 - actualTarget.damageReduction));
+          addLog(`${actualTarget.name} 的减伤效果生效，伤害从 ${originalDamage} 降低至 ${damage}`, 'buff');
+        }
+
         // 属性抗性
         if (enemy.intent.element && actualTarget.resistances) {
           const resist = actualTarget.resistances[enemy.intent.element] || 0;
@@ -1555,6 +1824,20 @@ syncSkillDescriptions();
             addLog(`${actualTarget.name} 的抗性生效，伤害降低至 ${damage}`, 'buff');
           }
         }
+
+        // 护盾吸收伤害
+        if (actualTarget.shield && actualTarget.shield > 0) {
+          if (damage > actualTarget.shield) {
+            damage -= actualTarget.shield;
+            addLog(`${actualTarget.name} 的护盾吸收了 ${actualTarget.shield} 点伤害`);
+            actualTarget.shield = 0;
+          } else {
+            actualTarget.shield -= damage;
+            addLog(`${actualTarget.name} 的护盾完全吸收了 ${damage} 点伤害`);
+            damage = 0;
+          }
+        }
+
         actualTarget.currentHp = Math.max(0, actualTarget.currentHp - damage);
         showDamageNumber(actualTarget.id, damage, 'damage');
         updateHpBar(actualTarget);
@@ -1698,7 +1981,10 @@ syncSkillDescriptions();
 
         // 进入下一回合
         currentTurn++;
-        
+
+        // 更新所有单位的buff/debuff回合数
+        updateBuffTurns();
+
         playerCommands = []; // 清空指令
         isPreparing = true;
         isExecuting = false;
@@ -1712,18 +1998,436 @@ syncSkillDescriptions();
       }
     }
 
-    function updateEnemyIntent(enemy) {
-      const intents = ['attack', 'attack', 'attack', 'buff', 'heal'];
-      const intent = intents[Math.floor(Math.random() * intents.length)];
-      const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
-      const target = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
-      if (!target) return;
-      enemy.intent = {
-        type: intent === 'heal' ? 'heal' : intent === 'buff' ? 'buff' : 'attack',
-        power: intent === 'attack' ? 40 + Math.floor(Math.random() * 50) : 20 + Math.floor(Math.random() * 20),
-        targetId: intent === 'heal' ? enemy.id : target.id,
-        element: enemy.element
+    // 更新所有buff/debuff的持续回合数
+    function updateBuffTurns() {
+      // 更新玩家单位的减伤回合
+      [...playerUnits, ...enemyUnits].forEach(unit => {
+        if (unit.damageReductionTurns && unit.damageReductionTurns > 0) {
+          unit.damageReductionTurns--;
+          if (unit.damageReductionTurns === 0) {
+            unit.damageReduction = 0;
+            addLog(`${unit.name} 的减伤效果消失了`, 'buff');
+          }
+        }
+        if (unit.resistanceTurns) {
+          for (const element in unit.resistanceTurns) {
+            unit.resistanceTurns[element]--;
+            if (unit.resistanceTurns[element] <= 0) {
+              unit.resistances[element] = 0;
+              delete unit.resistanceTurns[element];
+              addLog(`${unit.name} 的 ${element} 属性抗性消失了`, 'buff');
+            }
+          }
+        }
+      });
+    }
+
+    // ==================== 敌人AI决策系统 ====================
+
+    // 获取单个属性对目标的克制倍率
+    function getTypeMultiplier(attackerElement, defenderElement) {
+      const chart = TYPE_CHART[attackerElement];
+      if (!chart) return 1;
+      return chart[defenderElement] || 1;
+    }
+
+    // 计算技能对目标的综合克制倍率（支持单属性和双属性）
+    function calculateDamageMultiplier(skillElement, targetElements) {
+      let multiplier = 1;
+      const elements = Array.isArray(targetElements) ? targetElements : [targetElements];
+      elements.forEach(targetElement => {
+        multiplier *= getTypeMultiplier(skillElement, targetElement);
+      });
+      return multiplier;
+    }
+
+    // 判断属性克制
+    function isSuperEffective(attackerElement, defenderElement) {
+      const chart = TYPE_CHART[attackerElement];
+      return chart && chart[defenderElement] === 2;
+    }
+
+    // 获取HP百分比
+    function getHpPercent(unit) {
+      return (unit.currentHp / unit.maxHp) * 100;
+    }
+
+    // 1.1 攻击欲望计算
+    function calculateAttackDesire(enemy) {
+      let score = 30; // 基础分
+
+      // HP因素
+      const hpPercent = getHpPercent(enemy);
+      if (hpPercent > 50) score += 20;
+      else if (hpPercent > 25) score += 0;
+      else score -= 20;
+
+      // 有有利buff
+      if (enemy.buffs?.some(b => b.type === 'attack_up' || b.type === 'power')) {
+        score += 15;
+      }
+
+      // 有减益debuff
+      if (enemy.debuffs?.some(d => d.type === 'attack_down')) {
+        score -= 10;
+      }
+
+      // 能量因素
+      if (enemy.energy >= 3) score += 15;
+      else score -= 15;
+
+      // 敌方有高价值目标(血量低)
+      const lowHpTargets = playerUnits.filter(p => p.currentHp > 0 && getHpPercent(p) < 50);
+      if (lowHpTargets.length > 0) score += 10;
+
+      // 有可用的攻击技能
+      const hasAttackSkill = enemy.skills?.some(s =>
+        s.type === 'fire' || s.type === 'special' || s.type === 'physical' ||
+        s.type === 'ice' || s.type === 'water' || s.type === 'electric'
+      );
+      if (hasAttackSkill) score += 10;
+      else score -= 50;
+
+      return score;
+    }
+
+    // 1.2 治疗欲望计算
+    function calculateHealDesire(enemy) {
+      let score = 10; // 基础分
+      const hpPercent = getHpPercent(enemy);
+
+      // HP因素
+      if (hpPercent <= 50) score += 30;
+      if (hpPercent <= 25) score += 50;
+
+      // 能量因素
+      if (enemy.energy >= 3) score += 10;
+
+      // 有治疗技能
+      const hasHealSkill = enemy.skills?.some(s =>
+        s.type === 'heal' || s.effect?.includes('heal')
+      );
+      if (hasHealSkill) score += 20;
+      else score -= 100;
+
+      return score;
+    }
+
+    // 1.3 防御欲望计算
+    function calculateDefendDesire(enemy) {
+      let score = 15; // 基础分
+      const hpPercent = getHpPercent(enemy);
+
+      // HP因素
+      if (hpPercent <= 30) score += 40;
+
+      // 能量因素
+      if (enemy.energy <= 2) score += 15;
+
+      // 有嘲讽目标(保护自己)
+      if (enemy.buffs?.some(b => b.type === 'taunt')) {
+        score += 10;
+      }
+
+      // 有护盾技能
+      const hasShieldSkill = enemy.skills?.some(s =>
+        s.type === 'shield' || s.effect?.includes('shield')
+      );
+      if (hasShieldSkill) score += 15;
+      else score -= 30;
+
+      return score;
+    }
+
+    // 1.4 休息欲望计算
+    function calculateRestDesire(enemy) {
+      let score = 5; // 基础分
+
+      // 能量因素
+      if (enemy.energy <= 2) score += 60;
+      else if (enemy.energy <= 4) score += 20;
+
+      // HP高时更适合休息
+      if (getHpPercent(enemy) >= 80) score += 15;
+
+      // 有高威力技能可用且能量>=2时，降低休息欲望
+      const hasStrongSkill = enemy.skills?.some(s =>
+        (s.power >= 80) && s.energyCost <= enemy.energy && s.energyCost >= 2
+      );
+      if (hasStrongSkill) score -= 30;
+
+      return score;
+    }
+
+    // 1.5 辅助欲望计算
+    function calculateSupportDesire(enemy) {
+      let score = 10; // 基础分
+
+      // 队友血量低
+      const allies = enemyUnits.filter(e => e.id !== enemy.id && e.currentHp > 0);
+      const lowHpAllies = allies.filter(a => getHpPercent(a) < 50);
+      if (lowHpAllies.length > 0) score += 25;
+
+      // 己方有增益机会
+      const hasBuffSkill = enemy.skills?.some(s => s.type === 'buff');
+      if (hasBuffSkill) score += 15;
+
+      // 己方满员满状态
+      if (allies.length === 0 || allies.every(a => getHpPercent(a) > 80 && (!a.buffs || a.buffs.length === 0))) {
+        score -= 20;
+      }
+
+      // 有辅助技能
+      const hasSupportSkill = enemy.skills?.some(s =>
+        s.type === 'buff' || s.type === 'debuff' || s.effect?.includes('buff')
+      );
+      if (hasSupportSkill) score += 10;
+      else score -= 50;
+
+      return score;
+    }
+
+    // 2.1 主决策函数
+    function decideActionType(enemy) {
+      const desires = {
+        attack: calculateAttackDesire(enemy),
+        heal: calculateHealDesire(enemy),
+        defend: calculateDefendDesire(enemy),
+        rest: calculateRestDesire(enemy),
+        support: calculateSupportDesire(enemy)
       };
+
+      // 调试日志
+      console.log(`${enemy.name} 欲望评分:`, desires);
+
+      // 选择欲望最高的行动
+      const sorted = Object.entries(desires).sort((a, b) => b[1] - a[1]);
+      return sorted[0][0];
+    }
+
+    // 3.1 根据行动类型筛选可用技能
+    function getUsableSkills(enemy, actionType) {
+      if (!enemy.skills) return [];
+
+      return enemy.skills.filter(skill => {
+        // 检查能量是否足够
+        if (skill.energyCost > enemy.energy) return false;
+
+        // 根据行动类型匹配技能类型
+        switch (actionType) {
+          case 'attack':
+            return skill.type === 'fire' || skill.type === 'special' ||
+              skill.type === 'physical' || skill.type === 'ice' ||
+              skill.type === 'water' || skill.type === 'electric';
+          case 'heal':
+            return skill.type === 'heal' || skill.effect?.includes('heal');
+          case 'defend':
+            return skill.type === 'shield' || skill.effect?.includes('shield');
+          case 'rest':
+            return skill.id === 'rest';
+          case 'support':
+            return skill.type === 'buff' || skill.type === 'debuff';
+          default:
+            return false;
+        }
+      });
+    }
+
+    // 3.2 技能评分函数
+    function scoreSkill(enemy, skill, actionType) {
+      let score = 50; // 基础分
+
+      switch (actionType) {
+        case 'attack':
+          // 威力越高越好
+          score += (skill.power || 0) * 0.5;
+          // 消耗越低越好
+          score -= skill.energyCost * 10;
+          // 有额外效果更好
+          if (skill.effect) score += 15;
+          break;
+
+        case 'heal':
+          // 治疗量越高越好
+          score += (skill.power || 0) * 0.8;
+          break;
+
+        case 'defend':
+          // 护盾值越高越好
+          score += (skill.power || 0) * 0.6;
+          break;
+
+        case 'rest':
+          // 能量回复越多越好
+          score += (skill.power || 0) * 5;
+          break;
+
+        case 'support':
+          // 根据效果类型评分
+          if (skill.effect?.includes('buff')) score += 20;
+          if (skill.effect?.includes('debuff')) score += 15;
+          break;
+      }
+
+      // 随机性（让AI不那么可预测）
+      score += Math.random() * 10;
+
+      return score;
+    }
+
+    // 4.1 攻击目标选择
+    function selectAttackTarget(enemy, playerUnits) {
+      const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
+      if (alivePlayers.length === 0) return null;
+
+      // 优先级排序
+      const targets = alivePlayers.map(target => {
+        let priority = 0;
+
+        // 1. 嘲讽目标最高优先
+        if (target.debuffs?.some(d => d.type === 'taunt')) {
+          priority += 100;
+        }
+
+        // 2. 属性克制（2倍伤害）
+        if (isSuperEffective(enemy.element, target.element)) {
+          priority += 50;
+        }
+
+        // 3. 被敌方克制（先击杀威胁）
+        if (isSuperEffective(target.element, enemy.element)) {
+          priority += 30;
+        }
+
+        // 4. 血量最低目标
+        priority += (100 - getHpPercent(target)) * 0.5;
+
+        // 5. 无增益状态目标
+        if (!target.buffs || target.buffs.length === 0) {
+          priority += 10;
+        }
+
+        return { target, priority };
+      });
+
+      // 选择优先级最高的
+      targets.sort((a, b) => b.priority - a.priority);
+      return targets[0].target;
+    }
+
+    // 5.2 技能类型映射到意图类型
+    function mapSkillTypeToIntentType(skillType) {
+      const map = {
+        fire: 'attack', special: 'attack', physical: 'attack',
+        ice: 'attack', water: 'attack', electric: 'attack',
+        heal: 'heal', shield: 'defend', buff: 'buff', debuff: 'debuff',
+        energy: 'defend'
+      };
+      return map[skillType] || 'attack';
+    }
+
+    // 5.3 更新敌人意图（智能AI版本）
+    function updateEnemyIntent(enemy) {
+      // 确保敌人有技能
+      if (!enemy.skills || enemy.skills.length === 0) {
+        enemy.skills = assignSkillsByElement(enemy.element, enemy.id);
+      }
+
+      // 1. 决策行动类型
+      const actionType = decideActionType(enemy);
+      console.log(`${enemy.name} 决定行动: ${actionType}`);
+
+      // 2. 选择具体技能
+      let usableSkills = getUsableSkills(enemy, actionType);
+
+      // 如果首选类型没有可用技能，尝试降级
+      if (usableSkills.length === 0) {
+        console.log(`${enemy.name} 没有可用的${actionType}技能，尝试备用方案`);
+
+        // 能量不足时优先休息
+        if (enemy.energy < 3) {
+          usableSkills = getUsableSkills(enemy, 'rest');
+          if (usableSkills.length > 0) {
+            actionType = 'rest';
+          }
+        }
+
+        // 尝试防御
+        if (usableSkills.length === 0) {
+          usableSkills = getUsableSkills(enemy, 'defend');
+          if (usableSkills.length > 0) {
+            actionType = 'defend';
+          }
+        }
+
+        // 尝试攻击（即使能量不足也可能用低消耗技能）
+        if (usableSkills.length === 0) {
+          usableSkills = enemy.skills.filter(s => s.type !== 'energy');
+          if (usableSkills.length > 0) {
+            actionType = 'attack';
+          }
+        }
+      }
+
+      // 如果仍然没有可用技能，默认休息
+      if (usableSkills.length === 0) {
+        console.log(`${enemy.name} 没有可用技能，选择休息`);
+        enemy.intent = {
+          type: 'defend',
+          skillId: 'rest',
+          power: 5,
+          targetId: enemy.id,
+          element: null
+        };
+        renderEnemyUnits();
+        return;
+      }
+
+      // 评分选择最佳技能
+      const scored = usableSkills.map(skill => ({
+        skill,
+        score: scoreSkill(enemy, skill, actionType)
+      }));
+      scored.sort((a, b) => b.score - a.score);
+      const bestSkill = scored[0].skill;
+      console.log(`${enemy.name} 选择技能: ${bestSkill.name} (评分: ${scored[0].score.toFixed(1)})`);
+
+      // 3. 选择目标
+      let targetId;
+      // 首先检查技能目标类型
+      if (bestSkill.target === 'self') {
+        // 自身目标：防御类技能（如火盾）目标为自己
+        targetId = enemy.id;
+      } else if (actionType === 'rest') {
+        // 休息类：目标为自己
+        targetId = enemy.id;
+      } else if (bestSkill.target === 'ally' || actionType === 'support' || actionType === 'heal') {
+        // 治疗/辅助己方，选择血量最低的队友
+        const allies = enemyUnits.filter(e => e.id !== enemy.id && e.currentHp > 0);
+        if (allies.length > 0) {
+          const lowestHpAlly = allies.sort((a, b) =>
+            (a.currentHp / a.maxHp) - (b.currentHp / b.maxHp)
+          )[0];
+          targetId = lowestHpAlly?.id || enemy.id;
+        } else {
+          targetId = enemy.id;
+        }
+      } else {
+        // 攻击敌方
+        const target = selectAttackTarget(enemy, playerUnits);
+        targetId = target?.id || playerUnits[0]?.id;
+      }
+
+      // 4. 生成意图
+      enemy.intent = {
+        type: mapSkillTypeToIntentType(bestSkill.type),
+        skillId: bestSkill.id,
+        power: bestSkill.power || 0,
+        targetId: targetId,
+        element: bestSkill.element || enemy.element
+      };
+
+      console.log(`${enemy.name} 意图: 技能=${bestSkill.name}(target=${bestSkill.target}), 类型=${enemy.intent.type}, 目标=${targetId}`);
       renderEnemyUnits();
     }
 
@@ -1777,6 +2481,7 @@ syncSkillDescriptions();
       
       // 重新初始化技能（确保所有单位都有技能）
       initializeCompanionSkills();
+      initializeEnemySkills();
       
       renderPlayerUnits();
       renderEnemyUnits();
