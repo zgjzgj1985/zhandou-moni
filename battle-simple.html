@@ -1177,8 +1177,11 @@ syncSkillDescriptions();
             let cmdSuccess = false;
 
             if (skill.target === 'self') {
-              // 自身目标技能直接释放
-              cmdSuccess = addCommand(unit, skill, unit.id);
+              // 自身目标技能：必须在自身身上释放
+              targetUnit = findUnitElement('.unit.player');
+              if (targetUnit && targetUnit.id === unit.id) {
+                cmdSuccess = addCommand(unit, skill, unit.id);
+              }
             } else if (skill.target === 'all_enemy') {
               // 全体敌人技能：必须在敌人身上释放
               targetUnit = findUnitElement('.unit.enemy');
