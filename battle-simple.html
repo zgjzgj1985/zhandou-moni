@@ -2508,6 +2508,11 @@ syncSkillDescriptions();
       updateTurnDisplay();
       addLog('战斗开始！');
       document.addEventListener('click', (e) => {
+        // 如果是拖拽释放（未命中目标），跳过此次点击处理
+        if (wasDragReleased) {
+          wasDragReleased = false;
+          return;
+        }
         if (!e.target.closest('.unit.player') && !e.target.closest('.skill-panel') && !e.target.closest('.skill-card')) {
           if (!isDragging) deselectPlayer();
         }
