@@ -5,6 +5,13 @@
 
 import { DebuffType } from '../../types';
 import { StaticDebuff } from './electric-debuffs-v2';
+import {
+  DragonBurnDebuff,
+  DragonConfusionDebuff,
+  DragonCrushDefDebuff,
+  DragonIntimidateDebuff,
+  DragonPowerLossDebuff
+} from './dragon-debuffs';
 
 /**
  * 前向引用CombatUnit（避免循环依赖）
@@ -483,7 +490,7 @@ export class IceDotDebuff extends Debuff {
 
 /**
  * 灼伤印记debuff：火属性爆发流
- * 下回合追加40威力火属性伤害
+ * 下回合追加40威力特殊伤害
  */
 export class BurnMarkDebuff extends Debuff {
   extraDamagePower: number;
@@ -615,7 +622,93 @@ export class DrowningStatusDebuff extends Debuff {
   }
 }
 
+/**
+ * 蒸汽灼伤debuff：水属性控制流
+ * 热水等技能附加的灼烧状态
+ * 每回合结束时触发，伤害=2%最大生命×层数
+ */
+export class SteamBurnDebuff extends Debuff {
+  damagePercentPerStack: number;
+
+  constructor(stacks: number = 1, duration: number = 3, damagePercentPerStack: number = 0.02) {
+    super('蒸汽灼伤', DebuffType.STEAM_BURN, stacks, duration);
+    this.damagePercentPerStack = damagePercentPerStack;
+  }
+
+  onTurnEnd(unit: DebuffCombatUnit): void {
+    const damage = Math.floor(unit.maxHp * this.damagePercentPerStack * this.stacks);
+    unit.takeDamage(damage, 'steam_burn');
+    this.stacks = Math.floor(Math.max(1, this.stacks / 2));
+    this.remainingDuration = Math.max(0, this.remainingDuration - 1);
+  }
+
+  clone(): SteamBurnDebuff {
+    return new SteamBurnDebuff(this.stacks, this.duration, this.damagePercentPerStack);
+  }
+}
+
+/**
+ * 浑浊debuff：水属性控制流
+ * 降低目标命中率
+ * 命中率-1级/层，最多3层
+ */
+export class MuddyDebuff extends Debuff {
+  accuracyPenaltyPerStack: number;
+  maxStacks: number;
+
+  constructor(
+    stacks: number = 1,
+    duration: number = 3,
+    accuracyPenaltyPerStack: number = 1,
+    maxStacks: number = 3
+  ) {
+    super('浑浊', DebuffType.MUDDY, stacks, duration);
+    this.accuracyPenaltyPerStack = accuracyPenaltyPerStack;
+    this.maxStacks = maxStacks;
+  }
+
+  /**
+   * 获取命中率降低的总级数
+   */
+  getAccuracyPenalty(): number {
+    return this.stacks * this.accuracyPenaltyPerStack;
+  }
+
+  /**
+   * 添加层数（不超过上限）
+   */
+  addStacks(amount: number = 1): void {
+    this.stacks = Math.min(this.stacks + amount, this.maxStacks);
+    this.remainingDuration = this.duration;
+  }
+
+  clone(): MuddyDebuff {
+    return new MuddyDebuff(this.stacks, this.remainingDuration, this.accuracyPenaltyPerStack, this.maxStacks);
+  }
+}
+
 // ==================== 超能属性·奥秘流专用Debuff ====================
+
+/**
+ * 精神噪音debuff：超能属性奥秘流v2.0
+ * 目标2回合内无法通过任何方式恢复HP
+ */
+export class PsychicNoiseDebuff extends Debuff {
+  blocksHealing: boolean;
+
+  constructor(duration: number = 2) {
+    super('精神噪音', DebuffType.PSYCHIC_NOISE, 1, duration);
+    this.blocksHealing = true;
+  }
+
+  canBeHealed(): boolean {
+    return false;
+  }
+
+  clone(): PsychicNoiseDebuff {
+    return new PsychicNoiseDebuff(this.remainingDuration);
+  }
+}
 
 /**
  * 心灵创伤debuff：超能属性奥秘流
@@ -682,7 +775,7 @@ export class TangleDebuff extends Debuff {
 
 /**
  * 寄生debuff：草属性光环流
- * 每回合受到草属性伤害，同时施法者回复等量HP
+ * 每回合受到特殊伤害，同时施法者回复等量HP
  */
 export class ParasiteDebuff extends Debuff {
   damagePerTurn: number;
@@ -708,7 +801,7 @@ export class ParasiteDebuff extends Debuff {
 
 /**
  * 枯萎debuff：草属性光环流v2.0
- * 每回合受到自身属性10点威力草属性伤害/层
+ * 每回合受到自身属性10点威力特殊伤害/层
  * 层数可叠加
  */
 export class WitherDebuff extends Debuff {
@@ -757,6 +850,88 @@ export class StunDebuff extends Debuff {
 
   clone(): StunDebuff {
     return new StunDebuff(this.remainingDuration);
+  }
+}
+
+// ==================== 岩石属性·防御流v2.0新增Debuff ====================
+
+/**
+ * 裂缝debuff：岩石属性防御流v2.0核心机制
+ * 岩石被打出裂缝后更容易崩碎
+ * 防御-2级，受到岩石伤害+30%
+ */
+export class FissureDebuff extends Debuff {
+  defensePenalty: number;
+  rockDamageTakenBonus: number;
+
+  constructor(
+    stacks: number = 1,
+    duration: number = 3,
+    defensePenalty: number = -2,
+    rockDamageTakenBonus: number = 0.30
+  ) {
+    super('裂缝', DebuffType.FISSURE, Math.min(stacks, 3), duration);
+    this.defensePenalty = defensePenalty;
+    this.rockDamageTakenBonus = rockDamageTakenBonus;
+  }
+
+  /**
+   * 获取防御惩罚（每层-2级）
+   */
+  getDefensePenalty(): number {
+    return this.defensePenalty * this.stacks;
+  }
+
+  /**
+   * 获取受到的岩石伤害加成（每层+30%）
+   */
+  getRockDamageTakenBonus(): number {
+    return this.rockDamageTakenBonus * this.stacks;
+  }
+
+  /**
+   * 是否达到崩裂阈值（3层）
+   */
+  canTriggerCrack(): boolean {
+    return this.stacks >= 3;
+  }
+
+  addStack(amount: number = 1): void {
+    this.stacks = Math.min(this.stacks + amount, 3);
+  }
+
+  clone(): FissureDebuff {
+    return new FissureDebuff(
+      this.stacks,
+      this.remainingDuration,
+      this.defensePenalty,
+      this.rockDamageTakenBonus
+    );
+  }
+}
+
+/**
+ * 崩裂debuff：岩石属性防御流v2.0
+ * 裂缝的升级状态
+ * 每受到岩石攻击，损失5%当前HP
+ */
+export class CrackDebuff extends Debuff {
+  hpDrainPerHit: number;
+
+  constructor(hpDrainPerHit: number = 0.05, duration: number = 2) {
+    super('崩裂', DebuffType.CRACK, 1, duration);
+    this.hpDrainPerHit = hpDrainPerHit;
+  }
+
+  /**
+   * 获取每次受到岩石攻击时的HP损失百分比
+   */
+  getHpDrainPerHit(): number {
+    return this.hpDrainPerHit;
+  }
+
+  clone(): CrackDebuff {
+    return new CrackDebuff(this.hpDrainPerHit, this.remainingDuration);
   }
 }
 
@@ -813,11 +988,17 @@ export function createDebuff(
       return new WetDebuff(duration);
     case DebuffType.TURBULENCE:
       return new TurbulenceDebuff(duration);
+    case DebuffType.STEAM_BURN:
+      return new SteamBurnDebuff(1, duration);
+    case DebuffType.MUDDY:
+      return new MuddyDebuff(1, duration);
     // 超能属性奥秘流专用Debuff
     case DebuffType.MIND_WOUND:
       return new MindWoundDebuff(duration);
     case DebuffType.FORBIDDEN:
       return new ForbiddenDebuff(duration);
+    case DebuffType.PSYCHIC_NOISE:
+      return new PsychicNoiseDebuff(duration);
     // 草属性·光环流专用Debuff
     case DebuffType.TANGLE:
       return new TangleDebuff(stacks, duration);
@@ -828,9 +1009,25 @@ export function createDebuff(
     // 岩石属性防御流专用Debuff
     case DebuffType.STUN:
       return new StunDebuff(duration);
+    // 岩石属性防御流v2.0新增Debuff
+    case DebuffType.FISSURE:
+      return new FissureDebuff(stacks, duration);
+    case DebuffType.CRACK:
+      return new CrackDebuff();
     // 电属性电磁脉冲流专用Debuff
     case DebuffType.STATIC:
       return new StaticDebuff(duration);
+    // 龙属性血脉压制流专属Debuff
+    case DebuffType.DRAGON_BURN:
+      return new DragonBurnDebuff(duration);
+    case DebuffType.DRAGON_CONFUSION:
+      return new DragonConfusionDebuff(duration);
+    case DebuffType.DRAGON_CRUSH_DEF:
+      return new DragonCrushDefDebuff(duration);
+    case DebuffType.DRAGON_INTIMIDATE:
+      return new DragonIntimidateDebuff(duration);
+    case DebuffType.DRAGON_POWER_LOSS:
+      return new DragonPowerLossDebuff();
     default:
       throw new Error(`Unknown DebuffType: ${type}`);
   }
@@ -839,3 +1036,20 @@ export function createDebuff(
 // ==================== 电属性电磁脉冲流专用Debuff导出 ====================
 
 export { StaticDebuff };
+
+// ==================== 龙属性血脉压制流专属Debuff导出 ====================
+
+export {
+  DragonBurnDebuff,
+  DragonConfusionDebuff,
+  DragonCrushDefDebuff,
+  DragonIntimidateDebuff,
+  DragonPowerLossDebuff
+};
+
+// ==================== 水属性控制流新增Debuff导出 ====================
+
+export {
+  SteamBurnDebuff,
+  MuddyDebuff
+};

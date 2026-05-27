@@ -6,7 +6,7 @@
 
 import { BattleManager, BattleConfig } from './BattleManager';
 import { BattleType } from '../types';
-import { createWindSparrow, createThunderStag, createFrostCrane } from '../companions';
+import { createFlameBear, createFlameSalamander, createFrostWolf } from '../companions';
 import { createFlameSalamander, createVenomSpider, createFrostWolf } from '../monsters';
 
 /**
@@ -16,9 +16,9 @@ export function createDemoBattle(): BattleManager {
   const config: BattleConfig = {
     type: BattleType.NORMAL,
     players: [
-      createWindSparrow(),
-      createThunderStag(),
-      createFrostCrane()
+      createFlameBear(),
+      createFlameSalamander(),
+      createFrostWolf()
     ],
     enemies: [
       createFlameSalamander(),
@@ -38,9 +38,9 @@ export function createQuickDemo(): BattleManager {
   const config: BattleConfig = {
     type: BattleType.NORMAL,
     players: [
-      createWindSparrow(),
-      createThunderStag(),
-      createFrostCrane()
+      createFlameBear(),
+      createFlameSalamander(),
+      createFrostWolf()
     ],
     enemies: [
       createFlameSalamander()

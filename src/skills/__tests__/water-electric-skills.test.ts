@@ -1,6 +1,6 @@
 /**
  * 水属性技能测试
- * 测试水属性控制流 (9个) 的技能定义
+ * 测试水属性控制流 (12个) 的技能定义
  */
 
 import { describe, it, expect } from 'vitest';
@@ -9,7 +9,11 @@ import {
   WATER_CONTROL_SKILLS,
   WATER_JET,
   HYDRO_PUMP,
+  WATER_BULLET,
   ABYSS_VORTEX,
+  SCALD,
+  MUDDY_WATER,
+  SURGE,
   AQUA_SHIELD,
   CLEAR_SPRING,
   HEALING_WAVE,
@@ -20,7 +24,7 @@ import { SkillTestHelper } from './helpers';
 import { SkillTarget, SkillTendency, ElementType } from '../../types';
 
 describe('水属性·控制流技能测试', () => {
-  describe('攻击倾向技能 (4个)', () => {
+  describe('攻击倾向技能 (7个)', () => {
     it('水流冲击 (WATER_JET) - 伤害+浸透', () => {
       SkillTestHelper.validateSkillBase(WATER_JET, 'water_jet', '水流冲击', 2);
       SkillTestHelper.validateDamageEffect(WATER_JET, 60, ElementType.WATER);
@@ -32,7 +36,12 @@ describe('水属性·控制流技能测试', () => {
 
     it('水炮 (HYDRO_PUMP) - 高威力', () => {
       SkillTestHelper.validateSkillBase(HYDRO_PUMP, 'hydro_pump', '水炮', 3);
-      SkillTestHelper.validateDamageEffect(HYDRO_PUMP, 90, ElementType.WATER);
+      SkillTestHelper.validateDamageEffect(HYDRO_PUMP, 150, ElementType.WATER);
+    });
+
+    it('水弹 (WATER_BULLET) - 多段伤害+先手', () => {
+      SkillTestHelper.validateSkillBase(WATER_BULLET, 'water_bullet', '水弹', 3);
+      expect(WATER_BULLET.definition.priority).toBe(1);
     });
 
     it('漩涡 (ABYSS_VORTEX) - 高威力+溺水', () => {
@@ -43,9 +52,33 @@ describe('水属性·控制流技能测试', () => {
       );
       expect(hasDrowningStatus).toBe(true);
     });
+
+    it('热水 (SCALD) - 伤害+概率灼烧', () => {
+      SkillTestHelper.validateSkillBase(SCALD, 'scald', '热水', 3);
+      SkillTestHelper.validateDamageEffect(SCALD, 80, ElementType.WATER);
+      const hasSteamBurn = SCALD.definition.effects.some(
+        e => e.applyDebuff?.debuffType === 'steam_burn'
+      );
+      expect(hasSteamBurn).toBe(true);
+    });
+
+    it('浊流 (MUDDY_WATER) - 伤害+命中降低', () => {
+      SkillTestHelper.validateSkillBase(MUDDY_WATER, 'muddy_water', '浊流', 3);
+      SkillTestHelper.validateDamageEffect(MUDDY_WATER, 90, ElementType.WATER);
+      const hasMuddy = MUDDY_WATER.definition.effects.some(
+        e => e.applyDebuff?.debuffType === 'muddy'
+      );
+      expect(hasMuddy).toBe(true);
+    });
+
+    it('冲浪 (SURGE) - 群体伤害', () => {
+      SkillTestHelper.validateSkillBase(SURGE, 'surge', '冲浪', 4);
+      SkillTestHelper.validateDamageEffect(SURGE, 80, ElementType.WATER);
+      expect(SURGE.definition.target).toBe(SkillTarget.ENEMY_ALL);
+    });
   });
 
-  describe('防御倾向技能 (3个)', () => {
+  describe('防御倾向技能 (2个)', () => {
     it('水之守护 (AQUA_SHIELD) - 70%减伤+受击获浸透', () => {
       SkillTestHelper.validateSkillBase(AQUA_SHIELD, 'aqua_shield', '水之守护', 2);
       expect(AQUA_SHIELD.definition.target).toBe(SkillTarget.SELF);
@@ -99,14 +132,20 @@ describe('水属性·控制流技能测试', () => {
   });
 
   describe('WATER_CONTROL_SKILLS 技能库', () => {
-    it('包含所有9个技能', () => {
-      expect(WATER_CONTROL_SKILLS.ALL).toHaveLength(9);
+    it('包含所有12个技能', () => {
+      expect(WATER_CONTROL_SKILLS.ALL).toHaveLength(12);
     });
 
     it('按倾向分类正确', () => {
       expect(WATER_CONTROL_SKILLS.ATTACK).toBeDefined();
       expect(WATER_CONTROL_SKILLS.DEFENSE).toBeDefined();
       expect(WATER_CONTROL_SKILLS.SUPPORT).toBeDefined();
+      // 验证攻击技能数量
+      expect(Object.keys(WATER_CONTROL_SKILLS.ATTACK)).toHaveLength(7);
+      // 验证防御技能数量
+      expect(Object.keys(WATER_CONTROL_SKILLS.DEFENSE)).toHaveLength(2);
+      // 验证辅助技能数量
+      expect(Object.keys(WATER_CONTROL_SKILLS.SUPPORT)).toHaveLength(3);
     });
   });
 });

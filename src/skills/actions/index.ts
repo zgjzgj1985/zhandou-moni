@@ -2,9 +2,8 @@
  * 循迹之境 - 主动技能实现
  */
 
-import { Skill, SkillEffect } from '../Skill';
+import { Skill, SkillEffect, SkillDefinition } from '../Skill';
 import {
-  SkillDefinition,
   SkillTarget,
   DamageType,
   ElementType,
@@ -169,7 +168,6 @@ export const DEFAULT_SKILLS = {
   TACKLE: createAttackSkill('tackle', '撞击', 40, SkillTarget.SINGLE, DamageType.PHYSICAL, undefined, EnergyCost.FREE),
   QUICK_ATTACK: createAttackSkill('quick_attack', '电光一闪', 40, SkillTarget.SINGLE, DamageType.PHYSICAL, undefined, EnergyCost.LOW),
   BODY_SLAM: createAttackSkill('body_slam', '泰山压顶', 85, SkillTarget.SINGLE, DamageType.PHYSICAL, undefined, EnergyCost.HIGH),
-  EARTHQUAKE: createAttackSkill('earthquake', '地震', 100, SkillTarget.ALL, DamageType.PHYSICAL, undefined, EnergyCost.ULTRA),
   
   // 特殊攻击技能（按威力分配能量）
   EMBER: createAttackSkill('ember', '火花', 40, SkillTarget.SINGLE, DamageType.SPECIAL, ElementType.FIRE, EnergyCost.LOW),

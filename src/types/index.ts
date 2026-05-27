@@ -14,7 +14,7 @@ export enum ElementType {
   GRASS = 'grass',       // 草
   ELECTRIC = 'electric',  // 电
   ICE = 'ice',           // 冰
-  ROCK = 'rock',         // 岩
+  GROUND = 'ground',     // 地
   DRAGON = 'dragon',     // 龙
   PSYCHIC = 'psychic'    // 超能
 }
@@ -26,42 +26,42 @@ export enum ElementType {
 export const TYPE_CHART: Record<ElementType, Record<ElementType, number>> = {
   [ElementType.FIRE]: {
     [ElementType.FIRE]: 0.5, [ElementType.WATER]: 0.5, [ElementType.GRASS]: 2,
-    [ElementType.ELECTRIC]: 1, [ElementType.ICE]: 2, [ElementType.ROCK]: 0.5,
+    [ElementType.ELECTRIC]: 1, [ElementType.ICE]: 2, [ElementType.GROUND]: 1,
     [ElementType.DRAGON]: 1, [ElementType.PSYCHIC]: 1
   },
   [ElementType.WATER]: {
     [ElementType.FIRE]: 2, [ElementType.WATER]: 0.5, [ElementType.GRASS]: 0.5,
-    [ElementType.ELECTRIC]: 0.5, [ElementType.ICE]: 1, [ElementType.ROCK]: 2,
+    [ElementType.ELECTRIC]: 0.5, [ElementType.ICE]: 1, [ElementType.GROUND]: 2,
     [ElementType.DRAGON]: 1, [ElementType.PSYCHIC]: 1
   },
   [ElementType.GRASS]: {
     [ElementType.FIRE]: 0.5, [ElementType.WATER]: 2, [ElementType.GRASS]: 0.5,
-    [ElementType.ELECTRIC]: 1, [ElementType.ICE]: 1, [ElementType.ROCK]: 2,
+    [ElementType.ELECTRIC]: 1, [ElementType.ICE]: 1, [ElementType.GROUND]: 2,
     [ElementType.DRAGON]: 1, [ElementType.PSYCHIC]: 1
   },
   [ElementType.ELECTRIC]: {
     [ElementType.FIRE]: 1, [ElementType.WATER]: 2, [ElementType.GRASS]: 0.5,
-    [ElementType.ELECTRIC]: 0.5, [ElementType.ICE]: 1, [ElementType.ROCK]: 1,
+    [ElementType.ELECTRIC]: 0.5, [ElementType.ICE]: 1, [ElementType.GROUND]: 0,
     [ElementType.DRAGON]: 0.5, [ElementType.PSYCHIC]: 1
   },
   [ElementType.ICE]: {
     [ElementType.FIRE]: 0.5, [ElementType.WATER]: 0.5, [ElementType.GRASS]: 2,
-    [ElementType.ELECTRIC]: 1, [ElementType.ICE]: 0.5, [ElementType.ROCK]: 1,
+    [ElementType.ELECTRIC]: 1, [ElementType.ICE]: 0.5, [ElementType.GROUND]: 2,
     [ElementType.DRAGON]: 2, [ElementType.PSYCHIC]: 1
   },
-  [ElementType.ROCK]: {
+  [ElementType.GROUND]: {
     [ElementType.FIRE]: 2, [ElementType.WATER]: 1, [ElementType.GRASS]: 0.5,
-    [ElementType.ELECTRIC]: 1, [ElementType.ICE]: 2, [ElementType.ROCK]: 1,
+    [ElementType.ELECTRIC]: 2, [ElementType.ICE]: 1, [ElementType.GROUND]: 1,
     [ElementType.DRAGON]: 1, [ElementType.PSYCHIC]: 1
   },
   [ElementType.DRAGON]: {
     [ElementType.FIRE]: 1, [ElementType.WATER]: 1, [ElementType.GRASS]: 1,
-    [ElementType.ELECTRIC]: 1, [ElementType.ICE]: 1, [ElementType.ROCK]: 1,
+    [ElementType.ELECTRIC]: 1, [ElementType.ICE]: 1, [ElementType.GROUND]: 1,
     [ElementType.DRAGON]: 2, [ElementType.PSYCHIC]: 1
   },
   [ElementType.PSYCHIC]: {
     [ElementType.FIRE]: 1, [ElementType.WATER]: 1, [ElementType.GRASS]: 1,
-    [ElementType.ELECTRIC]: 1, [ElementType.ICE]: 1, [ElementType.ROCK]: 1,
+    [ElementType.ELECTRIC]: 1, [ElementType.ICE]: 1, [ElementType.GROUND]: 1,
     [ElementType.DRAGON]: 0, [ElementType.PSYCHIC]: 0.5
   }
 };
@@ -152,6 +152,7 @@ export interface Intent {
   power?: number;           // 威力/治疗量
   element?: ElementType;    // 元素属性
   skillId?: string;         // 使用的技能ID
+  targetId?: string;        // 具体目标ID（用于UI显示）
 }
 
 // ==================== 状态效果 ====================
@@ -186,6 +187,7 @@ export enum BuffType {
   WALL_OF_FIRE = 'wall_of_fire',    // 烈焰壁垒：草/冰属性抗性+30%
   FLAME_CHARGE = 'flame_charge',    // 蓄焰：下次火攻+50%
   BLAZE_WILL = 'blaze_will',        // 炎之意志：攻击+速度+火伤提升
+  OVERHEAT_PENALTY = 'overheat_penalty', // 过热代价：特攻-2级
   // 水属性·控制流专用Buff
   WATER_SHIELD = 'water_shield',     // 水之守护：敌人下次技能伤害-20%
   CLEAR_SPRING = 'clear_spring',     // 清泉：每回合治疗+净化
@@ -198,6 +200,9 @@ export enum BuffType {
   PSYCHIC_DODGE = 'psychic_dodge',   // 迷雾闪避：概率闪避+加速
   PSYCHIC_RESIST = 'psychic_resist', // 超能抗性：抗精神攻击
   INTENT_BLUR = 'intent_blur',      // 意图模糊：降低己方意图可信度
+  // 超能属性奥秘流v2.0新增Buff
+  PSYCHIC_TERRAIN = 'psychic_terrain',     // 精神场地：超能威力+30%
+  PROPHECY_MARK = 'prophecy_mark',         // 预言标记：累积层数增强技能威力
   // 草属性·光环流专用Buff
   VINE_BODY = 'vine_body',           // 藤蔓护体：受到攻击时缠绕攻击者
   LIGHT_GATHER = 'light_gather',     // 光能汇聚：下次草系输出技能+60威力
@@ -205,17 +210,24 @@ export enum BuffType {
   COUNTER_STANCE = 'counter_stance', // 防反之姿：反弹60%伤害+先手+1
   NUTRIENT = 'nutrient',             // 养分汲取：能量回复加成
   ROOT_BOUND = 'root_bound',         // 扎根：每回合回复最大HP的8%，速度-1级
-  // 岩石属性·防御流专用Buff
-  ROCK_ARMOR = 'rock_armor',           // 岩甲护体：受到伤害降低65%
-  IRON_WALL = 'iron_wall',             // 铁壁：受到伤害降低75%
-  QUAKE_BODY = 'quake_body',             // 震荡护体：受到伤害降低55%+眩晕
+  // 地属性·天气流专用Buff
+  SANDSTORM_SHIELD = 'sandstorm_shield', // 沙暴抗性：沙暴天气下减伤
+  SAND_FORCE = 'sand_force',           // 沙之力：沙暴天气下地系威力+50%
+  UNDERGROUND = 'underground',         // 挖洞状态：免疫地面攻击，下回合先手
+  SAND_TOMB_BUFF = 'sand_tomb_buff',  // 流沙地狱状态：陷入流沙
   // 电属性·电磁脉冲流专用Buff
   CHARGE = 'charge',                   // 电荷：电属性核心资源，5层上限
   OVERLOAD = 'overload',               // 超载：下一次攻击附带连锁
   CHARGING = 'charging',               // 充能状态：每次攻击额外+1电荷
   ELECTRIC_FIELD_BUFF = 'electric_field_buff', // 电场：全队电荷加速+威力加成
   STATIC_BODY = 'static_body',         // 蓄电护体：减伤50%+静电反伤
-  ELECTRIC_DEFLECT = 'electric_deflect' // 电磁偏转：闪避+反击
+  ELECTRIC_DEFLECT = 'electric_deflect', // 电磁偏转：闪避+反击
+  // 龙属性·血脉压制流专用Buff
+  DRAGON_BLOOD = 'dragon_blood',               // 龙之气息：核心层叠Buff，15层上限
+  DRAGON_BLOOD_RESONANCE = 'dragon_blood_resonance', // 龙属共鸣：增强龙系技能效果
+  DRAGON_GUARD = 'dragon_guard',               // 龙鳞守护：减伤75%+护盾+反击
+  DRAGON_COUNTER = 'dragon_counter',           // 龙鳞反击：反弹伤害
+  DRAGON_AURA_BUFF = 'dragon_aura_buff'       // 龙威：全体敌人debuff
 }
 
 /**
@@ -232,6 +244,9 @@ export enum DebuffType {
   FREEZE = 'freeze',         // 冰冻：完全无法行动
   CONFUSION = 'confusion',   // 混乱/迷茫
   BIND = 'bind',             // 束缚
+  // 地属性·天气流专用Debuff
+  GROUND_TRAP = 'ground_trap',       // 地面陷阱：受到地面攻击时受伤增加
+  SAND_TOMB_DEBUFF = 'sand_tomb_debuff', // 流沙地狱：速度-2且每回合受伤
   // 冰属性·减速流专用Debuff
   SLOW = 'slow',             // 减速：速度-1级
   ICE_SEAL = 'ice_seal',     // 冰封禁制：封印≥3能量技能
@@ -248,20 +263,28 @@ export enum DebuffType {
   DROWNING_STATUS = 'drowning_status', // 溺水：下一次高能量技能伤害-30%
   TURBULENCE = 'turbulence', // 湍流：技能消耗+1能量
   WATER_SOAK = 'water_soak', // 浸透：特防-1级/层，最多6层，持续2回合
+  STEAM_BURN = 'steam_burn', // 蒸汽灼伤：被热水攻击时附加的灼烧状态
+  MUDDY = 'muddy',           // 浑浊：命中率-1级/层
   // 电属性·电磁脉冲流专用Debuff
   STATIC = 'static',         // 静电：攻击者额外+1电荷
   // 超能属性奥秘流专用Debuff
   MIND_WOUND = 'mind_wound',     // 心灵创伤：攻击命中率下降
   FORBIDDEN = 'forbidden',       // 禁忌：能力等级下降
+  // 超能属性奥秘流v2.0新增Debuff
+  PSYCHIC_NOISE = 'psychic_noise',   // 精神噪音：禁止恢复HP
   // 草属性·光环流专用Debuff
   TANGLE = 'tangle',              // 缠绕：速度降低
   PARASITE = 'parasite',          // 寄生：每回合草伤害+施法者回复
-  WITHER = 'wither',             // 枯萎：每回合受到自身属性10点威力草属性伤害/层
-  // 岩石属性·防御流专用Debuff
-  STUN = 'stun'                  // 眩晕：完全无法行动，持续1回合
+  WITHER = 'wither',             // 枯萎：每回合受到自身属性10点威力特殊伤害/层
+  // 地属性·天气流专用Debuff
+  STUN = 'stun',                  // 眩晕：完全无法行动，持续1回合
+  // 龙属性·血脉压制流专用Debuff
+  DRAGON_BURN = 'dragon_burn',               // 龙息灼烧：每回合受到15%最大HP伤害
+  DRAGON_CONFUSION = 'dragon_confusion',    // 龙之终焉混乱：攻击可能失误
+  DRAGON_CRUSH_DEF = 'dragon_crush_def',   // 龙之碾压：防御下降
+  DRAGON_INTIMIDATE = 'dragon_intimidate',  // 龙威震慑：攻击-1级、速度-1级
+  DRAGON_POWER_LOSS = 'dragon_power_loss'   // 流星陨落衰败：攻击、特攻永久下降
 }
-
-// ==================== 能量系统 ====================
 
 /**
  * 战斗能量配置
@@ -320,6 +343,7 @@ export function getEnergyCostText(cost: number): string {
 export enum DamageType {
   PHYSICAL = 'physical',  // 物理伤害
   SPECIAL = 'special',    // 特殊伤害
+  MIXED = 'mixed',        // 混合伤害（特攻打、物防减免）
   STATUS = 'status',      // 变化技能
   TRUE = 'true',          // 真实伤害
   MULTI_HIT = 'multi_hit' // 多段伤害（多次攻击）
@@ -418,14 +442,40 @@ export enum BattleEventType {
 }
 
 /**
- * 战斗事件
+ * 天气类型
  */
-export interface BattleEvent {
-  type: BattleEventType;
+export enum WeatherType {
+  SANDSTORM = 'sandstorm',  // 沙暴
+  RAIN = 'rain',            // 下雨
+  SUNNY = 'sunny',          // 晴天
+  HAIL = 'hail'            // 冰雹
+}
+
+/**
+ * 地形类型
+ */
+export enum TerrainType {
+  TOXIC_SPIKES = 'toxic_spikes',  // 毒钉
+  STEALTH_ROCKS = 'stealth_rocks' // 隐形岩
+}
+
+/**
+ * 天气效果接口
+ */
+export interface WeatherEffect {
+  weather: WeatherType;
+  duration: number;
   sourceId?: string;
-  targetId?: string;
-  data?: Record<string, unknown>;
-  timestamp: number;
+}
+
+/**
+ * 地形效果接口
+ */
+export interface TerrainEffect {
+  terrainType: TerrainType;
+  stacks: number;
+  maxStacks: number;
+  sourceId?: string;
 }
 
 // ==================== 类型映射（用于技能系统） ====================
@@ -461,6 +511,7 @@ export const STRING_TO_BUFF_TYPE: Record<string, BuffType> = {
   'wall_of_fire': BuffType.WALL_OF_FIRE,
   'flame_charge': BuffType.FLAME_CHARGE,
   'blaze_will': BuffType.BLAZE_WILL,
+  'overheat_penalty': BuffType.OVERHEAT_PENALTY,
   // 水属性Buff
   'water_shield': BuffType.WATER_SHIELD,
   'clear_spring': BuffType.CLEAR_SPRING,
@@ -473,6 +524,8 @@ export const STRING_TO_BUFF_TYPE: Record<string, BuffType> = {
   'psychic_dodge': BuffType.PSYCHIC_DODGE,
   'psychic_resist': BuffType.PSYCHIC_RESIST,
   'intent_blur': BuffType.INTENT_BLUR,
+  'psychic_terrain': BuffType.PSYCHIC_TERRAIN,
+  'prophecy_mark': BuffType.PROPHECY_MARK,
   // 草属性Buff
   'vine_body': BuffType.VINE_BODY,
   'light_gather': BuffType.LIGHT_GATHER,
@@ -480,10 +533,11 @@ export const STRING_TO_BUFF_TYPE: Record<string, BuffType> = {
   'counter_stance': BuffType.COUNTER_STANCE,
   'nutrient': BuffType.NUTRIENT,
   'root_bound': BuffType.ROOT_BOUND,
-  // 岩石属性Buff
-  'rock_armor': BuffType.ROCK_ARMOR,
-  'iron_wall': BuffType.IRON_WALL,
-  'quake_body': BuffType.QUAKE_BODY,
+  // 地属性Buff
+  'sandstorm_shield': BuffType.SANDSTORM_SHIELD,
+  'sand_force': BuffType.SAND_FORCE,
+  'underground': BuffType.UNDERGROUND,
+  'sand_tomb_buff': BuffType.SAND_TOMB_BUFF,
   // 电属性Buff
   'charge': BuffType.CHARGE,
   'overload': BuffType.OVERLOAD,
@@ -491,6 +545,12 @@ export const STRING_TO_BUFF_TYPE: Record<string, BuffType> = {
   'electric_field_buff': BuffType.ELECTRIC_FIELD_BUFF,
   'static_body': BuffType.STATIC_BODY,
   'electric_deflect': BuffType.ELECTRIC_DEFLECT,
+  // 龙属性Buff
+  'dragon_blood': BuffType.DRAGON_BLOOD,
+  'dragon_blood_resonance': BuffType.DRAGON_BLOOD_RESONANCE,
+  'dragon_guard': BuffType.DRAGON_GUARD,
+  'dragon_counter': BuffType.DRAGON_COUNTER,
+  'dragon_aura_buff': BuffType.DRAGON_AURA_BUFF
 };
 
 /**
@@ -523,17 +583,28 @@ export const STRING_TO_DEBUFF_TYPE: Record<string, DebuffType> = {
   'wet': DebuffType.WET,
   'turbulence': DebuffType.TURBULENCE,
   'water_soak': DebuffType.WATER_SOAK,
+  'steam_burn': DebuffType.STEAM_BURN,
+  'muddy': DebuffType.MUDDY,
   // 电属性Debuff
   'static': DebuffType.STATIC,
   // 超能属性Debuff
   'mind_wound': DebuffType.MIND_WOUND,
   'forbidden': DebuffType.FORBIDDEN,
+  'psychic_noise': DebuffType.PSYCHIC_NOISE,
   // 草属性Debuff
   'tangle': DebuffType.TANGLE,
   'parasite': DebuffType.PARASITE,
   'wither': DebuffType.WITHER,
-  // 岩石属性Debuff
+  // 地属性Debuff
   'stun': DebuffType.STUN,
+  'ground_trap': DebuffType.GROUND_TRAP,
+  'sand_tomb_debuff': DebuffType.SAND_TOMB_DEBUFF,
+  // 龙属性Debuff
+  'dragon_burn': DebuffType.DRAGON_BURN,
+  'dragon_confusion': DebuffType.DRAGON_CONFUSION,
+  'dragon_crush_def': DebuffType.DRAGON_CRUSH_DEF,
+  'dragon_intimidate': DebuffType.DRAGON_INTIMIDATE,
+  'dragon_power_loss': DebuffType.DRAGON_POWER_LOSS
 };
 
 /**

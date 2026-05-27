@@ -123,6 +123,7 @@
     .skill-tooltip .skill-tooltip-power { color: #ff6b6b; font-weight: 600; font-size: 12px; margin-bottom: 4px; }
     .skill-tooltip .skill-tooltip-shield { color: #0a84ff; font-weight: 600; font-size: 12px; margin-bottom: 4px; }
     .skill-tooltip .skill-tooltip-heal { color: #30d158; font-weight: 600; font-size: 12px; margin-bottom: 4px; }
+    .skill-tooltip .skill-tooltip-energy-restore { color: #30d158; font-weight: 600; font-size: 12px; margin-bottom: 4px; }
     .skill-tooltip .skill-tooltip-energy { color: #fff; font-weight: 500; font-size: 12px; margin-bottom: 6px; }
     .skill-tooltip .skill-tooltip-effect { color: #fff; font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #3a3a3c; }
     .skill-tooltip .skill-tooltip-desc { color: #fff; font-size: 11px; margin-top: 6px; }
@@ -217,52 +218,231 @@
     }
 
     // ==================== 玩家单位数据（伙伴）====================
+    // 伙伴定义 - 只包含基础信息，技能从共享数据源获取
     const playerUnits = [
       {
         id: 'flame_bear',
         name: '焰爪熊',
         level: 10,
-        maxHp: 110,
-        currentHp: 110,
+        maxHp: 220,
+        currentHp: 220,
         speed: 70,
         element: 'fire',
         energy: MAX_ENERGY,
-        skills: [
-          { id: 'flame_punch', name: '烈焰拳', type: 'special', energyCost: ENERGY_COST.medium, target: 'single_enemy', power: 75, element: 'fire',
-            strategy: 'counter_first', effect: 'combo', comboHits: 3, comboPower: 25, burnChance: 0.25,
-            description: '连续3次火属性攻击（共75威力），每次命中25%概率灼烧' },
-          { id: 'fire_shield', name: '火盾', type: 'shield', energyCost: ENERGY_COST.medium, target: 'ally', power: 50, effect: 'reflect',
-            strategy: 'lowest_hp', reflectDamage: 30, description: '为己方单体生成50点护盾，受攻击时对敌人造成30点火属性反伤' },
-          { id: 'wall_of_flames', name: '烈焰壁垒', type: 'shield', energyCost: ENERGY_COST.high, target: 'ally_all', power: 35,
-            description: '为己方全体生成35点护盾（持续2回合），期间对草/冰属性抗性+30%',
-            resistances: [{ element: 'grass', value: 0.3, duration: 2 }, { element: 'ice', value: 0.3, duration: 2 }] },
-          { id: 'combustion', name: '燃尽', type: 'special', energyCost: ENERGY_COST.high, target: 'single_enemy', power: 0, element: 'fire',
-            strategy: 'counter_first', effect: 'combustion', description: '指定敌人施加「燃尽印记」，3回合后扣除30%当前HP' },
-          { id: 'flare_blitz', name: '大字爆炎', type: 'special', energyCost: ENERGY_COST.ultra, target: 'single_enemy', power: 120, element: 'fire',
-            strategy: 'counter_first', effect: 'burnMark', burnMarkPower: 20, description: '攻击单体目标，造成120威力火属性伤害，必定附加「灼伤印记」（每次行动前受到自身20威力火属性伤害）' }
-        ]
+        debuffs: []
       },
       {
         id: 'torrent_crab',
         name: '激流蟹',
         level: 10,
-        maxHp: 100,
-        currentHp: 100,
+        maxHp: 200,
+        currentHp: 200,
         speed: 60,
         element: 'water',
         energy: MAX_ENERGY,
-        skills: [
-          { id: 'hydro_pump', name: '水炮', type: 'water', energyCost: ENERGY_COST.high, target: 'single_enemy', power: 90, element: 'water',
-            strategy: 'counter_first', effect: 'slow', slowChance: 0.2, description: '攻击单体目标，造成90威力水属性伤害，20%概率使目标减速（速度-1级，持续2回合）' },
-          { id: 'armor', name: '蟹钳加固', type: 'shield', energyCost: ENERGY_COST.medium, target: 'self', power: 40,
-            description: '强化自身防御，施加40点护盾' },
-          { id: 'water_jet', name: '水流冲击', type: 'water', energyCost: ENERGY_COST.medium, target: 'single_enemy', power: 60, element: 'water',
-            strategy: 'counter_first', effect: 'water_soak', description: '攻击单体目标，造成60威力水属性伤害，目标获得「浸透」（特防-1级/层，最多6层，持续2回合）' },
-          { id: 'tide_shield', name: '潮汐护盾', type: 'shield', energyCost: ENERGY_COST.medium, target: 'ally', power: 60,
-            strategy: 'lowest_hp', description: '召唤潮汐之力保护队友，施加60点护盾' }
-        ]
+        debuffs: []
+      },
+      {
+        id: 'frost_wolf',
+        name: '寒霜狼',
+        level: 10,
+        maxHp: 180,
+        currentHp: 180,
+        speed: 100,
+        element: 'ice',
+        energy: MAX_ENERGY,
+        debuffs: []
       }
     ];
+
+    // ==================== 技能分配规则 ====================
+    // 从数组中随机选取n个元素
+    function shuffleArray(array) {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    }
+
+    // 休息技能定义（所有生物都有）
+    const REST_SKILL = {
+      id: 'rest',
+      name: '休息',
+      type: 'energy',
+      energyCost: 0,
+      target: 'self',
+      power: 5,  // 回复5点能量
+      element: null,
+      strategy: 'self',
+      effect: 'energy_restore',
+      description: '休息恢复，回复5点能量'
+    };
+
+    // 根据生物属性，从 skills-data.js 随机获取4个技能
+    function assignSkillsByElement(element, creatureId) {
+      const elementData = SKILLS_DB[element];
+      if (!elementData) return [];
+
+      const skills = [];
+
+      // 休息技能始终在最左边
+      skills.push({ ...REST_SKILL });
+
+      // 从各类别中随机选取：攻击2个 + 防御1个 + 辅助1个 = 共4个
+      // 攻击技能池
+      if (elementData.attack && elementData.attack.length > 0) {
+        const attackPool = shuffleArray(elementData.attack);
+        const numAttack = Math.min(2, attackPool.length);
+        for (let i = 0; i < numAttack; i++) {
+          skills.push(convertSkillToBattleFormat(attackPool[i], element));
+        }
+      }
+
+      // 防御技能池
+      if (elementData.defense && elementData.defense.length > 0) {
+        const defPool = shuffleArray(elementData.defense);
+        skills.push(convertSkillToBattleFormat(defPool[0], element));
+      }
+
+      // 辅助技能池
+      if (elementData.support && elementData.support.length > 0) {
+        const supPool = shuffleArray(elementData.support);
+        skills.push(convertSkillToBattleFormat(supPool[0], element));
+      }
+
+      return skills;
+    }
+
+    // 将 skills-data.js 中的技能格式转换为战斗系统格式
+    function convertSkillToBattleFormat(skillData, element) {
+      // 获取能量消耗
+      let energyCost = ENERGY_COST.medium;
+      if (skillData.e !== undefined) {
+        if (typeof skillData.e === 'number') {
+          if (skillData.e <= 1) energyCost = ENERGY_COST.low;
+          else if (skillData.e <= 2) energyCost = ENERGY_COST.medium;
+          else if (skillData.e <= 3) energyCost = ENERGY_COST.high;
+          else if (skillData.e <= 4) energyCost = ENERGY_COST.ultra;
+          else energyCost = ENERGY_COST.ultimate;
+        }
+      }
+
+      // 获取目标类型
+      let target = 'single_enemy';
+      if (skillData.t) {
+        if (skillData.t.includes('自身')) target = 'self';
+        else if (skillData.t.includes('己方单体')) target = 'ally';
+        else if (skillData.t.includes('己方全体')) target = 'ally_all';
+        else if (skillData.t.includes('敌方全体') || skillData.t.includes('全体敌人')) target = 'all_enemy';
+        else target = 'single_enemy';
+      }
+
+      // 判断技能类型
+      let type = 'special';
+      if (skillData.damageType) {
+        if (skillData.damageType === '物理') type = 'physical';
+        else if (skillData.damageType === '特攻') type = 'special';
+      }
+      if (skillData.eff && (skillData.eff.includes('护盾') || skillData.eff.includes('减伤'))) {
+        type = 'shield';
+      }
+      if (skillData.eff && (skillData.eff.includes('治疗') || skillData.eff.includes('回复'))) {
+        type = 'heal';
+      }
+
+      // 获取威力
+      let power = 0;
+      if (skillData.p !== undefined) {
+        if (typeof skillData.p === 'number') {
+          power = skillData.p;
+        } else if (typeof skillData.p === 'string') {
+          // 处理 "25×3" 这样的格式，取第一段数值
+          const match = skillData.p.match(/(\d+)/);
+          if (match) power = parseInt(match[1]);
+        }
+      }
+
+      // 判断效果类型
+      let effect = null;
+      let burnStacks = null;
+      let burnChance = null;
+      let burnMarkPower = null;
+      if (skillData.eff) {
+        // 灼伤印记优先判断（更具体）
+        if (skillData.eff.includes('灼伤印记')) {
+          effect = 'burnMark';
+          // 解析灼伤印记的威力
+          const markMatch = skillData.eff.match(/灼伤印记.*?(\d+)威力/);
+          if (markMatch) {
+            burnMarkPower = parseInt(markMatch[1]);
+          } else {
+            burnMarkPower = 40; // 默认40威力
+          }
+        } else if (skillData.eff.includes('灼烧')) {
+          effect = 'burn';
+        }
+        if (skillData.eff.includes('冻结')) effect = 'freeze';
+        if (skillData.eff.includes('减速')) effect = 'slow';
+        if (skillData.eff.includes('麻痹')) effect = 'paralyze';
+        if (skillData.eff.includes('多段') || skillData.p?.toString().includes('×')) effect = 'combo';
+
+        // 解析灼烧层数（仅对普通灼烧生效）
+        if (effect === 'burn' && skillData.eff.includes('灼烧')) {
+          // 匹配 "灼烧（5层）" 或 "灼烧（2层×3次）" 等格式
+          const burnMatch = skillData.eff.match(/灼烧.*?（(\d+)层）/);
+          if (burnMatch) {
+            burnStacks = parseInt(burnMatch[1]);
+          }
+          // 匹配概率灼烧 "50%概率灼烧"
+          const chanceMatch = skillData.eff.match(/(\d+)%概率灼烧/);
+          if (chanceMatch) {
+            burnChance = parseInt(chanceMatch[1]) / 100;
+          }
+        }
+      }
+
+      return {
+        id: skillData.id,
+        name: skillData.name,
+        type: type,
+        energyCost: energyCost,
+        target: target,
+        power: power,
+        element: element,
+        strategy: 'counter_first',
+        effect: effect,
+        burnStacks: burnStacks,
+        burnChance: burnChance,
+        burnMarkPower: burnMarkPower,
+        description: skillData.eff || ''
+      };
+    }
+
+    // 为所有伙伴分配技能
+    function initializeCompanionSkills() {
+      playerUnits.forEach(unit => {
+        unit.skills = assignSkillsByElement(unit.element, unit.id);
+      });
+    }
+
+    // 为所有敌人分配技能
+    function initializeEnemySkills() {
+      enemyUnits.forEach(unit => {
+        unit.skills = assignSkillsByElement(unit.element, unit.id);
+      });
+    }
+
+    // 初始化时分配技能
+    initializeCompanionSkills();
+    initializeEnemySkills();
+    
+    // 调试日志：检查技能分配结果
+    console.log('=== 技能分配调试 ===');
+    playerUnits.forEach(unit => {
+      console.log(`${unit.name} (${unit.element}):`, unit.skills.map(s => `${s.name}[${s.energyCost}能量]`).join(', '));
+    });
 
     // 从共享数据源同步技能描述
 function syncSkillDescriptions() {
@@ -295,31 +475,34 @@ syncSkillDescriptions();
         id: 'flame_salamander',
         name: '焰心蜥',
         level: 8,
-        maxHp: 100,
-        currentHp: 100,
+        maxHp: 200,
+        currentHp: 200,
         speed: 75,
         element: 'fire',
-        intent: { type: 'attack', power: 75, targetId: 'lightning_marten' }
+        intent: { type: 'attack', power: 75, targetId: 'lightning_marten' },
+        debuffs: []
       },
       {
         id: 'deep_fish',
         name: '深海鱼',
         level: 7,
-        maxHp: 85,
-        currentHp: 85,
+        maxHp: 170,
+        currentHp: 170,
         speed: 85,
         element: 'water',
-        intent: { type: 'attack', power: 65, targetId: 'flame_bear' }
+        intent: { type: 'attack', power: 65, targetId: 'flame_bear' },
+        debuffs: []
       },
       {
         id: 'rock_armadillo',
         name: '岩甲兽',
         level: 8,
-        maxHp: 120,
-        currentHp: 120,
+        maxHp: 240,
+        currentHp: 240,
         speed: 50,
         element: 'rock',
-        intent: { type: 'attack', power: 70, targetId: 'torrent_crab' }
+        intent: { type: 'attack', power: 70, targetId: 'torrent_crab' },
+        debuffs: []
       }
     ];
 
@@ -420,6 +603,7 @@ syncSkillDescriptions();
           const skill = unit.skills.find(s => s.id === cmd.skillId);
           const target = [...enemyUnits, ...playerUnits].find(u => u.id === cmd.targetId);
           const targetName = target ? target.name : '未知';
+          const energyInfo = cmd.energySpent !== undefined ? `（${cmd.energyBefore}→${cmd.energyAfter}）` : '';
           return `
             <div class="command-item">
               <span class="command-status ready">✓</span>
@@ -428,6 +612,7 @@ syncSkillDescriptions();
               <span class="command-skill">${skill ? skill.name : cmd.skillId}</span>
               <span class="command-arrow">→</span>
               <span class="command-target">${targetName}</span>
+              <span style="font-size: 10px; color: #30d158; margin-left: 4px;">-${cmd.energySpent || 0}</span>
               <button class="command-cancel" onclick="cancelCommand('${unit.id}')">取消</button>
             </div>
           `;
@@ -449,7 +634,16 @@ syncSkillDescriptions();
 
     // 取消指令
     function cancelCommand(casterId) {
+      const cmd = playerCommands.find(c => c.casterId === casterId && c.status === 'pending');
+      if (cmd && cmd.energySpent !== undefined) {
+        const caster = playerUnits.find(p => p.id === casterId);
+        if (caster) {
+          caster.energy += cmd.energySpent;
+          addLog(`${caster.name} 取消指令：恢复${cmd.energySpent}能量（${caster.energy - cmd.energySpent}→${caster.energy}）`);
+        }
+      }
       playerCommands = playerCommands.filter(c => c.casterId !== casterId);
+      renderPlayerUnits();
       renderCommandList();
       updateTurnDisplay();
     }
@@ -571,8 +765,14 @@ syncSkillDescriptions();
         div.className = 'unit enemy';
         const isDead = unit.currentHp <= 0;
 
-        // 获取意图目标的名字首字
-        const intentTarget = playerUnits.find(p => p.id === unit.intent.targetId);
+        // 获取意图目标：优先使用 intent.targetId，fallback 到随机存活玩家
+        let intentTarget = playerUnits.find(p => p.id === unit.intent.targetId && p.currentHp > 0);
+        if (!intentTarget) {
+          const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
+          if (alivePlayers.length > 0) {
+            intentTarget = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+          }
+        }
         const intentChar = intentTarget ? intentTarget.name.charAt(0) : '?';
         
         div.innerHTML = `
@@ -604,8 +804,34 @@ syncSkillDescriptions();
       icon.onmouseenter = (e) => {
         const tooltip = document.createElement('div');
         tooltip.className = 'intent-tooltip';
-        const target = playerUnits.find(p => p.id === unit.intent.targetId);
-        tooltip.innerHTML = `<strong>${getIntentText(unit.intent.type)}</strong><br>威力: ${unit.intent.power}${target ? '<br>目标: ' + target.name : ''}`;
+        // 获取意图目标：优先使用 intent.targetId，fallback 到随机存活玩家
+        let target = playerUnits.find(p => p.id === unit.intent.targetId && p.currentHp > 0);
+        if (!target) {
+          const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
+          if (alivePlayers.length > 0) {
+            target = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+          }
+        }
+        // 获取技能名称
+        let skillName = '';
+        if (unit.intent.skillId && unit.skills) {
+          const skill = unit.skills.find(s => s.id === unit.intent.skillId);
+          if (skill) {
+            skillName = skill.name;
+          }
+        }
+        // 组合意图显示信息
+        let intentHtml = `<strong>${getIntentText(unit.intent.type)}</strong>`;
+        if (skillName) {
+          intentHtml = `<strong>${skillName}</strong>`;
+        }
+        if (unit.intent.power) {
+          intentHtml += `<br>威力: ${unit.intent.power}`;
+        }
+        if (target) {
+          intentHtml += `<br>目标: ${target.name}`;
+        }
+        tooltip.innerHTML = intentHtml;
         document.body.appendChild(tooltip);
         const rect = icon.getBoundingClientRect();
         tooltip.style.left = (rect.right + 10) + 'px';
@@ -628,13 +854,13 @@ syncSkillDescriptions();
 
     // 获取技能类型文本
     function getSkillTypeName(type) {
-      const map = { fire: '攻击', heal: '治疗', shield: '护盾', buff: '强化', special: '特殊', debuff: '弱化' };
+      const map = { fire: '攻击', heal: '治疗', shield: '护盾', buff: '强化', special: '特殊', debuff: '弱化', energy: '回复' };
       return map[type] || '特殊';
     }
 
     // 获取技能类型样式
     function getSkillTypeClass(type) {
-      const map = { fire: 'fire', heal: 'heal', shield: 'shield', buff: 'buff', special: 'special', debuff: 'debuff' };
+      const map = { fire: 'fire', heal: 'heal', shield: 'shield', buff: 'buff', special: 'special', debuff: 'debuff', energy: 'heal' };
       return map[type] || 'special';
     }
 
@@ -684,9 +910,17 @@ syncSkillDescriptions();
         if (skill.power && skill.power > 0) {
           html += `<div class="skill-tooltip-heal">治疗量: ${skill.power}</div>`;
         }
+      } else if (skill.type === 'energy') {
+        // 能量回复技能 - 显示回复量
+        if (skill.effect === 'energy_restore') {
+          html += `<div class="skill-tooltip-energy-restore">回复能量: +${skill.power}</div>`;
+        }
       } else if (skill.type === 'buff') {
-        // 强化技能 - 显示效果说明
-        if (skill.power && skill.power > 0) {
+        // 能量回复技能
+        if (skill.effect === 'energy_restore') {
+          html += `<div class="skill-tooltip-energy-restore">回复能量: +${skill.power}</div>`;
+        } else if (skill.power && skill.power > 0) {
+          // 强化技能 - 显示效果说明
           html += `<div class="skill-tooltip-power">强化: +${skill.power}</div>`;
         }
       }
@@ -697,28 +931,39 @@ syncSkillDescriptions();
       // 能量消耗
       html += `<div class="skill-tooltip-energy">消耗: ${getEnergyCostText(skill.energyCost)}</div>`;
 
-      // 特殊效果描述
-      if (skill.effect) {
-        const effectNames = {
-          drain: '每回合吸取目标12%HP',
-          burn: '目标灼烧，每回合受到10%最大HP伤害',
-          poison: '目标中毒，每回合受到8%最大HP伤害',
-          freeze: '20%概率冻结目标',
-          slow: '目标速度-1级',
-          stun: '30%概率使目标昏迷1回合',
-          reflect: '反射50%受到的特殊伤害',
-          barrier: '免疫下一次攻击',
-          paralyze: '目标麻痹',
-          combo: '多段攻击',
-          priority: '先手+1',
-          static_body: '蓄电护体：减伤+蓄电',
-          chain_damage: '连锁效果：扩散伤害'
-        };
-        const effectText = effectNames[skill.effect] || skill.effect;
-        html += `<div class="skill-tooltip-effect">效果: ${effectText}</div>`;
+      // 特殊效果描述（仅对非burnMark类型显示）
+      if (skill.effect && skill.effect !== 'burnMark') {
+        let effectText = '';
+        if (skill.effect === 'burn') {
+          // 灼烧：根据层数显示不同描述
+          if (skill.burnStacks) {
+            effectText = `目标灼烧（${skill.burnStacks}层），每层2%最大HP/回合，层数减半`;
+          } else {
+            effectText = '目标灼烧，每层2%最大HP/回合，层数减半';
+          }
+        } else {
+          const effectNames = {
+            drain: '每回合吸取目标12%HP',
+            poison: '目标中毒，每回合受到8%最大HP伤害',
+            freeze: '20%概率冻结目标',
+            slow: '目标速度-1级',
+            stun: '30%概率使目标昏迷1回合',
+            reflect: '反射50%受到的特殊伤害',
+            barrier: '免疫下一次攻击',
+            paralyze: '目标麻痹',
+            combo: '多段攻击',
+            priority: '先手+1',
+            static_body: '蓄电护体：减伤+蓄电',
+            chain_damage: '连锁效果：扩散伤害'
+          };
+          effectText = effectNames[skill.effect] || skill.effect;
+        }
+        if (effectText) {
+          html += `<div class="skill-tooltip-effect">效果: ${effectText}</div>`;
+        }
       }
 
-      // 技能描述（如果有）
+      // 技能描述
       if (skill.description) {
         html += `<div class="skill-tooltip-desc">${skill.description}</div>`;
       }
@@ -795,12 +1040,17 @@ syncSkillDescriptions();
             document.removeEventListener('mouseup', upHandler);
             if (dragPreview) { dragPreview.remove(); dragPreview = null; }
 
-            // 检查是否在目标上释放
-            const target = document.elementFromPoint(e.clientX, e.clientY);
-            const targetUnit = target?.closest('.unit.enemy.targetable') || target?.closest('.unit.player.targetable');
-            if (targetUnit) {
-              const targetId = targetUnit.id;
-              addCommand(unit, skill, targetId);
+            // 检查是否在目标上释放（self 类型的技能无需目标）
+            if (skill.target === 'self') {
+              // 自身目标技能直接释放
+              addCommand(unit, skill, unit.id);
+            } else {
+              const target = document.elementFromPoint(e.clientX, e.clientY);
+              const targetUnit = target?.closest('.unit.enemy.targetable') || target?.closest('.unit.player.targetable');
+              if (targetUnit) {
+                const targetId = targetUnit.id;
+                addCommand(unit, skill, targetId);
+              }
             }
             draggedSkill = null;
             deselectPlayer();
@@ -872,25 +1122,31 @@ syncSkillDescriptions();
       // 检查能量是否足够
       if (caster.energy < skill.energyCost) {
         addLog(`${caster.name} 能量不足，无法使用 ${skill.name}`);
-        return;
+        return false;
       }
+      
+      const energyBefore = caster.energy;
       
       // 消耗能量
       caster.energy -= skill.energyCost;
-
+      
       // 添加指令
       playerCommands.push({
         casterId: caster.id,
         skillId: skill.id,
         targetId: targetId,
-        status: 'pending'
+        status: 'pending',
+        energySpent: skill.energyCost,
+        energyBefore: energyBefore,
+        energyAfter: caster.energy
       });
 
-      addLog(`${caster.name} 下达指令：${skill.name}`);
+      addLog(`${caster.name} 下达指令：${skill.name}（消耗${skill.energyCost}能量 ${energyBefore}→${caster.energy}）`);
       renderCommandList();
       renderSkillPanel(caster);
       renderPlayerUnits();  // 更新能量显示
       updateTurnDisplay();
+      return true;
     }
 
     // ==================== 战斗结算阶段 ====================
@@ -1045,6 +1301,16 @@ syncSkillDescriptions();
       const target = [...enemyUnits, ...playerUnits].find(u => u.id === targetId);
       if (!target || target.currentHp <= 0) return;
 
+      // 处理休息技能（回复能量）
+      if (skill.effect === 'energy_restore') {
+        const energyRestore = skill.power || 5;
+        const oldEnergy = caster.energy;
+        caster.energy = Math.min(caster.energy + energyRestore, MAX_ENERGY);
+        const actualRestore = caster.energy - oldEnergy;
+        addLog(`${caster.name} 使用 ${skill.name}，回复 ${actualRestore} 点能量（${oldEnergy}→${caster.energy}）`, 'heal');
+        return;
+      }
+
       if (skill.target === 'single_enemy') {
         // 攻击技能
         let totalDamage = 0;
@@ -1109,13 +1375,26 @@ syncSkillDescriptions();
           addLog(`${target.name} 被施加「灼伤印记」（每次行动前受到自身${target.burnMarkPower}威力火属性伤害）`, 'debuff');
         }
 
-        // 灼烧效果（根据概率判定）
-        if (skill.effect === 'burn' || skill.burnChance > 0) {
-          const burnChance = skill.burnChance || (skill.effect === 'burn' ? 1 : 0);
+        // 灼烧效果（层数系统）
+        if (skill.effect === 'burn' || skill.burnStacks) {
+          const burnChance = skill.burnChance ?? 1; // 默认100%成功
           if (Math.random() < burnChance) {
-            target.burning = true;
-            target.burnTurns = 3;
-            addLog(`${target.name} 陷入灼烧状态！（每回合损失12.5%最大HP，持续3回合）`, 'damage');
+            const stacks = skill.burnStacks || 1;
+            // 检查是否已有灼烧，有则叠加层数
+            const existingBurn = target.debuffs.find(d => d.type === 'burn');
+            if (existingBurn) {
+              existingBurn.stacks += stacks;
+              existingBurn.remainingDuration = 3; // 重置持续时间
+              addLog(`${target.name} 的灼烧层数+${stacks}（共${existingBurn.stacks}层）`, 'damage');
+            } else {
+              target.debuffs.push({
+                type: 'burn',
+                stacks: stacks,
+                damagePercentPerStack: 0.02, // 每层2%
+                remainingDuration: 3
+              });
+              addLog(`${target.name} 陷入灼烧状态！（${stacks}层，每层2%最大HP/回合，层数减半）`, 'damage');
+            }
           }
         }
 
@@ -1330,17 +1609,26 @@ syncSkillDescriptions();
       // 回合结束 - 处理状态效果
       await delay(300);
 
-      // 处理灼烧效果
+      // 处理灼烧效果（层数系统）
       for (const unit of [...playerUnits, ...enemyUnits]) {
-        if (unit.burning && unit.currentHp > 0) {
-          const burnDamage = Math.floor(unit.maxHp * 0.125); // 12.5%最大HP
+        if (unit.currentHp <= 0) continue;
+
+        const burnDebuff = unit.debuffs.find(d => d.type === 'burn');
+        if (burnDebuff && burnDebuff.stacks > 0) {
+          // 计算伤害：每层2%最大HP
+          const burnDamage = Math.floor(unit.maxHp * burnDebuff.damagePercentPerStack * burnDebuff.stacks);
           unit.currentHp = Math.max(0, unit.currentHp - burnDamage);
           showDamageNumber(unit.id, burnDamage, 'damage');
           updateHpBar(unit);
-          addLog(`${unit.name} 受到灼烧伤害 ${burnDamage} HP`, 'damage');
-          unit.burnTurns--;
-          if (unit.burnTurns <= 0) {
-            unit.burning = false;
+          addLog(`${unit.name} 受到灼烧伤害 ${burnDamage} HP（${burnDebuff.stacks}层）`, 'damage');
+
+          // 层数减半（向下取整，最小为1）
+          burnDebuff.stacks = Math.max(1, Math.floor(burnDebuff.stacks / 2));
+          burnDebuff.remainingDuration--;
+
+          if (burnDebuff.remainingDuration <= 0) {
+            // 移除灼烧debuff
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'burn');
             addLog(`${unit.name} 的灼烧状态消失了`);
           }
         }
@@ -1410,9 +1698,6 @@ syncSkillDescriptions();
 
         // 进入下一回合
         currentTurn++;
-        
-        // 所有玩家单位回复能量至满
-        playerUnits.forEach(u => { u.energy = MAX_ENERGY; });
         
         playerCommands = []; // 清空指令
         isPreparing = true;
@@ -1489,6 +1774,10 @@ syncSkillDescriptions();
       document.getElementById('battleEndOverlay').classList.remove('visible');
       document.getElementById('commandList').style.display = 'block';
       document.getElementById('logContent').innerHTML = '';
+      
+      // 重新初始化技能（确保所有单位都有技能）
+      initializeCompanionSkills();
+      
       renderPlayerUnits();
       renderEnemyUnits();
       renderSkillPanel(null);
@@ -1499,6 +1788,15 @@ syncSkillDescriptions();
 
     // ==================== 初始化 ====================
     function init() {
+      // 调试日志：验证初始化状态
+      console.log('=== 战斗初始化 ===');
+      playerUnits.forEach(unit => {
+        console.log(`${unit.name}: HP=${unit.currentHp}/${unit.maxHp}, energy=${unit.energy}, skills=${unit.skills.length}`);
+        if (unit.skills.length === 0) {
+          console.warn(`警告: ${unit.name} 没有技能！`);
+        }
+      });
+      
       renderPlayerUnits();
       renderEnemyUnits();
       renderCommandList();

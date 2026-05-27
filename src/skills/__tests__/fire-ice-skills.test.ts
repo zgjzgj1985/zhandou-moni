@@ -1,6 +1,6 @@
 /**
  * 火/冰属性技能测试
- * 测试火属性爆发流 (9个) 和 冰属性冰霜蓄力流 (10个) 的技能定义
+ * 测试火属性爆发流 (11个) 和 冰属性冰霜蓄力流 (10个) 的技能定义
  */
 
 import { describe, it, expect } from 'vitest';
@@ -11,6 +11,8 @@ import {
   FLAME_PUNCH,
   FLARE_BLITZ,
   EXPLOSION_FLAME,
+  OVERHEAT,
+  FLAME_IMPACT,
   FIRE_SHIELD_SKILL,
   WALL_OF_FLAMES,
   FLAME_CHARGE_SKILL,
@@ -22,7 +24,8 @@ import {
   ICE_SHARD_SKILLS,
   ICE_SHOT,
   FROST_BREATH,
-  ICE_SHARD,
+  ICICLE_SPEAR,
+  ICE_HAMMER,
   ICE_EXPLOSION,
   FROST_ARMOR,
   ICE_WALL,
@@ -34,7 +37,7 @@ import { SkillTestHelper } from './helpers';
 import { SkillTarget, SkillTendency, ElementType } from '../../types';
 
 describe('火属性·爆发流技能测试', () => {
-  describe('攻击倾向技能 (4个)', () => {
+  describe('攻击倾向技能 (6个)', () => {
     it('点燃 (EMBER) - 纯DOT技能', () => {
       SkillTestHelper.validateSkillBase(EMBER, 'ember', '点燃', 1);
       SkillTestHelper.validateTags(EMBER, ['火', '爆发流', '攻击', '灼烧']);
@@ -48,6 +51,17 @@ describe('火属性·爆发流技能测试', () => {
       expect(effects[0].damage?.hits).toBe(3);
     });
 
+    it('火焰冲击 (FLAME_IMPACT) - 清除增益', () => {
+      SkillTestHelper.validateSkillBase(FLAME_IMPACT, 'flame_impact', '火焰冲击', 2);
+      const effects = FLAME_IMPACT.definition.effects;
+      expect(effects[0].damage?.damageType).toBe('physical');
+      expect(effects[0].damage?.basePower).toBe(40);
+      const hasCleanse = effects.some(
+        e => e.special?.type === 'cleanse_target_buff'
+      );
+      expect(hasCleanse).toBe(true);
+    });
+
     it('大字爆炎 (FLARE_BLITZ) - 高威力+灼伤印记', () => {
       SkillTestHelper.validateSkillBase(FLARE_BLITZ, 'flare_blitz', '大字爆炎', 4);
       SkillTestHelper.validateDamageEffect(FLARE_BLITZ, 120, ElementType.FIRE);
@@ -55,6 +69,15 @@ describe('火属性·爆发流技能测试', () => {
         e => e.applyDebuff?.debuffType === 'burn_mark'
       );
       expect(hasBurnMark).toBe(true);
+    });
+
+    it('过热 (OVERHEAT) - 高代价高回报', () => {
+      SkillTestHelper.validateSkillBase(OVERHEAT, 'overheat', '过热', 4);
+      SkillTestHelper.validateDamageEffect(OVERHEAT, 130, ElementType.FIRE);
+      const hasPenalty = OVERHEAT.definition.effects.some(
+        e => e.applyBuff?.buffType === 'overheat_penalty'
+      );
+      expect(hasPenalty).toBe(true);
     });
 
     it('爆炸烈焰 (EXPLOSION_FLAME) - 6段多段伤害+必定灼伤', () => {
@@ -122,8 +145,8 @@ describe('火属性·爆发流技能测试', () => {
   });
 
   describe('FIRE_BURST_SKILLS 技能库', () => {
-    it('包含所有10个技能', () => {
-      expect(FIRE_BURST_SKILLS.ALL).toHaveLength(10);
+    it('包含所有11个技能', () => {
+      expect(FIRE_BURST_SKILLS.ALL).toHaveLength(11);
     });
 
     it('按倾向分类正确', () => {
@@ -135,7 +158,7 @@ describe('火属性·爆发流技能测试', () => {
 });
 
 describe('冰属性·冰霜蓄力流技能测试', () => {
-  describe('攻击倾向技能 (4个)', () => {
+  describe('攻击倾向技能 (5个)', () => {
     it('冰晶射击 (ICE_SHOT) - 伤害+冰霜', () => {
       SkillTestHelper.validateSkillBase(ICE_SHOT, 'ice_shot', '冰晶射击', 1);
       SkillTestHelper.validateDamageEffect(ICE_SHOT, 35, ElementType.ICE);
@@ -155,10 +178,22 @@ describe('冰属性·冰霜蓄力流技能测试', () => {
       expect(hasMark).toBe(true);
     });
 
-    it('冰片 (ICE_SHARD) - 多段伤害', () => {
-      SkillTestHelper.validateSkillBase(ICE_SHARD, 'ice_shard', '冰片', 3);
-      SkillTestHelper.validateDamageEffect(ICE_SHARD, 20, ElementType.ICE);
-      expect(ICE_SHARD.definition.baseHits).toBe(3);
+    it('冰锥 (ICICLE_SPEAR) - 随机2-5次连击', () => {
+      SkillTestHelper.validateSkillBase(ICICLE_SPEAR, 'icicle_spear', '冰锥', 2);
+      SkillTestHelper.validateDamageEffect(ICICLE_SPEAR, 25, ElementType.ICE);
+      // 验证随机连击范围
+      expect(ICICLE_SPEAR.definition.minHits).toBe(2);
+      expect(ICICLE_SPEAR.definition.maxHits).toBe(5);
+    });
+
+    it('冰锤 (ICE_HAMMER) - 高威力+自降速度', () => {
+      SkillTestHelper.validateSkillBase(ICE_HAMMER, 'ice_hammer', '冰锤', 4);
+      SkillTestHelper.validateDamageEffect(ICE_HAMMER, 100, ElementType.ICE);
+      // 验证代价机制
+      const hasSelfDebuff = ICE_HAMMER.definition.effects.some(
+        e => e.selfStatBoost?.stat === 'speed' && e.selfStatBoost.stages === -1
+      );
+      expect(hasSelfDebuff).toBe(true);
     });
 
     it('冰爆 (ICE_EXPLOSION) - 冻结目标3倍伤害', () => {
@@ -220,14 +255,18 @@ describe('冰属性·冰霜蓄力流技能测试', () => {
   });
 
   describe('ICE_SHARD_SKILLS 技能库', () => {
-    it('包含所有9个技能', () => {
-      expect(ICE_SHARD_SKILLS.ALL).toHaveLength(9);
+    it('包含所有10个技能', () => {
+      expect(ICE_SHARD_SKILLS.ALL).toHaveLength(10);
     });
 
     it('按倾向分类正确', () => {
       expect(ICE_SHARD_SKILLS.ATTACK).toBeDefined();
       expect(ICE_SHARD_SKILLS.DEFENSE).toBeDefined();
       expect(ICE_SHARD_SKILLS.SUPPORT).toBeDefined();
+    });
+
+    it('攻击倾向包含5个技能', () => {
+      expect(Object.keys(ICE_SHARD_SKILLS.ATTACK)).toHaveLength(5);
     });
   });
 });

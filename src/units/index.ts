@@ -41,7 +41,7 @@ export const FlameBearDefinition: CreatureDefinition = {
   name: '焰爪熊',
   description: '浑身燃烧着烈焰的凶猛巨熊，以爆发力著称',
   level: 10,
-  maxHp: 110,
+  maxHp: 220,
   attack: 100,
   defense: 85,
   spAttack: 75,
@@ -78,7 +78,7 @@ export const FlameSalamanderDefinition: CreatureDefinition = {
   name: '焰心蜥',
   description: '栖息在火山地带的蜥蜴，尾部燃烧着永恒的火焰',
   level: 8,
-  maxHp: 100,
+  maxHp: 200,
   attack: 95,
   defense: 65,
   spAttack: 85,
@@ -117,7 +117,7 @@ export const TorrentCrabDefinition: CreatureDefinition = {
   name: '激流蟹',
   description: '拥有坚硬蟹壳的甲壳生物，以防守反击著称',
   level: 10,
-  maxHp: 100,
+  maxHp: 200,
   attack: 80,
   defense: 95,
   spAttack: 70,
@@ -153,7 +153,7 @@ export const DeepFishDefinition: CreatureDefinition = {
   name: '深海鱼',
   description: '栖息在深海的鱼类，能操控水流',
   level: 7,
-  maxHp: 85,
+  maxHp: 170,
   attack: 70,
   defense: 75,
   spAttack: 90,
@@ -192,7 +192,7 @@ export const VineTurtleDefinition: CreatureDefinition = {
   name: '藤蔓龟',
   description: '背部长满藤蔓的龟类，以持久战著称',
   level: 10,
-  maxHp: 115,
+  maxHp: 230,
   attack: 65,
   defense: 90,
   spAttack: 85,
@@ -228,7 +228,7 @@ export const PoisonVineDefinition: CreatureDefinition = {
   name: '毒藤怪',
   description: '有毒的藤蔓生物，擅长持续伤害',
   level: 7,
-  maxHp: 95,
+  maxHp: 190,
   attack: 75,
   defense: 80,
   spAttack: 85,
@@ -245,6 +245,82 @@ export const PoisonVineDefinition: CreatureDefinition = {
   ],
   goldReward: 12,
   expReward: 18
+};
+
+// ==================== 电属性生物 ====================
+
+/**
+ * 闪电貂 - 电属性伙伴/怪物
+ * 多段伤害流：最高速度，电光一闪先手，蓄电+电磁脉冲连击
+ */
+export function createLightningMartenSkills(): Skill[] {
+  return [
+    createCreatureAttackSkill('lightning_marten_quick', '电光一闪', 45, 2, ElementType.ELECTRIC),
+    createCreatureAttackSkill('lightning_marten_thunder', '雷鸣击', 90, 3, ElementType.ELECTRIC),
+    createCreatureShieldSkill('lightning_marten_charge', '蓄电护体', 50),
+    createCreatureBuffSkill('lightning_marten_field', '电场展开', '电荷积累速度翻倍'),
+  ];
+}
+
+export const LightningMartenDefinition: CreatureDefinition = {
+  id: 'lightning_marten',
+  name: '闪电貂',
+  description: '全游戏速度最快的生物，能释放闪电般的连击',
+  level: 10,
+  maxHp: 150,
+  attack: 70,
+  defense: 60,
+  spAttack: 110,
+  spDefense: 65,
+  speed: 120,
+  elements: [ElementType.ELECTRIC],
+  skills: createLightningMartenSkills(),
+  aiStrategy: AIDifficulty.NORMAL,
+  intentPattern: [
+    { turn: 1, intent: 1, power: 45 },
+    { turn: 2, intent: 2, probability: 1.0 },
+    { turn: 3, intent: 1, power: 90 },
+    { turn: 4, intent: 1, power: 60 },
+  ],
+  goldReward: 15,
+  expReward: 25
+};
+
+/**
+ * 雷鸣蝠 - 电属性伙伴/怪物
+ * 多段伤害流：高攻击高速，麻痹控制
+ */
+export function createThunderBatSkills(): Skill[] {
+  return [
+    createCreatureAttackSkill('thunder_bat_quick', '电光一闪', 45, 2, ElementType.ELECTRIC),
+    createCreatureAttackSkill('thunder_bat_thunder', '雷鸣击', 90, 3, ElementType.ELECTRIC),
+    createCreatureShieldSkill('thunder_bat_charge', '蓄电护体', 45),
+    createCreatureBuffSkill('thunder_bat_static', '静电标记', '攻击者获得电荷'),
+  ];
+}
+
+export const ThunderBatDefinition: CreatureDefinition = {
+  id: 'thunder_bat',
+  name: '雷鸣蝠',
+  description: '能在空中释放雷电的蝙蝠群落',
+  level: 8,
+  maxHp: 140,
+  attack: 80,
+  defense: 55,
+  spAttack: 95,
+  spDefense: 60,
+  speed: 110,
+  elements: [ElementType.ELECTRIC],
+  skills: createThunderBatSkills(),
+  aiStrategy: AIDifficulty.NORMAL,
+  intentPattern: [
+    { turn: 1, intent: 1, power: 45 },
+    { turn: 2, intent: 1, power: 70 },
+    { turn: 3, intent: 3, probability: 1.0 },
+    { turn: 4, intent: 1, power: 90 },
+  ],
+  goldReward: 14,
+  expReward: 22
 };
 
 // ==================== 冰属性生物 ====================
@@ -267,7 +343,7 @@ export const FrostWolfDefinition: CreatureDefinition = {
   name: '寒霜狼',
   description: '在极寒地带生存的狼类，能冻结一切',
   level: 10,
-  maxHp: 90,
+  maxHp: 180,
   attack: 95,
   defense: 70,
   spAttack: 60,
@@ -303,7 +379,7 @@ export const IceCrystalDefinition: CreatureDefinition = {
   name: '冰晶魔',
   description: '由冰晶构成的魔法生物，擅长冰冻控制',
   level: 8,
-  maxHp: 80,
+  maxHp: 160,
   attack: 65,
   defense: 70,
   spAttack: 100,
@@ -342,7 +418,7 @@ export const RockOxDefinition: CreatureDefinition = {
   name: '磐石牛',
   description: '如磐石般坚硬的牛类，是移动的堡垒',
   level: 10,
-  maxHp: 130,
+  maxHp: 260,
   attack: 90,
   defense: 110,
   spAttack: 50,
@@ -378,7 +454,7 @@ export const RockArmadilloDefinition: CreatureDefinition = {
   name: '岩甲兽',
   description: '披着岩石铠甲的兽类，防御惊人',
   level: 8,
-  maxHp: 120,
+  maxHp: 240,
   attack: 85,
   defense: 100,
   spAttack: 50,
@@ -417,7 +493,7 @@ export const SpiritFoxDefinition: CreatureDefinition = {
   name: '灵狐',
   description: '拥有九条尾巴的狐狸，能操控精神力量',
   level: 10,
-  maxHp: 80,
+  maxHp: 160,
   attack: 55,
   defense: 70,
   spAttack: 115,
@@ -453,7 +529,7 @@ export const DreamButterflyDefinition: CreatureDefinition = {
   name: '幻蝶',
   description: '能在梦境与现实间穿梭的蝴蝶',
   level: 10,
-  maxHp: 70,
+  maxHp: 140,
   attack: 50,
   defense: 65,
   spAttack: 100,
@@ -489,7 +565,7 @@ export const MindMasterDefinition: CreatureDefinition = {
   name: '念力怪',
   description: '精通念力的神秘生物',
   level: 9,
-  maxHp: 85,
+  maxHp: 170,
   attack: 55,
   defense: 70,
   spAttack: 110,
@@ -525,7 +601,7 @@ export const ShadowPantherDefinition: CreatureDefinition = {
   name: '暗影豹',
   description: '在暗影中潜伏的猎豹，来去无踪',
   level: 9,
-  maxHp: 75,
+  maxHp: 150,
   attack: 100,
   defense: 60,
   spAttack: 85,
@@ -564,7 +640,7 @@ export const StarDragonDefinition: CreatureDefinition = {
   name: '星瞳龙',
   description: '拥有星芒眼瞳的龙类，成长后无人能挡',
   level: 10,
-  maxHp: 95,
+  maxHp: 190,
   attack: 85,
   defense: 75,
   spAttack: 105,
@@ -600,7 +676,7 @@ export const BlazeBeastDefinition: CreatureDefinition = {
   name: '炎爆兽',
   description: '融合龙族血脉的火焰巨兽',
   level: 10,
-  maxHp: 100,
+  maxHp: 200,
   attack: 110,
   defense: 75,
   spAttack: 95,
@@ -636,7 +712,7 @@ export const YoungDragonDefinition: CreatureDefinition = {
   name: '幼龙',
   description: '正在成长的幼年龙族',
   level: 9,
-  maxHp: 100,
+  maxHp: 200,
   attack: 90,
   defense: 75,
   spAttack: 95,
@@ -672,7 +748,7 @@ export const VolcanoDragonDefinition: CreatureDefinition = {
   name: '火山龙',
   description: '栖息在火山的顶级龙族，极为危险',
   level: 10,
-  maxHp: 110,
+  maxHp: 220,
   attack: 105,
   defense: 80,
   spAttack: 100,

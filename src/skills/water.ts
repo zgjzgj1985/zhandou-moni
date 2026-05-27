@@ -5,7 +5,7 @@
  * 核心机制：治疗、护盾、威力加成，持久消耗战
  *
  * 技能分类：
- * - 攻击倾向（4种）：水流冲击、水炮、水弹、漩涡
+ * - 攻击倾向（7种）：水流冲击、水炮、水弹、漩涡、热水、浊流、冲浪
  * - 防御倾向（2种）：水之守护、清泉护盾
  * - 辅助倾向（3种）：治愈波动、水疗之术、雨天
  */
@@ -32,7 +32,7 @@ export const WATER_JET: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'water_jet',
     name: '水流冲击',
-    description: '攻击单体目标，造成60威力水属性伤害，目标获得「浸透」（特防-1级/层，最多6层，持续2回合）',
+    description: '攻击单体目标，造成60威力特殊伤害，目标获得「浸透」（特防-1级/层，最多6层，持续2回合）',
     type: 'action',
     energyCost: 2,
     target: SkillTarget.SINGLE,
@@ -65,7 +65,7 @@ export const HYDRO_PUMP: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'hydro_pump',
     name: '水炮',
-    description: '攻击单体目标，造成150威力水属性伤害，自身获得「虚弱」（下一回合无法使用技能）',
+    description: '攻击单体目标，造成150威力特殊伤害，自身获得「虚弱」（下一回合无法使用技能）',
     type: 'action',
     energyCost: 3,
     target: SkillTarget.SINGLE,
@@ -89,15 +89,16 @@ export const HYDRO_PUMP: Skill = (() => {
 })();
 
 /**
- * 【攻击倾向2】水弹
+ * 【攻击倾向3】水弹
  * 攻击目标，造成35×2威力伤害（多段），先手+1
  * 多段伤害适合触发浸透buff等层数机制
+ * 伤害类型：物理伤害（高压水弹的物理冲击）
  */
 export const WATER_BULLET: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'water_bullet',
     name: '水弹',
-    description: '攻击单体目标，造成35×2威力水属性伤害（多段），先手+1',
+    description: '攻击单体目标，造成35×2威力特殊伤害（多段），先手+1',
     type: 'action',
     energyCost: 3,
     target: SkillTarget.SINGLE,
@@ -106,13 +107,13 @@ export const WATER_BULLET: Skill = (() => {
     effects: [{
       damage: {
         basePower: 35,
-        damageType: DamageType.MULTI_HIT, // 多段伤害
+        damageType: DamageType.PHYSICAL, // 物理伤害（多段）
         hits: 2,  // 2段攻击
         element: ElementType.WATER
       }
     }],
     category: '水属性控制流·攻击',
-    tags: ['水', '控制流', '攻击', '多段伤害', '先手']
+    tags: ['水', '控制流', '攻击', '多段伤害', '先手', '物理']
   };
   return new Skill(definition);
 })();
@@ -121,12 +122,13 @@ export const WATER_BULLET: Skill = (() => {
  * 【攻击倾向4】漩涡
  * 对目标造成120威力伤害并附加「溺水」状态
  * 溺水：下一次能量消耗高于3的技能，造成伤害-30%
+ * 伤害类型：物理伤害（漩涡是旋转的水流冲击）
  */
 export const ABYSS_VORTEX: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'abyss_vortex',
     name: '漩涡',
-    description: '造成120威力水属性伤害，附加「溺水」（下一次能量消耗>3的技能伤害-30%）',
+    description: '造成120威力物理伤害，附加「溺水」（下一次能量消耗>3的技能伤害-30%）',
     type: 'action',
     energyCost: 5,
     target: SkillTarget.SINGLE,
@@ -134,7 +136,7 @@ export const ABYSS_VORTEX: Skill = (() => {
     effects: [{
       damage: {
         basePower: 120,
-        damageType: DamageType.SPECIAL,
+        damageType: DamageType.PHYSICAL,
         element: ElementType.WATER
       },
       applyDebuff: {
@@ -145,7 +147,104 @@ export const ABYSS_VORTEX: Skill = (() => {
       }
     }],
     category: '水属性控制流·攻击',
-    tags: ['水', '控制流', '攻击', '能量压制']
+    tags: ['水', '控制流', '攻击', '能量压制', '物理']
+  };
+  return new Skill(definition);
+})();
+
+/**
+ * 【攻击倾向5】热水
+ * 参考宝可梦热水技能
+ * 攻击目标，造成80威力伤害，30%概率使目标陷入灼烧状态
+ * 伤害类型：物理伤害（高温液体的物理喷射）
+ */
+export const SCALD: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'scald',
+    name: '热水',
+    description: '攻击单体目标，造成80威力物理伤害，30%概率使目标陷入「蒸汽灼伤」状态（每回合损失2%最大HP）',
+    type: 'action',
+    energyCost: 3,
+    target: SkillTarget.SINGLE,
+    tendency: SkillTendency.ATTACK,
+    effects: [{
+      damage: {
+        basePower: 80,
+        damageType: DamageType.PHYSICAL,
+        element: ElementType.WATER
+      },
+      applyDebuff: {
+        debuffType: 'steam_burn',
+        duration: 3,
+        stacks: 1,
+        successRate: 0.3  // 30%概率
+      }
+    }],
+    category: '水属性控制流·攻击',
+    tags: ['水', '控制流', '攻击', '灼烧', '概率触发', '物理']
+  };
+  return new Skill(definition);
+})();
+
+/**
+ * 【攻击倾向6】浊流
+ * 参考宝可梦浊流技能
+ * 攻击目标，造成90威力伤害，30%概率使目标命中率降低
+ * 伤害类型：物理伤害（泥水的物理冲击）
+ */
+export const MUDDY_WATER: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'muddy_water',
+    name: '浊流',
+    description: '攻击单体目标，造成90威力物理伤害，30%概率使目标获得「浑浊」状态（命中率-1级/层，最多3层，持续3回合）',
+    type: 'action',
+    energyCost: 3,
+    target: SkillTarget.SINGLE,
+    tendency: SkillTendency.ATTACK,
+    effects: [{
+      damage: {
+        basePower: 90,
+        damageType: DamageType.PHYSICAL,
+        element: ElementType.WATER
+      },
+      applyDebuff: {
+        debuffType: 'muddy',
+        duration: 3,
+        stacks: 1,
+        maxStacks: 3,
+        successRate: 0.3  // 30%概率
+      }
+    }],
+    category: '水属性控制流·攻击',
+    tags: ['水', '控制流', '攻击', '命中降低', '概率触发', '物理']
+  };
+  return new Skill(definition);
+})();
+
+/**
+ * 【攻击倾向7】冲浪
+ * 参考宝可梦冲浪技能
+ * 攻击敌方全体目标，造成80威力伤害
+ * 宝可梦设计亮点：冲浪是水系最具标志性的群体攻击技能
+ */
+export const SURGE: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'surge',
+    name: '冲浪',
+    description: '攻击敌方全体目标，造成80威力特殊伤害',
+    type: 'action',
+    energyCost: 4,
+    target: SkillTarget.ENEMY_ALL,
+    tendency: SkillTendency.ATTACK,
+    effects: [{
+      damage: {
+        basePower: 80,
+        damageType: DamageType.SPECIAL,
+        element: ElementType.WATER
+      }
+    }],
+    category: '水属性控制流·攻击',
+    tags: ['水', '控制流', '攻击', '群体伤害']
   };
   return new Skill(definition);
 })();
@@ -311,12 +410,15 @@ export const RAINY_DAY: Skill = (() => {
  * 水属性·控制流技能库
  */
 export const WATER_CONTROL_SKILLS = {
-  // 攻击倾向（4种）
+  // 攻击倾向（7种）
   ATTACK: {
     WATER_JET,
     HYDRO_PUMP,
     WATER_BULLET,
-    ABYSS_VORTEX
+    ABYSS_VORTEX,
+    SCALD,
+    MUDDY_WATER,
+    SURGE
   },
 
   // 防御倾向（2种）
@@ -338,6 +440,9 @@ export const WATER_CONTROL_SKILLS = {
     HYDRO_PUMP,
     WATER_BULLET,
     ABYSS_VORTEX,
+    SCALD,
+    MUDDY_WATER,
+    SURGE,
     AQUA_SHIELD,
     CLEAR_SPRING,
     HEALING_WAVE,

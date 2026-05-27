@@ -7,7 +7,9 @@ import {
   DamageType,
   ElementType,
   EnergyCost,
-  SkillTendency
+  SkillTendency,
+  BuffType,
+  DebuffType
 } from '../types';
 import { Buff } from '../effects';
 import { Debuff } from '../effects';
@@ -64,6 +66,7 @@ export interface SkillEffect {
   applyDebuffAll?: {
     debuffType: DebuffType | string;
     duration?: number;
+    stages?: number;    // 降低/提升的等级
     stacks?: number;
     maxStacks?: number;  // 最大层数
     successRate?: number; // 命中率/触发率
@@ -80,6 +83,14 @@ export interface SkillEffect {
 
   // 状态提升效果（速度、攻击等）
   statBoost?: {
+    stat: 'attack' | 'defense' | 'spAttack' | 'spDefense' | 'speed' | 'accuracy';
+    stages: number;
+    duration?: number;
+    target?: 'self' | 'enemy';  // 目标，默认self
+  };
+
+  // 自身状态提升效果（施法者获得）
+  selfStatBoost?: {
     stat: 'attack' | 'defense' | 'spAttack' | 'spDefense' | 'speed';
     stages: number;
     duration?: number;
@@ -88,7 +99,38 @@ export interface SkillEffect {
   // 蓄力效果
   charge?: {
     turns: number;
-    canBeInterrupted: boolean;
+    canBeInterrupted?: boolean;
+    guaranteedPriority?: boolean;  // 必定先手
+  };
+
+  // 天气效果
+  applyWeather?: {
+    weather: 'sandstorm' | 'rain' | 'sunny' | 'hail' | 'snow';
+    duration: number;
+  };
+
+  // 地形效果（陷阱等）
+  applyTerrainEffect?: {
+    terrainType: 'spikes' | 'toxic_spikes' | 'stealth_rocks' | 'web';
+    stacks?: number;
+    maxStacks?: number;
+  };
+
+  // 一击必杀效果
+  instantKill?: {
+    successRate: number;  // 成功率（0-1）
+  };
+
+  // 净化效果
+  cleanse?: {
+    removeAllDebuffs?: boolean;
+    removeSpecificDebuffs?: string[];
+  };
+
+  // 治疗效果
+  healing?: {
+    amount?: number;
+    percent?: number;     // 百分比治疗
   };
 
   // 延迟效果
@@ -109,6 +151,28 @@ export interface SkillEffect {
     element: string;      // 属性名称
     value: number;       // 抗性值（正数=减伤百分比，如0.3=减伤30%）
     duration: number;     // 持续回合
+  };
+
+  // 龙之气息消耗效果
+  consumeDragonBlood?: {
+    amount: number;                           // 消耗的层数
+    bonusPerStack?: {                          // 每层提供的加成
+      damage?: number;                         // 威力加成
+      shield?: number;                        // 护盾加成
+      damageReduction?: number;                // 伤害减免加成
+    };
+  };
+
+  // 龙之气息加成效果
+  addDragonBlood?: {
+    amount: number;                           // 获得的层数
+    bonusIfAlly?: number;                     // 有龙属性队友时额外获得
+  };
+
+  // 龙属共鸣条件
+  requireDragonResonance?: {
+    minDragonAllies: number;                   // 最小龙属性队友数量
+    failureEffect?: 'consume_energy' | 'do_nothing';  // 不满足条件时的效果
   };
 }
 
@@ -151,7 +215,9 @@ export interface SkillDefinition {
   priority?: number;        // 先手值，默认0，高者优先
 
   // 连击相关
-  baseHits?: number;         // 初始连击次数（多段伤害技能）
+  baseHits?: number;         // 初始连击次数（固定多段伤害，如冰片固定3次）
+  minHits?: number;          // 最小连击次数（随机多段伤害，如冰锥2-5次）
+  maxHits?: number;          // 最大连击次数（随机多段伤害）
 }
 
 /**

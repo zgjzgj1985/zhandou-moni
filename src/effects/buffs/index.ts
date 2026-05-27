@@ -12,6 +12,14 @@ import {
   StaticBodyBuff,
   ElectricDeflectBuff
 } from './electric-buffs-v2';
+import {
+  DragonBloodBuff,
+  DragonResonanceBuff,
+  DragonGuardBuff,
+  DragonCounterBuff,
+  DragonAuraBuff,
+  DragonAwakeningBuff
+} from './dragon-buffs';
 
 /**
  * 临时属性强化Buff
@@ -784,6 +792,66 @@ export class SpeedUpBuff extends Buff {
 // ==================== 超能属性·奥秘流专用Buff ====================
 
 /**
+ * 精神场地buff：超能属性奥秘流v2.0
+ * 己方超能技能威力+30%，保护己方免受优先度攻击
+ */
+export class PsychicTerrainBuff extends Buff {
+  damageBonus: number;
+
+  constructor(duration: number = 5, damageBonus: number = 0.3) {
+    super('精神场地', BuffType.PSYCHIC_TERRAIN, 1, duration);
+    this.damageBonus = damageBonus;
+  }
+
+  getDamageBonus(): number {
+    return this.damageBonus;
+  }
+
+  clone(): PsychicTerrainBuff {
+    return new PsychicTerrainBuff(this.remainingDuration, this.damageBonus);
+  }
+}
+
+/**
+ * 预言标记buff：超能属性奥秘流v2.0
+ * 使用超能技能时获得标记，标记层数增强「存储力量」等技能威力
+ */
+export class ProphecyMarkBuff extends Buff {
+  private powerPerMark: number = 20;
+  private maxMarks: number = 10;
+
+  constructor(duration: number = 999) {
+    super('预言标记', BuffType.PROPHECY_MARK, 0, duration);
+  }
+
+  addMark(): boolean {
+    if (this.stacks < this.maxMarks) {
+      this.stacks++;
+      return true;
+    }
+    return false;
+  }
+
+  getTotalPowerBonus(): number {
+    return this.stacks * this.powerPerMark;
+  }
+
+  getPowerPerMark(): number {
+    return this.powerPerMark;
+  }
+
+  getMarks(): number {
+    return this.stacks;
+  }
+
+  clone(): ProphecyMarkBuff {
+    const cloned = new ProphecyMarkBuff(this.remainingDuration);
+    cloned.stacks = this.stacks;
+    return cloned;
+  }
+}
+
+/**
  * 心智护盾buff：超能属性奥秘流
  * 护盾存在期间，若敌人使用技能则其PP-1
  */
@@ -1208,6 +1276,297 @@ export class QuakeBodyBuff extends Buff {
   }
 }
 
+// ==================== 岩石属性·防御流v2.0新增Buff ====================
+
+/**
+ * 地壳能量Buff：岩石属性防御流v2.0核心机制
+ * 模拟地壳运动积累应力的过程
+ * 每层提供不同增益，上限5层
+ */
+export class CrustEnergyBuff extends Buff {
+  private maxStacks: number = 5;
+
+  constructor(stacks: number = 0, duration: number = 999) {
+    super('地壳能量', BuffType.CRUST_ENERGY, Math.min(stacks, this.maxStacks), duration);
+  }
+
+  getMaxStacks(): number {
+    return this.maxStacks;
+  }
+
+  /**
+   * 获取防御加成（每层+1级防御）
+   */
+  getDefenseBonus(): number {
+    return this.stacks;
+  }
+
+  /**
+   * 获取反击伤害加成（每层+10威力）
+   */
+  getCounterBonus(): number {
+    return this.stacks * 10;
+  }
+
+  /**
+   * 获取护盾效果加成（每层+15%）
+   */
+  getShieldBonus(): number {
+    return this.stacks * 0.15;
+  }
+
+  /**
+   * 获取减伤加成（每层+10%）
+   */
+  getDamageReductionBonus(): number {
+    return this.stacks * 0.10;
+  }
+
+  /**
+   * 是否达到地壳震动阈值（5层）
+   */
+  isEarthquakeReady(): boolean {
+    return this.stacks >= this.maxStacks;
+  }
+
+  /**
+   * 尝试增加能量层数
+   */
+  addEnergy(amount: number = 1): boolean {
+    if (this.stacks < this.maxStacks) {
+      this.stacks = Math.min(this.stacks + amount, this.maxStacks);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 消耗所有能量层数（返回消耗前层数）
+   */
+  consumeAllEnergy(): number {
+    const consumed = this.stacks;
+    this.stacks = 0;
+    return consumed;
+  }
+
+  clone(): CrustEnergyBuff {
+    return new CrustEnergyBuff(this.stacks, this.remainingDuration);
+  }
+}
+
+/**
+ * 地壳凝固Buff：岩石属性防御流v2.0
+ * 高减伤+受伤时获得地壳能量
+ * 地壳能量≥3时，受伤后对攻击者造成反震
+ */
+export class CrustSolidifyBuff extends Buff {
+  damageReduction: number;
+  energyPerHit: number;
+  counterDamage: number;
+  counterThreshold: number;
+
+  constructor(
+    damageReduction: number = 0.50,
+    energyPerHit: number = 1,
+    counterDamage: number = 30,
+    counterThreshold: number = 3,
+    duration: number = 2
+  ) {
+    super('地壳凝固', BuffType.CRUST_SOLIDIFY, 1, duration);
+    this.damageReduction = damageReduction;
+    this.energyPerHit = energyPerHit;
+    this.counterDamage = counterDamage;
+    this.counterThreshold = counterThreshold;
+  }
+
+  getDamageReduction(): number {
+    return this.damageReduction;
+  }
+
+  getEnergyPerHit(): number {
+    return this.energyPerHit;
+  }
+
+  getCounterDamage(): number {
+    return this.counterDamage;
+  }
+
+  getCounterThreshold(): number {
+    return this.counterThreshold;
+  }
+
+  clone(): CrustSolidifyBuff {
+    return new CrustSolidifyBuff(
+      this.damageReduction,
+      this.energyPerHit,
+      this.counterDamage,
+      this.counterThreshold,
+      this.remainingDuration
+    );
+  }
+}
+
+/**
+ * 震动反击Buff：岩石属性防御流v2.0
+ * 反弹伤害给攻击者，地壳能量越高反弹越高
+ * 每次反弹成功，自身获得1层地壳能量
+ */
+export class SeismicCounterBuff extends Buff {
+  baseCounterDamage: number;
+  energyBonus: number;
+
+  constructor(baseCounterDamage: number = 20, energyBonus: number = 15, duration: number = 1) {
+    super('震动反击', BuffType.SEISMIC_COUNTER, 1, duration);
+    this.baseCounterDamage = baseCounterDamage;
+    this.energyBonus = energyBonus;
+  }
+
+  /**
+   * 计算总反弹伤害
+   */
+  getTotalCounterDamage(crustEnergyStacks: number): number {
+    return this.baseCounterDamage + (crustEnergyStacks * this.energyBonus);
+  }
+
+  getEnergyBonus(): number {
+    return this.energyBonus;
+  }
+
+  clone(): SeismicCounterBuff {
+    return new SeismicCounterBuff(this.baseCounterDamage, this.energyBonus, this.remainingDuration);
+  }
+}
+
+/**
+ * 岩石堡垒Buff：岩石属性防御流v2.0
+ * 永久防御强化，代价是速度大幅下降
+ * 用于长期站场的盾反型定位
+ */
+export class StoneFortressBuff extends Buff {
+  defenseBonus: number;
+  speedPenalty: number;
+
+  constructor(defenseBonus: number = 2, speedPenalty: number = 2, duration: number = 999) {
+    super('岩石堡垒', BuffType.STONE_FORTRESS, 1, duration);
+    this.defenseBonus = defenseBonus;
+    this.speedPenalty = speedPenalty;
+  }
+
+  getDefenseBonus(): number {
+    return this.defenseBonus;
+  }
+
+  getSpeedPenalty(): number {
+    return this.speedPenalty;
+  }
+
+  clone(): StoneFortressBuff {
+    return new StoneFortressBuff(this.defenseBonus, this.speedPenalty, this.remainingDuration);
+  }
+}
+
+/**
+ * 地壳重塑Buff：岩石属性防御流v2.0
+ * 消耗地壳能量换取全面强化
+ * 驱散弱化状态+进入强化形态
+ */
+export class CrustRemoldBuff extends Buff {
+  defenseBonus: number;
+  counterOnRock: number;
+  shieldAmount: number;
+  requiresMinEnergy: number;
+
+  constructor(
+    defenseBonus: number = 2,
+    counterOnRock: number = 15,
+    shieldAmount: number = 50,
+    requiresMinEnergy: number = 4,
+    duration: number = 2
+  ) {
+    super('地壳重塑', BuffType.CRUST_REMOLD, 1, duration);
+    this.defenseBonus = defenseBonus;
+    this.counterOnRock = counterOnRock;
+    this.shieldAmount = shieldAmount;
+    this.requiresMinEnergy = requiresMinEnergy;
+  }
+
+  getDefenseBonus(): number {
+    return this.defenseBonus;
+  }
+
+  getCounterOnRock(): number {
+    return this.counterOnRock;
+  }
+
+  getShieldAmount(): number {
+    return this.shieldAmount;
+  }
+
+  getRequiresMinEnergy(): number {
+    return this.requiresMinEnergy;
+  }
+
+  clone(): CrustRemoldBuff {
+    return new CrustRemoldBuff(
+      this.defenseBonus,
+      this.counterOnRock,
+      this.shieldAmount,
+      this.requiresMinEnergy,
+      this.remainingDuration
+    );
+  }
+}
+
+/**
+ * 岩层护盾Buff：岩石属性防御流v2.0
+ * 群体护盾+裂缝传递
+ * 队友受到攻击时，攻击者有概率获得裂缝
+ */
+export class StrataShieldBuff extends Buff {
+  baseShield: number;
+  energyBonus: number;
+  fissureChance: number;
+  enhancedFissureChance: number;
+  requiresEnhancedEnergy: number;
+
+  constructor(
+    baseShield: number = 40,
+    energyBonus: number = 10,
+    fissureChance: number = 0.30,
+    enhancedFissureChance: number = 0.60,
+    requiresEnhancedEnergy: number = 2,
+    duration: number = 3
+  ) {
+    super('岩层护盾', BuffType.STRATA_SHIELD, 1, duration);
+    this.baseShield = baseShield;
+    this.energyBonus = energyBonus;
+    this.fissureChance = fissureChance;
+    this.enhancedFissureChance = enhancedFissureChance;
+    this.requiresEnhancedEnergy = requiresEnhancedEnergy;
+  }
+
+  getTotalShield(crustEnergyStacks: number): number {
+    return this.baseShield + (crustEnergyStacks * this.energyBonus);
+  }
+
+  getFissureChance(crustEnergyStacks: number): number {
+    return crustEnergyStacks >= this.requiresEnhancedEnergy
+      ? this.enhancedFissureChance
+      : this.fissureChance;
+  }
+
+  clone(): StrataShieldBuff {
+    return new StrataShieldBuff(
+      this.baseShield,
+      this.energyBonus,
+      this.fissureChance,
+      this.enhancedFissureChance,
+      this.requiresEnhancedEnergy,
+      this.remainingDuration
+    );
+  }
+}
+
 // ==================== Buff工厂函数 ====================
 
 /**
@@ -1282,6 +1641,10 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
       return new PsychicResistBuff(duration);
     case BuffType.INTENT_BLUR:
       return new IntentBlurBuff(duration);
+    case BuffType.PSYCHIC_TERRAIN:
+      return new PsychicTerrainBuff(duration);
+    case BuffType.PROPHECY_MARK:
+      return new ProphecyMarkBuff();
     // 草属性光环流专用Buff
     case BuffType.VINE_BODY:
       return new VineBodyBuff(0.5, 2, 2, duration);
@@ -1302,6 +1665,19 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
       return new IronWallBuff();
     case BuffType.QUAKE_BODY:
       return new QuakeBodyBuff();
+    // 岩石属性防御流v2.0新增Buff
+    case BuffType.CRUST_ENERGY:
+      return new CrustEnergyBuff(stacks, duration);
+    case BuffType.CRUST_SOLIDIFY:
+      return new CrustSolidifyBuff();
+    case BuffType.SEISMIC_COUNTER:
+      return new SeismicCounterBuff();
+    case BuffType.STONE_FORTRESS:
+      return new StoneFortressBuff();
+    case BuffType.CRUST_REMOLD:
+      return new CrustRemoldBuff();
+    case BuffType.STRATA_SHIELD:
+      return new StrataShieldBuff();
     // 电属性电磁脉冲流专用Buff
     case BuffType.CHARGE:
       return new ChargeBuff();
@@ -1315,6 +1691,17 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
       return new StaticBodyBuff(duration);
     case BuffType.ELECTRIC_DEFLECT:
       return new ElectricDeflectBuff(duration);
+    // 龙属性血脉压制流专属Buff
+    case BuffType.DRAGON_BLOOD:
+      return new DragonBloodBuff(stacks, duration);
+    case BuffType.DRAGON_BLOOD_RESONANCE:
+      return new DragonResonanceBuff(duration);
+    case BuffType.DRAGON_GUARD:
+      return new DragonGuardBuff(duration);
+    case BuffType.DRAGON_COUNTER:
+      return new DragonCounterBuff(duration);
+    case BuffType.DRAGON_AURA_BUFF:
+      return new DragonAuraBuff(duration);
     default:
       throw new Error(`Unknown BuffType: ${type}`);
   }
@@ -1357,4 +1744,15 @@ export {
   ElectricFieldBuff,
   StaticBodyBuff,
   ElectricDeflectBuff
+};
+
+// ==================== 龙属性血脉压制流专属Buff导出 ====================
+
+export {
+  DragonBloodBuff,
+  DragonResonanceBuff,
+  DragonGuardBuff,
+  DragonCounterBuff,
+  DragonAuraBuff,
+  DragonAwakeningBuff
 };

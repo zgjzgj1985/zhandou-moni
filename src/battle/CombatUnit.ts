@@ -12,8 +12,8 @@ import {
   BuffType,
   DebuffType
 } from '../types';
-import { Buff, BlazeWillBuff } from '../effects/buffs';
-import { Debuff } from '../effects/debuffs';
+import { Buff, BlazeWillBuff, DragonBloodBuff, DragonResonanceBuff, DragonGuardBuff } from '../effects/buffs';
+import { Debuff, ConfusionDebuff } from '../effects/debuffs';
 import { Trait } from '../skills/traits';
 
 /**
@@ -84,7 +84,10 @@ export abstract class CombatUnit {
   // 战斗状态
   isDead: boolean;
   isStaggered: boolean;  // 踉跄：下次攻击伤害-50%
-  
+
+  // 龙属性专属：龙之气息层叠系统
+  dragonBloodStacks: number;  // 龙之气息层数（上限15层）
+
   constructor(config: UnitConfig) {
     this.id = config.id ?? crypto.randomUUID();
     this.name = config.name;
@@ -123,6 +126,9 @@ export abstract class CombatUnit {
     
     this.isDead = false;
     this.isStaggered = false;
+
+    // 龙之气息层叠系统初始化
+    this.dragonBloodStacks = 0;
   }
   
   // ==================== 属性计算 ====================
@@ -169,6 +175,94 @@ export abstract class CombatUnit {
     this.stages[stat] = newValue;
   }
 
+  // ==================== 龙之气息系统 ====================
+
+  /**
+   * 获取当前龙之气息层数
+   */
+  getDragonBloodStacks(): number {
+    return this.dragonBloodStacks;
+  }
+
+  /**
+   * 添加龙之气息层数
+   * @param stacks 要添加的层数
+   * @returns 实际添加的层数
+   */
+  addDragonBlood(stacks: number): number {
+    const oldStacks = this.dragonBloodStacks;
+    this.dragonBloodStacks = Math.min(this.dragonBloodStacks + stacks, 15);  // 上限15层
+    return this.dragonBloodStacks - oldStacks;
+  }
+
+  /**
+   * 消耗龙之气息层数
+   * @param stacks 要消耗的层数
+   * @returns 实际消耗的层数
+   */
+  consumeDragonBlood(stacks: number): number {
+    const consumed = Math.min(this.dragonBloodStacks, stacks);
+    this.dragonBloodStacks -= consumed;
+    return consumed;
+  }
+
+  /**
+   * 消耗所有龙之气息层数
+   * @returns 消耗前的层数
+   */
+  consumeAllDragonBlood(): number {
+    const consumed = this.dragonBloodStacks;
+    this.dragonBloodStacks = 0;
+    return consumed;
+  }
+
+  /**
+   * 获取龙之气息提供的加成效果
+   */
+  getDragonBloodBonus(): { damage: number; shield: number; damageReduction: number } {
+    return {
+      damage: this.dragonBloodStacks * 15,      // 每层15威力
+      shield: this.dragonBloodStacks * 10,       // 每层10护盾
+      damageReduction: Math.min(this.dragonBloodStacks * 0.10, 0.75)  // 每层10%，最高75%
+    };
+  }
+
+  /**
+   * 检查龙之气息是否达到指定层数
+   */
+  hasDragonBlood(stacks: number): boolean {
+    return this.dragonBloodStacks >= stacks;
+  }
+
+  /**
+   * 获取龙属性队友数量
+   * @param allies 友方单位数组
+   */
+  countDragonAllies(allies: CombatUnit[]): number {
+    return allies.filter(ally => ally.elements.includes(ElementType.DRAGON) && !ally.isDead).length;
+  }
+
+  /**
+   * 获取龙之气息Buff
+   */
+  getDragonBloodBuff(): DragonBloodBuff | undefined {
+    return this.buffs.find(b => b.type === BuffType.DRAGON_BLOOD) as DragonBloodBuff | undefined;
+  }
+
+  /**
+   * 获取龙属共鸣Buff
+   */
+  getDragonResonanceBuff(): DragonResonanceBuff | undefined {
+    return this.buffs.find(b => b.type === BuffType.DRAGON_BLOOD_RESONANCE) as DragonResonanceBuff | undefined;
+  }
+
+  /**
+   * 获取龙鳞守护Buff
+   */
+  getDragonGuardBuff(): DragonGuardBuff | undefined {
+    return this.buffs.find(b => b.type === BuffType.DRAGON_GUARD) as DragonGuardBuff | undefined;
+  }
+
   // ==================== HP管理 ====================
 
   /**
@@ -180,28 +274,36 @@ export abstract class CombatUnit {
 
     let actualDamage = amount;
 
-    // 先扣护盾
-    if (this.shield > 0) {
-      const absorbed = Math.min(this.shield, actualDamage);
-      this.shield -= absorbed;
+    // 先扣护盾（包括龙之气息提供的护盾）
+    const dragonBloodBonus = this.getDragonBloodBonus();
+    const totalShield = this.shield + dragonBloodBonus.shield;
+    if (totalShield > 0) {
+      const absorbed = Math.min(totalShield, actualDamage);
+      this.shield = Math.max(0, this.shield - absorbed);
       actualDamage -= absorbed;
     }
 
-    // 应用防御Buff的减伤效果
-    const damageReductionBuff = this.buffs.find(b =>
+    // 应用防御Buff的减伤效果（包括龙之气息的伤害减免）
+    let totalDamageReduction = 0;
+    const damageReductionBuffs = this.buffs.filter(b =>
       b.type === BuffType.VINE_BODY ||
       b.type === BuffType.ICE_ARMOR ||
       b.type === BuffType.ROCK_ARMOR ||
       b.type === BuffType.IRON_WALL ||
       b.type === BuffType.QUAKE_BODY ||
       b.type === BuffType.FLAME_BODY ||
-      b.type === BuffType.FIRE_SHIELD
+      b.type === BuffType.FIRE_SHIELD ||
+      b.type === BuffType.DRAGON_GUARD
     );
-    if (damageReductionBuff) {
-      const reduction = (damageReductionBuff as any).getDamageReduction?.() ?? 0;
-      if (reduction > 0) {
-        actualDamage = Math.floor(actualDamage * (1 - reduction));
-      }
+    for (const buff of damageReductionBuffs) {
+      const reduction = (buff as any).getDamageReduction?.() ?? 0;
+      totalDamageReduction += reduction;
+    }
+    // 加上龙之气息的伤害减免
+    totalDamageReduction += dragonBloodBonus.damageReduction;
+    totalDamageReduction = Math.min(totalDamageReduction, 0.90);  // 最高90%减免
+    if (totalDamageReduction > 0) {
+      actualDamage = Math.floor(actualDamage * (1 - totalDamageReduction));
     }
 
     // 护盾吸收不完，直接扣除HP
@@ -394,6 +496,19 @@ export abstract class CombatUnit {
       }
     }
 
+    // 龙之气息威力加成（龙属性专属）
+    if (element === ElementType.DRAGON) {
+      const dragonBloodBonus = this.getDragonBloodBonus();
+      damage += dragonBloodBonus.damage;  // 每层+15威力
+    }
+
+    // 龙属共鸣伤害加成（龙属性专属）
+    const resonanceBuff = this.getDragonResonanceBuff();
+    if (resonanceBuff && resonanceBuff.isResonanceActive()) {
+      const bonusMultiplier = resonanceBuff.getDamageBonus(this.dragonBloodStacks);
+      damage = Math.floor(damage * bonusMultiplier);
+    }
+
     // 考虑力量Buff
     const powerBuff = this.buffs.find(b => b.type === BuffType.POWER);
     if (powerBuff) {
@@ -405,6 +520,12 @@ export abstract class CombatUnit {
     if (weaknessDebuff) {
       const reduction = Math.min(weaknessDebuff.stacks * 3, damage - 1);
       damage = Math.max(1, damage - reduction);
+    }
+
+    // 考虑流星陨落衰败Debuff（龙属性）
+    const powerLossDebuff = target.debuffs.find(d => d.type === DebuffType.DRAGON_POWER_LOSS);
+    if (powerLossDebuff) {
+      // 流星陨落衰败不影响伤害计算，因为它是永久降低目标属性
     }
 
     // 考虑踉跄
@@ -478,6 +599,7 @@ export abstract class CombatUnit {
       maxHp: this.maxHp,
       hpPercent: this.getHpPercent(),
       shield: this.shield,
+      dragonBloodStacks: this.dragonBloodStacks,  // 龙之气息层数
       isDead: this.isDead,
       buffs: this.buffs.map(b => ({ type: b.type, stacks: b.stacks, remainingDuration: b.remainingDuration })),
       debuffs: this.debuffs.map(d => ({ type: d.type, stacks: d.stacks, remainingDuration: d.remainingDuration }))
@@ -516,6 +638,7 @@ export interface UnitStatusSummary {
   maxHp: number;
   hpPercent: number;
   shield: number;
+  dragonBloodStacks?: number;  // 龙之气息层数（可选）
   isDead: boolean;
   buffs: Array<{ type: BuffType; stacks: number; remainingDuration: number }>;
   debuffs: Array<{ type: DebuffType; stacks: number; remainingDuration: number }>;

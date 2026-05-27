@@ -15,5 +15,5 @@ export * from './water';     // 水属性·控制流
 export * from './grass';     // 草属性·光环流
 export * from './electric-v2'; // 电属性·电磁脉冲流
 export * from './ice';       // 冰属性·减速流
-export * from './rock';      // 岩石属性·防御流
-export * from './dragon';    // 龙属性·中速流
+export * from './ground';    // 地属性·天气流
+export * from './dragon-v2'; // 龙属性·血脉压制流

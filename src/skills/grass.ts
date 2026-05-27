@@ -131,7 +131,7 @@ export const FIBER_WEAVE: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'fiber_weave',
     name: '纤维化',
-    description: '攻击单体目标，造成40威力草属性伤害，获得1层光能汇聚（下次草系输出技能+60威力）',
+    description: '攻击单体目标，造成40威力物理伤害，获得1层光能汇聚（下次草系输出技能+60威力）',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SINGLE,
@@ -139,7 +139,7 @@ export const FIBER_WEAVE: Skill = (() => {
     effects: [{
       damage: {
         basePower: 40,
-        damageType: DamageType.SPECIAL,
+        damageType: DamageType.PHYSICAL,
         element: ElementType.GRASS
       }
     }, {
@@ -150,7 +150,7 @@ export const FIBER_WEAVE: Skill = (() => {
       }
     }],
     category: '草光环流·攻击',
-    tags: ['草', '光环流', '攻击', '光能汇聚']
+    tags: ['草', '光环流', '攻击', '光能汇聚', '物理']
   };
   return new Skill(definition);
 })();
@@ -159,13 +159,13 @@ export const FIBER_WEAVE: Skill = (() => {
  * 【攻击倾向2】叶绿光束 v2.0
  * 攻击目标，造成80威力伤害
  * 若处于芬芳环境中，额外附加「枯萎」状态
- * 枯萎：每回合受到自身属性10点威力草属性伤害/层，持续2回合
+ * 枯萎：每回合受到自身属性10点威力特殊伤害/层，持续2回合
  */
 export const LEAF_BEAM: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'leaf_beam',
     name: '叶绿光束',
-    description: '攻击单体目标，造成80威力草属性伤害，若处于芬芳环境则附加1层枯萎（每回合受到自身属性10点威力草属性伤害/层）',
+    description: '攻击单体目标，造成80威力物理伤害，若处于芬芳环境则附加1层枯萎（每回合受到自身属性10点威力特殊伤害/层）',
     type: 'action',
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.SINGLE,
@@ -173,7 +173,7 @@ export const LEAF_BEAM: Skill = (() => {
     effects: [{
       damage: {
         basePower: 80,
-        damageType: DamageType.SPECIAL,
+        damageType: DamageType.PHYSICAL,
         element: ElementType.GRASS
       }
     }, {
@@ -183,7 +183,7 @@ export const LEAF_BEAM: Skill = (() => {
       }
     }],
     category: '草光环流·攻击',
-    tags: ['草', '光环流', '攻击', '枯萎', '芬芳联动']
+    tags: ['草', '光环流', '攻击', '枯萎', '芬芳联动', '物理']
   };
   return new Skill(definition);
 })();
@@ -197,7 +197,7 @@ export const BLOOM_DANCE: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'bloom_dance',
     name: '绽放之舞',
-    description: '攻击单体目标，造成90威力草属性物理伤害，本回合必定暴击（×1.5）',
+    description: '攻击单体目标，造成90威力物理伤害，本回合必定暴击（×1.5）',
     type: 'action',
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.SINGLE,
@@ -226,7 +226,7 @@ export const SPLENDOR: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'splendor',
     name: '韶光',
-    description: '攻击单体目标，造成140威力草属性伤害，召唤芬芳环境（持续4回合），已有环境时伤害+20%',
+    description: '攻击单体目标，造成140威力特殊伤害，召唤芬芳环境（持续4回合），已有环境时伤害+20%',
     type: 'action',
     energyCost: EnergyCost.ENVIRONMENT,
     target: SkillTarget.SINGLE,
@@ -259,7 +259,7 @@ export const SOLAR_DETONATION: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'solar_detonation',
     name: '光能爆轰',
-    description: '消耗所有光能汇聚层数，造成（100+60×层数）威力草属性伤害【消耗型终极技能】',
+    description: '消耗所有光能汇聚层数，造成（100+60×层数）威力特殊伤害【消耗型终极技能】',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SINGLE,

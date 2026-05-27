@@ -93,13 +93,28 @@ export class IntentGenerator {
    */
   private createIntent(type: IntentType): Intent {
     const basePower = this.calculateBasePower(type);
-    
+    const targetType = this.getTargetType(type);
+
     return {
       type,
-      target: this.getTargetType(type),
+      target: targetType,
       power: basePower,
-      element: this.getElement()
+      element: this.getElement(),
+      targetId: this.getTargetId(type)
     };
+  }
+
+  /**
+   * 获取具体目标ID
+   */
+  private getTargetId(type: IntentType): string | undefined {
+    // 攻击类意图需要设置具体目标ID，供UI显示用
+    // 实际战斗执行时可能会重新解析目标
+    if (type === IntentType.ATTACK) {
+      // 返回空字符串占位，实际渲染时会重新查找有效目标
+      return '';
+    }
+    return undefined;
   }
   
   /**

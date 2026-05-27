@@ -94,8 +94,8 @@
     .el-electric.active { background: #ffd60a; color: #000; }
     .el-ice { background: rgba(100,210,255,0.15); color: #64d2ff; }
     .el-ice.active { background: #64d2ff; color: #000; }
-    .el-rock { background: rgba(172,142,119,0.15); color: #ac8e77; }
-    .el-rock.active { background: #ac8e77; color: #fff; }
+    .el-ground { background: rgba(172,142,119,0.15); color: #ac8e77; }
+    .el-ground.active { background: #ac8e77; color: #fff; }
     .el-dragon { background: rgba(171,71,188,0.15); color: #bf5af2; }
     .el-dragon.active { background: #bf5af2; color: #fff; }
     .el-psychic { background: rgba(236,64,122,0.15); color: #ec407a; }
@@ -339,7 +339,7 @@
         <div class="element-tab el-grass" data-el="grass">草</div>
         <div class="element-tab el-electric" data-el="electric">电</div>
         <div class="element-tab el-ice" data-el="ice">冰</div>
-        <div class="element-tab el-rock" data-el="rock">岩</div>
+        <div class="element-tab el-ground" data-el="ground">地</div>
         <div class="element-tab el-dragon" data-el="dragon">龙</div>
         <div class="element-tab el-psychic" data-el="psychic">超能</div>
         <div class="element-tab el-buff" data-el="buff">Buff</div>
@@ -400,13 +400,23 @@
       </div>
     </div>
 
-    <div class="element-intro" id="intro-rock">
+    <div class="element-intro" id="intro-ground">
       <div class="intro-header">
         <div class="intro-dot" style="background:#ac8e77"></div>
-        <div class="intro-name">岩石属性</div>
+        <div class="intro-name">地属性</div>
       </div>
-      <div class="intro-style">防御流</div>
-      <div class="intro-desc">坚如磐石的铜墙铁壁，让敌人绝望的叹息。核心机制：高防御、固定减伤、护甲积累、反击反弹。</div>
+      <div class="intro-style">天气流</div>
+      <div class="intro-desc">核心机制：沙暴天气（持续3回合）、挖洞状态（免疫地面+必定先手）、流沙控制（减速+持续伤害）。战斗节奏：召唤沙暴 → 挖洞蓄力 → 持续压制 → 收割。</div>
+      <div class="intro-traits">
+        <div class="trait-title">天气系统</div>
+        <div class="trait-item"><span class="trait-name">沙暴天气</span> 非岩/地/钢系每回合受损，岩/地/钢系特防+50%</div>
+        <div class="trait-item"><span class="trait-name">沙暴护盾</span> 减伤20%，特防+50%（沙暴时）</div>
+      </div>
+      <div class="intro-traits">
+        <div class="trait-title">状态控制</div>
+        <div class="trait-item"><span class="trait-name">挖洞</span> 免疫地面攻击，下回合必定先手</div>
+        <div class="trait-item"><span class="trait-name">流沙地狱</span> 速度-2级，每回合15威力伤害，持续3回合</div>
+      </div>
     </div>
 
     <div class="element-intro" id="intro-dragon">
@@ -468,19 +478,19 @@ const BUFF_DB = {
   water_soak: {
     name: '浸透',
     type: 'debuff',
-    effect: '特防-1级/层',
+    effect: '特防-1级/层（特殊伤害技能伤害增加）',
     maxStacks: 6,
     duration: 2,
     refreshOnStack: true,
     source: '水流冲击',
     table: [
-      { stacks: 0, spdef: '0', damage_taken: '100%' },
-      { stacks: 1, spdef: '-1', damage_taken: '109%' },
-      { stacks: 2, spdef: '-2', damage_taken: '118%' },
-      { stacks: 3, spdef: '-3', damage_taken: '127%' },
-      { stacks: 4, spdef: '-4', damage_taken: '136%' },
-      { stacks: 5, spdef: '-5', damage_taken: '145%' },
-      { stacks: 6, spdef: '-6', damage_taken: '154%' }
+      { stacks: 0, spdef: '0', special: '0%', physical: '0%' },
+      { stacks: 1, spdef: '-1', special: '+9%', physical: '+5%' },
+      { stacks: 2, spdef: '-2', special: '+18%', physical: '+10%' },
+      { stacks: 3, spdef: '-3', special: '+27%', physical: '+15%' },
+      { stacks: 4, spdef: '-4', special: '+36%', physical: '+20%' },
+      { stacks: 5, spdef: '-5', special: '+45%', physical: '+25%' },
+      { stacks: 6, spdef: '-6', special: '+54%', physical: '+30%' }
     ]
   },
   defense_up_70: {
@@ -576,9 +586,49 @@ const BUFF_DB = {
   electric_deflect: {
     name: '电磁偏转',
     type: 'buff',
-    effect: '本回合获得70%闪避，被击中时自动反击20威力电属性伤害',
+    effect: '本回合获得70%闪避，被击中时自动反击20威力物理伤害',
     duration: 1,
     source: '电磁偏转'
+  },
+  // 地属性 Buff v1.0
+  sand_force: {
+    name: '沙之力',
+    type: 'buff',
+    effect: '沙暴天气下地系技能威力+50%',
+    duration: 999,
+    source: '沙暴天气下被动'
+  },
+  underground: {
+    name: '挖洞状态',
+    type: 'buff',
+    effect: '免疫地面攻击，下回合必定先手攻击',
+    duration: 2,
+    source: '挖洞'
+  },
+
+  sand_tomb_buff: {
+    name: '流沙地狱',
+    type: 'buff',
+    effect: '陷入流沙，速度-2且每回合受到15威力伤害',
+    duration: 3,
+    source: '流沙地狱'
+  },
+  // 超能属性 Buff v2.0
+  psychic_terrain: {
+    name: '精神场地',
+    type: 'buff',
+    effect: '己方超能技能威力+30%，保护己方免受优先度攻击',
+    duration: 5,
+    source: '精神场地'
+  },
+  prophecy_mark: {
+    name: '预言标记',
+    type: 'buff',
+    effect: '使用超能技能时获得标记，标记层数增强存储力量等技能威力（每层+20）',
+    maxStacks: 10,
+    duration: 999,
+    refreshOnStack: false,
+    source: '迷心刺、存储力量'
   }
 };
 
@@ -598,6 +648,22 @@ const DEBUFF_DB = {
     duration: 3,
     source: '漩涡'
   },
+  steam_burn: {
+    name: '蒸汽灼伤',
+    type: 'debuff',
+    effect: '每回合损失2%最大HP',
+    duration: 3,
+    source: '热水'
+  },
+  muddy: {
+    name: '浑浊',
+    type: 'debuff',
+    effect: '命中率-1级/层，最多3层',
+    maxStacks: 3,
+    duration: 3,
+    refreshOnStack: true,
+    source: '浊流'
+  },
   // 草属性 Debuff
   tangle: {
     name: '缠绕',
@@ -616,7 +682,7 @@ const DEBUFF_DB = {
   wither: {
     name: '枯萎',
     type: 'debuff',
-    effect: '每回合受到自身属性10点威力草属性伤害/层，可叠加',
+    effect: '每回合受到自身属性10点威力伤害/层，可叠加',
     duration: 2,
     source: '叶绿光束（芬芳环境时）'
   },
@@ -634,6 +700,36 @@ const DEBUFF_DB = {
     effect: '速度-1级，有概率跳过回合',
     duration: 2,
     source: '10万伏特'
+  },
+  // 超能属性 Debuff v2.0
+  mind_wound: {
+    name: '心灵创伤',
+    type: 'debuff',
+    effect: '攻击命中率50%击中自己',
+    duration: 2,
+    source: '迷心刺'
+  },
+  forbidden: {
+    name: '禁忌',
+    type: 'debuff',
+    effect: '所有能力等级-2',
+    duration: 2,
+    source: '虚空预言、预知未来、命运编织'
+  },
+  psychic_noise: {
+    name: '精神噪音',
+    type: 'debuff',
+    effect: '无法通过任何方式恢复HP',
+    duration: 2,
+    source: '精神噪音'
+  },
+  // 地属性 Debuff v1.0
+  sand_tomb_debuff: {
+    name: '流沙地狱',
+    type: 'debuff',
+    effect: '速度-2级，每回合受到15威力伤害',
+    duration: 3,
+    source: '流沙地狱'
   }
 };
 
@@ -688,6 +784,7 @@ function render() {
       else if (s.s) powerHtml = `<div style="color:#0a84ff;font-size:14px;font-weight:600;margin-bottom:8px">护盾 ${s.s}</div>`;
       let tagsHtml = s.tags.map(t => `<span class="skill-tag">${t}</span>`).join('');
       let priorityHtml = s.priority ? `<div style="color:#ffd60a;font-size:12px;margin-bottom:6px">⚡ 先手+${s.priority}</div>` : '';
+      let dmgTypeHtml = s.damageType ? `<span class="skill-badge badge-attack">${s.damageType}</span>` : '';
       html += `
         <div class="skill-card">
           <div class="skill-header">
@@ -700,6 +797,7 @@ function render() {
           <div class="skill-meta">
             <span class="skill-badge ${badge}">${sec.label}</span>
             <span class="skill-badge badge-target">${s.t}</span>
+            ${dmgTypeHtml}
           </div>
           ${powerHtml}
           <div class="skill-effect">${s.eff}</div>
@@ -733,20 +831,20 @@ function renderBuffs() {
     // 如果有层数表，添加表格
     if (b.table) {
       // 根据表格内容决定表头
-      let tableHeaders = '<tr><th>层数</th><th>威力加成</th>';
+      let tableHeaders;
       if (b.name === '电荷') {
-        tableHeaders += '<th>基础伤害</th><th>电磁脉冲</th><th>临界伤害</th></tr>';
-      } else {
-        tableHeaders += '<th>水流冲击(60)</th><th>水炮(90)</th><th>漩涡(120)</th></tr>';
-      }
-      html += `<table class="buff-table"><thead>${tableHeaders}</thead><tbody>`;
-      b.table.forEach(row => {
-        if (b.name === '电荷') {
+        tableHeaders = '<tr><th>层数</th><th>威力加成</th><th>基础伤害</th><th>电磁脉冲</th><th>临界伤害</th></tr>';
+        html += `<table class="buff-table"><thead>${tableHeaders}</thead><tbody>`;
+        b.table.forEach(row => {
           html += `<tr><td>${row.stacks}层</td><td>${row.bonus}威力</td><td>${row.base}</td><td>${row.emp}</td><td>${row.emp_crit}</td></tr>`;
-        } else {
-          html += `<tr><td>${row.stacks}层</td><td>${row.bonus}威力</td><td>${row.jet60}</td><td>${row.pump90}</td><td>${row.vortex120}</td></tr>`;
-        }
-      });
+        });
+      } else if (b.name === '浸透') {
+        tableHeaders = '<tr><th>层数</th><th>特防</th><th>特攻伤害</th><th>物攻伤害</th></tr>';
+        html += `<table class="buff-table"><thead>${tableHeaders}</thead><tbody>`;
+        b.table.forEach(row => {
+          html += `<tr><td>${row.stacks}层</td><td>${row.spdef}</td><td style="color:#0a84ff">${row.special}</td><td style="color:#34c759">${row.physical}</td></tr>`;
+        });
+      }
       html += `</tbody></table>`;
     }
     html += `</div>`;

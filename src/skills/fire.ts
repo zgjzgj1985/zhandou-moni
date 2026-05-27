@@ -2,11 +2,11 @@
  * 循迹之境 - 火属性·爆发流技能库
  * 
  * 基于"火属性 → 爆发流/OTK流"设计
- * 核心机制：蓄力爆发、高伤害单体、灼烧DOT
+ * 核心机制：蓄力爆发、高伤害单体、灼烧DOT、代价机制
  * 
  * 技能分类：
- * - 攻击倾向（4种）：火花、烈焰拳、大字爆炎、爆炸烈焰
- * - 防御倾向（2种）：火盾、烈焰壁垒
+ * - 攻击倾向（6种）：点燃、烈焰拳、大字爆炎、爆炸烈焰、过热、火焰冲击
+ * - 防御倾向（2种）：火盾、烈火护体
  * - 辅助倾向（3种）：蓄焰、燃尽、炎之意志
  */
 
@@ -21,7 +21,7 @@ import {
   SkillTendency
 } from '../types';
 
-// ==================== 攻击倾向技能（4种）====================
+// ==================== 攻击倾向技能（6种）====================
 
 /**
  * 【攻击倾向1】点燃
@@ -53,7 +53,7 @@ export const EMBER: Skill = (() => {
 
 /**
  * 【攻击倾向2】烈焰拳
- * 连击3次火属性攻击，每次25威力，共75威力（物理伤害类型）
+ * 连击3次物理攻击，每次25威力，共75威力
  * 攻击结束后50%概率使目标陷入「灼烧」状态（2层）
  * 每层灼烧回合结束时造成2%最大生命伤害，层数减半
  */
@@ -61,7 +61,7 @@ export const FLAME_PUNCH: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'flame_punch',
     name: '烈焰拳',
-    description: '连续3次火属性攻击（共75威力），攻击结束后50%概率灼烧（2层）【每层2%最大HP伤害，层数减半】',
+    description: '连续3次物理攻击（共75威力），攻击结束后50%概率灼烧（2层）【每层2%最大HP伤害，层数减半】',
     type: 'action',
     energyCost: 2,
     target: SkillTarget.SINGLE,
@@ -88,14 +88,14 @@ export const FLAME_PUNCH: Skill = (() => {
 
 /**
  * 【攻击倾向3】大字爆炎
- * 高威力单体火属性攻击，造成120威力伤害
- * 附带「灼伤印记」（下回合追加40威力火属性伤害）
+ * 高威力单体特殊攻击，造成120威力伤害
+ * 附带「灼伤印记」（下回合追加40威力特殊伤害）
  */
 export const FLARE_BLITZ: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'flare_blitz',
     name: '大字爆炎',
-    description: '攻击单体目标，造成120威力火属性伤害，并附加「灼伤印记」（下回合追加40威力火属性伤害）',
+    description: '攻击单体目标，造成120威力特殊伤害，并附加「灼伤印记」（下回合追加40威力特殊伤害）',
     type: 'action',
     energyCost: 4,
     target: SkillTarget.SINGLE,
@@ -120,14 +120,14 @@ export const FLARE_BLITZ: Skill = (() => {
 
 /**
  * 【攻击倾向4】爆炸烈焰
- * 终极爆发技能，6段多段伤害，每段必定灼烧
+ * 终极爆发技能，6段多段物理攻击，每段必定灼烧
  * 每次命中必定使目标灼烧
  */
 export const EXPLOSION_FLAME: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'explosion_flame',
     name: '爆炸烈焰',
-    description: '6段火属性攻击（共150威力），每次命中必定灼烧（每次1层）【每层2%最大HP伤害，层数减半】',
+    description: '6段物理攻击（共150威力），每次命中必定灼烧（每次1层）【每层2%最大HP伤害，层数减半】',
     type: 'action',
     energyCost: 5,
     target: SkillTarget.SINGLE,
@@ -152,7 +152,72 @@ export const EXPLOSION_FLAME: Skill = (() => {
   return new Skill(definition);
 })();
 
-// ==================== 防御倾向技能（3种）====================
+/**
+ * 【攻击倾向5】过热
+ * 高威力特殊攻击，造成130威力伤害
+ * 代价：使用后自身特攻-2级（持续3回合）
+ * 体现"高伤害必须付出代价"的爆发流特点
+ */
+export const OVERHEAT: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'overheat',
+    name: '过热',
+    description: '释放全身热量，造成130威力特殊伤害。使用后自身特攻-2级（持续3回合）【高代价高回报】',
+    type: 'action',
+    energyCost: 4,
+    target: SkillTarget.SINGLE,
+    tendency: SkillTendency.ATTACK,
+    effects: [{
+      damage: {
+        basePower: 130,
+        damageType: DamageType.SPECIAL,
+        element: ElementType.FIRE
+      },
+      applyBuff: {
+        buffType: 'overheat_penalty',
+        duration: 3,
+        value: 2  // 特攻-2级
+      }
+    }],
+    category: '火属性爆发流·攻击',
+    tags: ['火', '爆发流', '攻击', '高威力', '代价机制', '特攻下降']
+  };
+  return new Skill(definition);
+})();
+
+/**
+ * 【攻击倾向6】火焰冲击
+ * 低威力物理攻击，造成40威力伤害
+ * 核心效果：清除目标1层增益状态
+ * 对付依赖Buff的流派（如草系光环流、电系特性系统）
+ */
+export const FLAME_IMPACT: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'flame_impact',
+    name: '火焰冲击',
+    description: '火焰冲击目标，造成40威力物理伤害，并清除目标1层增益状态【对策技】',
+    type: 'action',
+    energyCost: 2,
+    target: SkillTarget.SINGLE,
+    tendency: SkillTendency.ATTACK,
+    effects: [{
+      damage: {
+        basePower: 40,
+        damageType: DamageType.PHYSICAL,
+        element: ElementType.FIRE
+      },
+      special: {
+        type: 'cleanse_target_buff',
+        value: 1  // 清除目标1层增益
+      }
+    }],
+    category: '火属性爆发流·攻击',
+    tags: ['火', '爆发流', '攻击', '对策技', '清除增益', '物理伤害']
+  };
+  return new Skill(definition);
+})();
+
+// ==================== 防御倾向技能（2种）====================
 
 /**
  * 【防御倾向1】火盾
@@ -313,12 +378,14 @@ export const BLAZE_WILL: Skill = (() => {
  * 火属性·爆发流技能库
  */
 export const FIRE_BURST_SKILLS = {
-  // 攻击倾向（4种）
+  // 攻击倾向（6种）
   ATTACK: {
     EMBER,
     FLAME_PUNCH,
     FLARE_BLITZ,
-    EXPLOSION_FLAME
+    EXPLOSION_FLAME,
+    OVERHEAT,
+    FLAME_IMPACT
   },
   
   // 防御倾向（2种）
@@ -340,6 +407,8 @@ export const FIRE_BURST_SKILLS = {
     FLAME_PUNCH,
     FLARE_BLITZ,
     EXPLOSION_FLAME,
+    OVERHEAT,
+    FLAME_IMPACT,
     FIRE_SHIELD_SKILL,
     WALL_OF_FLAMES,
     FLAME_CHARGE_SKILL,

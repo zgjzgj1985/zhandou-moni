@@ -1,13 +1,13 @@
 /**
- * 循迹之境 - 超能属性·奥秘流技能库
+ * 循迹之境 - 超能属性·奥秘流技能库 v2.0
  * 
  * 基于"超能属性 → 奥秘流/心理博弈"设计
- * 核心机制：延迟触发、心理博弈、信息操控
+ * 核心机制：预言标记、精神场地、延迟触发、心理博弈
  * 
  * 技能分类：
- * - 攻击倾向（3种）：迷心刺、精神冲击、虚空预言
- * - 防御倾向（4种）：心智护盾、灵镜反照、迷雾之躯、念动壁垒
- * - 辅助倾向（3种）：气味伪装、心智同步、命运编织
+ * - 攻击倾向（5种）：迷心刺、精神冲击、存储力量、虚空预言、预知未来
+ * - 防御倾向（3种）：心智护盾、灵镜反照、迷雾之躯
+ * - 辅助倾向（6种）：精神场地、精神转移、精神噪音、治愈波动、心智同步、命运编织
  */
 
 import {
@@ -35,7 +35,9 @@ import {
   MindWoundDebuff,
   ForbiddenDebuff,
   ConfusionDebuff,
-  TerrorDebuff
+  TerrorDebuff,
+  PsychicTerrainBuff,
+  ProphecyMarkBuff
 } from '../effects';
 import { CombatUnit } from '../battle/CombatUnit';
 
@@ -119,45 +121,45 @@ export function createPsychicSupportSkill(
   return new Skill(definition);
 }
 
-// ==================== 攻击倾向技能（3种）====================
+// ==================== 攻击倾向技能（4种）====================
 
 /**
  * 【攻击倾向1】迷心刺
- * 攻击目标，造成55威力伤害，并使目标陷入「心灵创伤」状态
- * 心灵创伤：攻击命中率50%击中自己（持续1回合）
+ * 攻击目标，造成60威力物理伤害，获得1层「预言标记」
+ * 心灵创伤：攻击命中率50%击中自己（持续2回合）
  */
 export const MIND_PIERCE: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'mind_pierce',
     name: '迷心刺',
-    description: '攻击单体目标，造成55威力超能伤害，附加「心灵创伤」（攻击命中率50%击中自己，持续1回合）',
+    description: '攻击单体目标，造成60威力物理伤害，获得1层「预言标记」，附加「心灵创伤」（持续2回合）',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
     effects: [{
       damage: {
-        basePower: 55,
-        damageType: DamageType.SPECIAL,
+        basePower: 60,
+        damageType: DamageType.PHYSICAL,
         element: ElementType.PSYCHIC
       }
     }],
     category: '超能奥秘流·攻击',
-    tags: ['超能', '奥秘流', '攻击', '软控制']
+    tags: ['超能', '奥秘流', '攻击', '预言标记']
   };
   return new Skill(definition);
 })();
 
 /**
  * 【攻击倾向2】精神冲击
- * 攻击目标，造成80威力伤害，无视目标本回合的护盾
- * 混合伤害（特攻计算/物防减免）
+ * 攻击目标，造成80威力混合伤害，无视目标本回合的护盾
+ * 混合伤害（特攻计算/物防减免），可破坏屏障
  */
 export const PSYCHIC_HIT: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'psychic_hit',
     name: '精神冲击',
-    description: '攻击单体目标，造成80威力混合伤害（特攻计算/物防减免），无视目标当前护盾',
+    description: '攻击单体目标，造成80威力混合伤害（特攻计算/物防减免），无视当前护盾，可破坏屏障类效果',
     type: 'action',
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.SINGLE,
@@ -165,19 +167,46 @@ export const PSYCHIC_HIT: Skill = (() => {
     effects: [{
       damage: {
         basePower: 80,
-        damageType: DamageType.SPECIAL,
+        damageType: DamageType.MIXED,
         element: ElementType.PSYCHIC
       }
     }],
     category: '超能奥秘流·攻击',
-    tags: ['超能', '奥秘流', '攻击', '无视护盾']
+    tags: ['超能', '奥秘流', '攻击', '无视护盾', '破盾']
   };
   return new Skill(definition);
 })();
 
 /**
- * 【攻击倾向3】虚空预言
- * 蓄力1回合后，对目标造成120威力伤害并附加「禁忌」状态
+ * 【攻击倾向3】存储力量
+ * 攻击目标，基础威力20，每有1个预言标记+20威力
+ * 预言标记越多，威力越高
+ */
+export const STORED_POWER: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'stored_power',
+    name: '存储力量',
+    description: '攻击单体目标，基础威力20，每有1个预言标记额外+20威力',
+    type: 'action',
+    energyCost: EnergyCost.HIGH,
+    target: SkillTarget.SINGLE,
+    tendency: SkillTendency.ATTACK,
+    effects: [{
+      damage: {
+        basePower: 20,
+        damageType: DamageType.SPECIAL,
+        element: ElementType.PSYCHIC
+      }
+    }],
+    category: '超能奥秘流·攻击',
+    tags: ['超能', '奥秘流', '攻击', '累积强化', '预言标记']
+  };
+  return new Skill(definition);
+})();
+
+/**
+ * 【攻击倾向4】虚空预言
+ * 蓄力1回合后，对目标造成140威力特殊伤害并附加「禁忌」状态
  * 蓄力期间若被攻击则技能取消
  * 禁忌：使目标所有能力等级-2（持续2回合）
  */
@@ -185,7 +214,7 @@ export const VOID_PROPECY: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'void_prophecy',
     name: '虚空预言',
-    description: '蓄力1回合后发动，造成120威力伤害并附加「禁忌」（所有能力等级-2，持续2回合）【蓄力可被打断】',
+    description: '蓄力1回合后发动，造成140威力特殊伤害并附加「禁忌」（所有能力等级-2，持续2回合）【蓄力可被打断】',
     type: 'action',
     energyCost: EnergyCost.ULTIMATE,
     target: SkillTarget.SINGLE,
@@ -194,7 +223,7 @@ export const VOID_PROPECY: Skill = (() => {
     canBeInterrupted: true,
     effects: [{
       damage: {
-        basePower: 120,
+        basePower: 140,
         damageType: DamageType.SPECIAL,
         element: ElementType.PSYCHIC
       }
@@ -205,20 +234,48 @@ export const VOID_PROPECY: Skill = (() => {
   return new Skill(definition);
 })();
 
-// ==================== 防御倾向技能（4种）====================
+/**
+ * 【攻击倾向5】预知未来
+ * 3回合后对目标造成120威力特殊伤害
+ * 延迟触发的预言技能，给对手施加心理压力
+ */
+export const FUTURE_SIGHT: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'future_sight',
+    name: '预知未来',
+    description: '指定敌人，3回合后造成120威力特殊伤害并附加「禁忌」',
+    type: 'action',
+    energyCost: EnergyCost.ULTIMATE,
+    target: SkillTarget.SINGLE,
+    tendency: SkillTendency.ATTACK,
+    effects: [{
+      damage: {
+        basePower: 120,
+        damageType: DamageType.SPECIAL,
+        element: ElementType.PSYCHIC
+      }
+    }],
+    category: '超能奥秘流·攻击',
+    tags: ['超能', '奥秘流', '攻击', '延迟触发', '禁忌']
+  };
+  return new Skill(definition);
+})();
+
+// ==================== 防御倾向技能（3种）====================
 
 /**
  * 【防御倾向1】心智护盾
  * 获得「心灵护体」状态
  * 心灵护体：受到伤害降低50%，本回合免疫精神类攻击
+ * 精神场地环境下额外+20%减伤（总计70%）
  */
 export const MIND_SHIELD_SKILL: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'mind_shield_skill',
     name: '心智护盾',
-    description: '受到伤害降低50%，本回合免疫精神类攻击',
+    description: '受到伤害降低50%，本回合免疫精神类攻击（精神场地环境下额外+20%减伤）',
     type: 'action',
-    energyCost: EnergyCost.LOW,
+    energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
     effects: [{
@@ -236,14 +293,14 @@ export const MIND_SHIELD_SKILL: Skill = (() => {
 
 /**
  * 【防御倾向2】灵镜反照
- * 获得「灵镜反照」状态，反弹下一次攻击（伤害×1.5）
+ * 获得「灵镜反照」状态，反弹下一次攻击（伤害×1.8）
  * 若本回合未被攻击则下回合自动保留1次
  */
 export const MIRROR_REFLECT: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'mirror_reflect',
     name: '灵镜反照',
-    description: '获得「灵镜反照」状态，反弹下一次攻击（反弹伤害×1.5）【未被攻击时自动保留1次】',
+    description: '获得「灵镜反照」状态，反弹下一次攻击（反弹伤害×1.8）【未被攻击时自动保留1次】',
     type: 'action',
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.SELF,
@@ -258,13 +315,13 @@ export const MIRROR_REFLECT: Skill = (() => {
 /**
  * 【防御倾向3】迷雾之躯
  * 获得「迷雾闪避」状态，持续2回合
- * 每回合有60%概率闪避任意攻击，闪避成功后+1级速度
+ * 每回合有70%概率闪避任意攻击，闪避成功后+1级速度
  */
 export const MIST_BODY: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'mist_body',
     name: '迷雾之躯',
-    description: '获得「迷雾闪避」（持续2回合），每回合60%概率闪避攻击，闪避成功后速度+1级',
+    description: '获得「迷雾闪避」（持续2回合），每回合70%概率闪避攻击，闪避成功后速度+1级',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SELF,
@@ -276,58 +333,110 @@ export const MIST_BODY: Skill = (() => {
   return new Skill(definition);
 })();
 
+// ==================== 辅助倾向技能（5种）====================
+
 /**
- * 【防御倾向4】念动壁垒
- * 获得「预知护体」状态
- * 预知护体：受到伤害降低60%，本回合闪避率+50%
+ * 【辅助倾向1】精神场地
+ * 召唤精神场地，持续5回合
+ * 效果：己方超能技能威力+30%，保护己方免受优先度攻击
  */
-export const PSYCHIC_BARRIER: Skill = (() => {
+export const PSYCHIC_TERRAIN: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'psychic_barrier',
-    name: '念动壁垒',
-    description: '受到伤害降低60%，本回合闪避率+50%',
+    id: 'psychic_terrain',
+    name: '精神场地',
+    description: '召唤「精神场地」（持续5回合），己方超能技能威力+30%，保护己方免受优先度攻击',
     type: 'action',
-    energyCost: EnergyCost.HIGH + 1, // 4能量
-    target: SkillTarget.SELF,
-    tendency: SkillTendency.DEFENSE,
+    energyCost: EnergyCost.ENVIRONMENT,
+    target: SkillTarget.ALLY_ALL,
+    tendency: SkillTendency.SUPPORT,
     effects: [{
       applyBuff: {
-        buffType: 'precognition_body' as any,
-        duration: 1,
-        value: 0.6  // 60%减伤
+        buffType: 'psychic_terrain' as any,
+        duration: 5,
+        value: 0.3
       }
     }],
-    category: '超能奥秘流·防御',
-    tags: ['超能', '奥秘流', '防御', '减伤', '闪避']
+    category: '超能奥秘流·辅助',
+    tags: ['超能', '奥秘流', '辅助', '环境', '精神场地']
   };
   return new Skill(definition);
 })();
 
-// ==================== 辅助倾向技能（3种）====================
-
 /**
- * 【辅助倾向1】气味伪装
- * 本回合内，我方所有单位的意图图标可信度降低30%
- * 敌人需要额外判断我方真实意图
+ * 【辅助倾向2】精神转移
+ * 将自身所有负面状态转移给目标
+ * 净化自身同时将负面状态转移给目标
  */
-export const SCENT_MIMIC: Skill = (() => {
+export const PSYCHO_SHIFT: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'scent_mimic',
-    name: '气味伪装',
-    description: '本回合内，我方所有单位意图可信度降低30%（敌人更难判断真实意图）',
+    id: 'psycho_shift',
+    name: '精神转移',
+    description: '将自身所有负面状态转移给目标（净化自身+转移负面状态）',
     type: 'action',
-    energyCost: EnergyCost.LOW,
-    target: SkillTarget.SELF,
+    energyCost: EnergyCost.MEDIUM,
+    target: SkillTarget.SINGLE,
     tendency: SkillTendency.SUPPORT,
     effects: [],
     category: '超能奥秘流·辅助',
-    tags: ['超能', '奥秘流', '辅助', '信息干扰', '气味系统']
+    tags: ['超能', '奥秘流', '辅助', '状态转移', '净化']
   };
   return new Skill(definition);
 })();
 
 /**
- * 【辅助倾向2】心智同步
+ * 【辅助倾向3】精神噪音
+ * 使目标陷入「精神噪音」状态，持续2回合
+ * 效果：目标无法通过任何方式恢复HP
+ */
+export const PSYCHIC_NOISE_SKILL: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'psychic_noise_skill',
+    name: '精神噪音',
+    description: '使目标陷入「精神噪音」状态（持续2回合），期间无法通过任何方式恢复HP',
+    type: 'action',
+    energyCost: EnergyCost.HIGH,
+    target: SkillTarget.SINGLE,
+    tendency: SkillTendency.SUPPORT,
+    effects: [{
+      applyDebuff: {
+        debuffType: 'psychic_noise' as any,
+        duration: 2
+      }
+    }],
+    category: '超能奥秘流·辅助',
+    tags: ['超能', '奥秘流', '辅助', '禁止恢复', '控制']
+  };
+  return new Skill(definition);
+})();
+
+/**
+ * 【辅助倾向4】治愈波动
+ * 治疗目标最大HP的50%
+ * 强大的超能治疗技能
+ */
+export const HEAL_PULSE: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'heal_pulse',
+    name: '治愈波动',
+    description: '治疗目标最大HP的50%',
+    type: 'action',
+    energyCost: EnergyCost.HIGH,
+    target: SkillTarget.ALLY,
+    tendency: SkillTendency.SUPPORT,
+    effects: [{
+      healing: {
+        amount: 0,
+        percent: 0.5
+      }
+    }],
+    category: '超能奥秘流·辅助',
+    tags: ['超能', '奥秘流', '辅助', '治疗', '恢复']
+  };
+  return new Skill(definition);
+})();
+
+/**
+ * 【辅助倾向5】心智同步
  * 己方两只生物交换所有「强化/弱化」状态
  * 净化自身同时将负面状态转移给队友
  */
@@ -348,7 +457,7 @@ export const MIND_SYNC: Skill = (() => {
 })();
 
 /**
- * 【辅助倾向3】命运编织
+ * 【辅助倾向6】命运编织
  * 指定1个敌方目标，3回合后触发「预言」效果
  * 预言效果：造成100点真实伤害+使目标所有能力等级-2
  * 
@@ -379,41 +488,52 @@ export const FATE_WEAVE: Skill = (() => {
 // ==================== 超能奥秘流技能库导出 ====================
 
 /**
- * 超能属性·奥秘流技能库
+ * 超能属性·奥秘流技能库 v2.0
  */
 export const PSYCHIC_MYSTIC_SKILLS = {
-  // 攻击倾向（3种）
+  // 攻击倾向（5种）
   ATTACK: {
     MIND_PIERCE,
     PSYCHIC_HIT,
-    VOID_PROPECY
+    STORED_POWER,
+    VOID_PROPECY,
+    FUTURE_SIGHT
   },
   
-  // 防御倾向（4种）
+  // 防御倾向（3种）
   DEFENSE: {
     MIND_SHIELD_SKILL,
     MIRROR_REFLECT,
-    MIST_BODY,
-    PSYCHIC_BARRIER
+    MIST_BODY
   },
   
-  // 辅助倾向（3种）
+  // 辅助倾向（5种）
   SUPPORT: {
-    SCENT_MIMIC,
+    PSYCHIC_TERRAIN,
+    PSYCHO_SHIFT,
+    PSYCHIC_NOISE_SKILL,
+    HEAL_PULSE,
     MIND_SYNC,
     FATE_WEAVE
   },
   
-  // 全部技能
+  // 全部技能（13种）
   ALL: [
+    // 攻击（5种）
     MIND_PIERCE,
     PSYCHIC_HIT,
+    STORED_POWER,
     VOID_PROPECY,
+    FUTURE_SIGHT,
+    // 防御（3种）
     MIND_SHIELD_SKILL,
     MIRROR_REFLECT,
     MIST_BODY,
-    PSYCHIC_BARRIER,
-    SCENT_MIMIC,
+    // 辅助（5种）
+    PSYCHIC_TERRAIN,
+    PSYCHO_SHIFT,
+    PSYCHIC_NOISE_SKILL,
+    HEAL_PULSE,
     MIND_SYNC,
     FATE_WEAVE
   ]

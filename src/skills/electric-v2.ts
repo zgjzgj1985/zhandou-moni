@@ -42,7 +42,7 @@ export const ZAP_STRIKE: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'zap_strike',
     name: '电光一闪',
-    description: '如闪电般快速的斩击，必定先手攻击，造成45威力电属性物理伤害，命中后积累1层电荷',
+    description: '如闪电般快速的斩击，必定先手攻击，造成45威力物理伤害，命中后积累1层电荷',
     type: 'action',
     energyCost: EnergyCost.LOW,
     target: SkillTarget.SINGLE,
@@ -74,7 +74,7 @@ export const THUNDER_STRIKE: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'thunder_strike',
     name: '雷鸣击',
-    description: '释放强力电击，造成90威力电属性特殊伤害，命中后积累1层电荷，30%概率使目标麻痹',
+    description: '释放强力电击，造成90威力特殊伤害，命中后积累1层电荷，30%概率使目标麻痹',
     type: 'action',
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.SINGLE,
@@ -100,14 +100,14 @@ export const THUNDER_STRIKE: Skill = (() => {
 
 /**
  * 【攻击倾向3】电磁脉冲（核心技能）
- * 释放电磁脉冲，60威力特殊伤害
+ * 释放电磁脉冲，60威力物理伤害
  * 消耗所有电荷层数，每消耗1层电荷，攻击次数+1
  */
 export const ELECTROMAGNETIC_PULSE: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'electromagnetic_pulse',
     name: '电磁脉冲',
-    description: '释放电磁脉冲爆发！消耗所有电荷层数，造成60威力电属性伤害，每消耗1层电荷，攻击次数+1',
+    description: '释放电磁脉冲爆发！消耗所有电荷层数，造成60威力物理伤害，每消耗1层电荷，攻击次数+1',
     type: 'action',
     energyCost: EnergyCost.ULTRA,
     target: SkillTarget.SINGLE,
@@ -115,7 +115,7 @@ export const ELECTROMAGNETIC_PULSE: Skill = (() => {
     effects: [{
       damage: {
         basePower: 60,
-        damageType: DamageType.SPECIAL,
+        damageType: DamageType.PHYSICAL,
         element: ElementType.ELECTRIC,
         hitsScaling: 'charge'  // 电荷层数决定连击次数
       }
@@ -127,7 +127,7 @@ export const ELECTROMAGNETIC_PULSE: Skill = (() => {
       }
     }],
     category: '电属性电磁脉冲流·攻击',
-    tags: ['电', '电磁脉冲流', '攻击', '终极技能', '爆发', '连击']
+    tags: ['电', '电磁脉冲流', '攻击', '终极技能', '爆发', '连击', '物理']
   };
   return new Skill(definition);
 })();

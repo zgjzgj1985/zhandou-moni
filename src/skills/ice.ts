@@ -1,13 +1,13 @@
 /**
- * 循迹之境 - 冰属性·冰霜蓄力流技能库 v4.0
- * 
+ * 循迹之境 - 冰属性·冰霜蓄力流技能库 v5.0
+ *
  * 基于"冰霜蓄力"设计
- * 核心机制：冰霜叠加（5层触发冻结）、冰霜代价（速度-1级/层）
- * 
- * 设计文档：冰属性·冰霜蓄力流 v4.0
- * 
+ * 核心机制：冰霜叠加（3层触发冻结）、冰霜代价（速度-1级/层）
+ *
+ * 设计文档：冰属性·冰霜蓄力流 v5.0
+ *
  * 技能分类：
- * - 攻击倾向（4种）：冰晶射击、霜冻之息、冰片、冰爆
+ * - 攻击倾向（5种）：冰晶射击、霜冻之息、冰锥、冰锤、冰爆
  * - 防御倾向（2种）：冰霜护甲、冰墙
  * - 辅助倾向（3种）：寒气凝聚、冰霜印记、冻土
  */
@@ -39,21 +39,22 @@ const FREEZE_DURATION = 1;         // 冻结持续回合
  * 技能威力: 35
  * 特效: 冰霜+1层
  * 
- * 效果描述：造成35威力冰属性伤害，使目标获得1层「冰霜」
+ * 效果描述：造成35威力特殊伤害，使目标获得1层「冰霜」
  */
 export const ICE_SHOT: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'ice_shot',
     name: '冰晶射击',
-    description: '造成35威力冰属性伤害，使目标获得1层「冰霜」',
+    description: '造成35威力特殊伤害，使目标获得1层「冰霜」',
     type: 'action',
     energyCost: 1,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
+    priority: 1,  // 先手技能（参考宝可梦冰砾）
     effects: [{
       damage: {
         basePower: 35,
-        damageType: DamageType.SPECIAL,
+        damageType: DamageType.PHYSICAL,
         element: ElementType.ICE
       },
       applyDebuff: {
@@ -76,13 +77,13 @@ export const ICE_SHOT: Skill = (() => {
  * 技能威力: 50
  * 特效: 极寒印记（下次技能能耗+2）
  * 
- * 效果描述：喷吐刺骨寒气，造成50威力冰属性伤害并附加「极寒印记」（下次使用技能能耗+2）
+ * 效果描述：喷吐刺骨寒气，造成50威力特殊伤害并附加「极寒印记」（下次使用技能能耗+2）
  */
 export const FROST_BREATH: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'frost_breath',
     name: '霜冻之息',
-    description: '喷吐刺骨寒气，造成50威力冰属性伤害并附加「极寒印记」（下次使用技能能耗+2）',
+    description: '喷吐刺骨寒气，造成50威力特殊伤害并附加「极寒印记」（下次使用技能能耗+2）',
     type: 'action',
     energyCost: 2,
     target: SkillTarget.SINGLE,
@@ -106,42 +107,77 @@ export const FROST_BREATH: Skill = (() => {
 })();
 
 /**
- * 【攻击倾向3】冰片
- * 技能ID: ice_shard
- * 能量消耗: 3
+ * 【攻击倾向3】冰锥
+ * 技能ID: icicle_spear
+ * 能量消耗: 2
  * 目标类型: 单体敌人
- * 技能威力: 20（每次命中）
- * 初始连击次数: 3
- * 
- * 效果描述：发射冰片造成冰属性伤害，如果命中冻结目标，连击次数+1。
- * 作为多段伤害技能，受到连击次数属性影响。
+ * 技能威力: 25（每次命中）
+ * 连击次数: 随机2-5次
+ *
+ * 效果描述：发射锋利的冰锥进行连击，造成25威力×2-5次物理伤害。
+ * 总威力范围：50-125威力（平均约87威力）
+ * 参考宝可梦"Icicle Spear"，是该系列标志性随机连击技能。
  */
-export const ICE_SHARD: Skill = (() => {
+export const ICICLE_SPEAR: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'ice_shard',
-    name: '冰片',
-    description: '发射冰片造成冰属性伤害，如果命中冻结目标，连击次数+1',
+    id: 'icicle_spear',
+    name: '冰锥',
+    description: '发射锋利的冰锥进行连击，造成25威力×2-5次物理伤害',
     type: 'action',
-    energyCost: 3,
+    energyCost: 2,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
-    baseHits: 3,  // 初始3次连击
+    minHits: 2,
+    maxHits: 5,
     effects: [{
       damage: {
-        basePower: 20,
+        basePower: 25,
         damageType: DamageType.PHYSICAL,
         element: ElementType.ICE,
-        hits: 3
-      },
-      applyDebuff: {
-        debuffType: 'frost',
-        duration: 999,
-        stacks: 1,
-        maxStacks: 5
+        hits: 3  // 默认3次，实际由minHits/maxHits决定
       }
     }],
     category: '冰·冰霜蓄力流·攻击',
-    tags: ['冰', '冰霜蓄力流', '攻击', '多段', '冰霜']
+    tags: ['冰', '冰霜蓄力流', '攻击', '多段', '随机连击']
+  };
+  return new Skill(definition);
+})();
+
+/**
+ * 【攻击倾向4】冰锤
+ * 技能ID: ice_hammer
+ * 能量消耗: 4
+ * 目标类型: 单体敌人
+ * 技能威力: 100
+ * 特效: 代价机制 - 使用后自身速度-1级
+ *
+ * 效果描述：挥舞沉重的冰锤砸向敌人，造成100威力物理伤害，
+ * 但寒气反噬使自身速度降低1级。
+ * 参考宝可梦"Ice Hammer"，高威力但附带代价的典型设计。
+ */
+export const ICE_HAMMER: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'ice_hammer',
+    name: '冰锤',
+    description: '挥舞沉重的冰锤砸向敌人，造成100威力物理伤害，但寒气反噬使自身速度降低1级',
+    type: 'action',
+    energyCost: 4,
+    target: SkillTarget.SINGLE,
+    tendency: SkillTendency.ATTACK,
+    effects: [{
+      damage: {
+        basePower: 100,
+        damageType: DamageType.PHYSICAL,
+        element: ElementType.ICE
+      },
+      selfStatBoost: {
+        stat: 'speed',
+        stages: -1,
+        duration: 999  // 永久直到被净化
+      }
+    }],
+    category: '冰·冰霜蓄力流·攻击',
+    tags: ['冰', '冰霜蓄力流', '攻击', '高威力', '代价机制']
   };
   return new Skill(definition);
 })();
@@ -154,13 +190,13 @@ export const ICE_SHARD: Skill = (() => {
  * 技能威力: 130
  * 特效: 冻结增伤
  *
- * 效果描述：造成130威力冰属性伤害，如果目标处于「冻结」状态则造成3倍伤害
+ * 效果描述：造成130威力物理伤害，如果目标处于「冻结」状态则造成3倍伤害
  */
 export const ICE_EXPLOSION: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'ice_explosion',
     name: '冰爆',
-    description: '造成130威力冰属性伤害，如果目标处于「冻结」状态则造成3倍伤害',
+    description: '造成130威力物理伤害，如果目标处于「冻结」状态则造成3倍伤害',
     type: 'action',
     energyCost: 5,
     target: SkillTarget.SINGLE,
@@ -350,40 +386,42 @@ export const FROZEN_LAND: Skill = (() => {
 // ==================== 冰霜蓄力流技能库导出 ====================
 
 /**
- * 冰属性·冰霜蓄力流技能库 v4.0
+ * 冰属性·冰霜蓄力流技能库 v5.0
  */
 export const ICE_SHARD_SKILLS = {
-  // 攻击倾向（4种）
+  // 攻击倾向（5种）
   ATTACK: {
-    ICE_SHOT,      // 冰晶射击
-    FROST_BREATH,  // 霜冻之息
-    ICE_SHARD,     // 冰片
-    ICE_EXPLOSION  // 冰爆
+    ICE_SHOT,         // 冰晶射击
+    FROST_BREATH,    // 霜冻之息
+    ICICLE_SPEAR,    // 冰锥（随机连击）
+    ICE_HAMMER,      // 冰锤（代价机制）
+    ICE_EXPLOSION    // 冰爆
   },
-  
+
   // 防御倾向（2种）
   DEFENSE: {
     FROST_ARMOR,      // 冰霜护甲
     ICE_WALL         // 冰墙
   },
-  
+
   // 辅助倾向（3种）
   SUPPORT: {
     COLD_AURA,           // 寒气凝聚
     FROST_MARK,          // 冰霜印记
     FROZEN_LAND         // 冻土
   },
-  
+
   // 全部技能
   ALL: [
     ICE_SHOT,           // 冰晶射击
-    FROST_BREATH,       // 霜冻之息
-    ICE_SHARD,          // 冰片
-    ICE_EXPLOSION,      // 冰爆
-    FROST_ARMOR,        // 冰霜护甲
-    ICE_WALL,           // 冰墙
-    COLD_AURA,          // 寒气凝聚
-    FROST_MARK,         // 冰霜印记
+    FROST_BREATH,      // 霜冻之息
+    ICICLE_SPEAR,      // 冰锥（随机连击）
+    ICE_HAMMER,        // 冰锤（代价机制）
+    ICE_EXPLOSION,     // 冰爆
+    FROST_ARMOR,       // 冰霜护甲
+    ICE_WALL,          // 冰墙
+    COLD_AURA,         // 寒气凝聚
+    FROST_MARK,        // 冰霜印记
     FROZEN_LAND        // 冻土
   ]
 };
@@ -416,17 +454,23 @@ export function getFullIceSkillDescription(skill: Skill): string {
 }
 
 /**
- * 计算冰片的实际连击次数
- * 如果目标冻结，连击次数+1
- * @param baseHits 基础连击次数
- * @param isTargetFrozen 目标是否冻结
- * @returns 最终连击次数
+ * 计算冰锥的随机连击次数（2-5次）
+ * @returns 随机连击次数
  */
-export function calculateIceShardHits(baseHits: number, isTargetFrozen: boolean): number {
-  if (isTargetFrozen) {
-    return baseHits + 1;
-  }
-  return baseHits;
+export function calculateIcicleSpearHits(): number {
+  const min = 2;
+  const max = 5;
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+/**
+ * 计算冰锥的实际总威力
+ * @param basePower 基础威力（25）
+ * @returns 总威力
+ */
+export function calculateIcicleSpearTotalPower(basePower: number): number {
+  const hits = calculateIcicleSpearHits();
+  return basePower * hits;
 }
 
 /**

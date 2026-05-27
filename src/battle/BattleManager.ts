@@ -21,7 +21,16 @@ import { PlayerUnit } from './PlayerUnit';
 import { EnemyUnit } from './EnemyUnit';
 import { DamageType } from '../types';
 import { SkillDefinition } from '../skills/Skill';
-import { VineBodyBuff, IceArmorBuff, IceWallBuff, FrostFieldBuff } from '../effects/buffs';
+import {
+  VineBodyBuff,
+  IceArmorBuff,
+  IceWallBuff,
+  FrostFieldBuff,
+  DragonBloodBuff,
+  DragonResonanceBuff,
+  DragonGuardBuff,
+  DragonAuraBuff
+} from '../effects/buffs';
 import {
   TangleDebuff,
   ParalysisDebuff,
@@ -50,6 +59,10 @@ import {
   MindWoundDebuff,
   ForbiddenDebuff,
   ParasiteDebuff,
+  DragonBurnDebuff,
+  DragonIntimidateDebuff,
+  DragonPowerLossDebuff,
+  DragonCrushDefDebuff,
   Debuff
 } from '../effects/debuffs';
 
@@ -266,11 +279,35 @@ export class BattleManager {
       // 回复能量至满
       player.regenerateEnergy();
       player.onTurnStart();
+
+      // 龙之气息自动积累：每回合开始时龙属性单位+1层
+      if (player.elements.includes(ElementType.DRAGON) && !player.isDead) {
+        const added = player.addDragonBlood(1);
+        if (added > 0) {
+          this.addLog(
+            'dragon_blood_gain',
+            `${player.name} 的龙之气息`,
+            `+${added}层（当前${player.getDragonBloodStacks()}层）`
+          );
+        }
+      }
     }
 
     // 敌人单位回合开始
     for (const enemy of this.enemies) {
       enemy.onTurnStart();
+
+      // 龙之气息自动积累：敌方龙属性单位也获得龙之气息
+      if (enemy.elements.includes(ElementType.DRAGON) && !enemy.isDead) {
+        const added = enemy.addDragonBlood(1);
+        if (added > 0) {
+          this.addLog(
+            'dragon_blood_gain',
+            `${enemy.name} 的龙之气息`,
+            `+${added}层（当前${enemy.getDragonBloodStacks()}层）`
+          );
+        }
+      }
     }
 
     // 处理灼伤印记 - 在行动前追加火属性伤害
@@ -496,6 +533,18 @@ export class BattleManager {
         return new TangleDebuff(stacks, duration);
       case DebuffType.PARASITE:
         return new ParasiteDebuff(duration);
+
+      // 龙属性Debuff
+      case DebuffType.DRAGON_BURN:
+        return new DragonBurnDebuff(duration);
+      case DebuffType.DRAGON_CONFUSION:
+        return new DragonConfusionDebuff(duration);
+      case DebuffType.DRAGON_CRUSH_DEF:
+        return new DragonCrushDefDebuff(duration);
+      case DebuffType.DRAGON_INTIMIDATE:
+        return new DragonIntimidateDebuff(duration);
+      case DebuffType.DRAGON_POWER_LOSS:
+        return new DragonPowerLossDebuff();
 
       default:
         console.warn(`未处理的DebuffType: ${debuffType}`);
@@ -1030,6 +1079,40 @@ export class BattleManager {
           'counter_effect',
           `${target.name} 的火盾触发`,
           `对 ${attacker.name} 附加灼烧（1层）`
+        );
+      }
+    }
+
+    // 检查龙鳞守护效果 - 受伤时反击伤害
+    const dragonGuardBuff = target.buffs.find(b => b.type === BuffType.DRAGON_GUARD);
+    if (dragonGuardBuff) {
+      const dragonGuard = dragonGuardBuff as DragonGuardBuff;
+      if (!dragonGuard.isCounterTriggered()) {
+        const counterDamage = dragonGuard.getCounterDamage();
+        if (counterDamage > 0) {
+          const damage = attacker.calculateDamage(counterDamage, target, 'special', ElementType.DRAGON);
+          const actualDamage = target.takeDamage(damage, 'special');
+          dragonGuard.triggerCounter();
+          this.addLog(
+            'dragon_counter',
+            `${target.name} 的龙鳞守护触发`,
+            `对 ${attacker.name} 反击 ${actualDamage} 伤害`
+          );
+        }
+      }
+    }
+
+    // 检查龙属共鸣效果 - 触发时给攻击者附加龙威debuff
+    const dragonResonanceBuff = target.buffs.find(b => b.type === BuffType.DRAGON_BLOOD_RESONANCE);
+    if (dragonResonanceBuff) {
+      const resonance = dragonResonanceBuff as DragonResonanceBuff;
+      if (resonance.isResonanceActive()) {
+        const dragonIntimidateDebuff = new DragonIntimidateDebuff(1, true);  // 增强版
+        attacker.addDebuff(dragonIntimidateDebuff);
+        this.addLog(
+          'dragon_resonance_counter',
+          `${target.name} 的龙属共鸣触发`,
+          `对 ${attacker.name} 施加龙威震慑（增强版）`
         );
       }
     }

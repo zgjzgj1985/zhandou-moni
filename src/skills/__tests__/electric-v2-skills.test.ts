@@ -36,7 +36,7 @@ describe('电属性·电磁脉冲流技能测试', () => {
 
     it('电磁脉冲 (ELECTROMAGNETIC_PULSE) - 核心爆发技能', () => {
       SkillTestHelper.validateSkillBase(ELECTROMAGNETIC_PULSE, 'electromagnetic_pulse', '电磁脉冲', 4);
-      SkillTestHelper.validateDamageEffect(ELECTROMAGNETIC_PULSE, 100, ElementType.ELECTRIC);
+      SkillTestHelper.validateDamageEffect(ELECTROMAGNETIC_PULSE, 60, ElementType.ELECTRIC);
     });
   });
 
