@@ -177,14 +177,13 @@ export enum BuffType {
   ICE_REFLECT = 'ice_reflect',       // 冰晶反射：反弹冰属性攻击并减速
   ICE_RESIST = 'ice_resist',         // 极寒抗性：减速抗性+50%
   // 冰属性·冻结破冰流v3.0专用Buff
-  ICE_WALL = 'ice_wall',             // 冰墙：50%闪避+格挡
-  FROST_FIELD = 'frost_field',       // 极寒领域：减伤+群体冻结铺垫
+  ICE_WALL = 'ice_wall',             // 冰墙：50%减伤
   FROST_MARK = 'frost_mark',         // 冰霜印记：冻结概率+30%
+  FROZEN_LAND_ENV = 'frozen_land_env', // 冻土：冰属性技能能耗-1
   // 火属性·爆发流专用Buff
   FIRE_SHIELD = 'fire_shield',       // 火盾：受攻击时反伤30点
   FLAME_BODY = 'flame_body',         // 烈焰护体：减伤+受伤时灼烧
   WALL_OF_FIRE = 'wall_of_fire',    // 烈焰壁垒：草/冰属性抗性+30%
-  HEAT_COUNTER = 'heat_counter',    // 灼热反击：反弹50%伤害
   FLAME_CHARGE = 'flame_charge',    // 蓄焰：下次火攻+50%
   BLAZE_WILL = 'blaze_will',        // 炎之意志：攻击+速度+火伤提升
   // 水属性·控制流专用Buff
@@ -192,15 +191,7 @@ export enum BuffType {
   CLEAR_SPRING = 'clear_spring',     // 清泉：每回合治疗+净化
   FLOW = 'flow',                    // 流水：速度+1级
   WATER_RESIST = 'water_resist',    // 水属性抗性：对水属性伤害抗性
-  // 电属性·连击流专用Buff
-  STATIC_SHIELD = 'static_shield',  // 静电护盾：积累静电，下次攻击额外伤害
-  STATIC_BODY = 'static_body',       // 蓄电护体：减伤+静电积累
-  ELECTRIC_DEFLECT = 'electric_deflect', // 电磁偏转：闪避+反弹
-  ELECTROMAGNETIC_INDUCTION = 'electromagnetic_induction', // 电磁感应：追加攻击
-  THUNDER_DOMAIN = 'thunder_domain', // 雷霆领域：必定命中+敌方受伤
-  COMBO_CHARGE = 'combo_charge',    // 连击充能：连击次数提升伤害
-  ELECTRIC_FIELD = 'electric_field', // 电场加速：积累电场提升速度
-  THUNDER_FURY = 'thunder_fury',    // 雷霆之势：攻击附带连锁
+  WATER_SOAK = 'water_soak',        // 浸透：特防-1级/层，最多6层，持续2回合
   // 超能属性奥秘流专用Buff
   MIND_SHIELD = 'mind_shield',       // 心智护盾：受攻击时减少敌人PP
   REFLECT = 'reflect',               // 灵镜反照：反弹攻击
@@ -209,15 +200,22 @@ export enum BuffType {
   INTENT_BLUR = 'intent_blur',      // 意图模糊：降低己方意图可信度
   // 草属性·光环流专用Buff
   VINE_BODY = 'vine_body',           // 藤蔓护体：受到攻击时缠绕攻击者
-  LIFE_BODY = 'life_body',           // 生机护体：受到伤害降低+受击回复
-  VINE_POWER = 'vine_power',        // 藤蔓之力：每层+1级攻击，最多3层
-  GROWTH = 'growth',                 // 成长：每回合攻击+特攻各+1级，最多3层
+  LIGHT_GATHER = 'light_gather',     // 光能汇聚：下次草系输出技能+60威力
+  FRAGRANT_ENV = 'fragrant_env',     // 芬芳环境：草系伤害+25%，每回合回复5%HP
+  COUNTER_STANCE = 'counter_stance', // 防反之姿：反弹60%伤害+先手+1
+  NUTRIENT = 'nutrient',             // 养分汲取：能量回复加成
   ROOT_BOUND = 'root_bound',         // 扎根：每回合回复最大HP的8%，速度-1级
-  LEAF_BARRIER = 'leaf_barrier',     // 绿叶屏障：群体护盾+草属性抗性
   // 岩石属性·防御流专用Buff
   ROCK_ARMOR = 'rock_armor',           // 岩甲护体：受到伤害降低65%
   IRON_WALL = 'iron_wall',             // 铁壁：受到伤害降低75%
-  QUAKE_BODY = 'quake_body'             // 震荡护体：受到伤害降低55%+眩晕
+  QUAKE_BODY = 'quake_body',             // 震荡护体：受到伤害降低55%+眩晕
+  // 电属性·电磁脉冲流专用Buff
+  CHARGE = 'charge',                   // 电荷：电属性核心资源，5层上限
+  OVERLOAD = 'overload',               // 超载：下一次攻击附带连锁
+  CHARGING = 'charging',               // 充能状态：每次攻击额外+1电荷
+  ELECTRIC_FIELD_BUFF = 'electric_field_buff', // 电场：全队电荷加速+威力加成
+  STATIC_BODY = 'static_body',         // 蓄电护体：减伤50%+静电反伤
+  ELECTRIC_DEFLECT = 'electric_deflect' // 电磁偏转：闪避+反击
 }
 
 /**
@@ -239,26 +237,26 @@ export enum DebuffType {
   ICE_SEAL = 'ice_seal',     // 冰封禁制：封印≥3能量技能
   ICE_DOT = 'ice_dot',       // 冰冻伤害：每回合受到冰系伤害
   // 冰属性·冰霜蓄力流专用Debuff
-  FROST = 'frost',           // 冰霜：每层+1技能消耗，3层触发冻结
-  FROST_MARK = 'frost_mark', // 冰霜印记：下次冰属性攻击额外+1层
+  FROST = 'frost',           // 冰霜：速度-1级/层，5层触发冻结
+  FROST_MARK = 'frost_mark', // 冰霜印记：受到冰属性攻击时，有概率附加1层冰霜
+  EXTREME_COLD_MARK = 'extreme_cold_mark', // 极寒印记：下次技能能耗+2
   // 火属性·爆发流专用Debuff
   BURN_MARK = 'burn_mark',    // 灼伤印记：下回合追加伤害
   COMBUSTION_MARK = 'combustion_mark', // 燃尽印记：延迟伤害
   // 水属性·控制流专用Debuff
   WET = 'wet',               // 潮湿：电属性攻击额外30%伤害
-  DROWNING = 'drowning',      // 溺亡：每回合损失HP
+  DROWNING_STATUS = 'drowning_status', // 溺水：下一次高能量技能伤害-30%
   TURBULENCE = 'turbulence', // 湍流：技能消耗+1能量
-  // 电属性·连击流专用Debuff
-  STATIC = 'static',         // 静电：受攻击时反伤
-  ELECTRIC_SHOCK = 'electric_shock', // 电疗：回合开始受伤+速度提升
+  WATER_SOAK = 'water_soak', // 浸透：特防-1级/层，最多6层，持续2回合
+  // 电属性·电磁脉冲流专用Debuff
+  STATIC = 'static',         // 静电：攻击者额外+1电荷
   // 超能属性奥秘流专用Debuff
   MIND_WOUND = 'mind_wound',     // 心灵创伤：攻击命中率下降
   FORBIDDEN = 'forbidden',       // 禁忌：能力等级下降
   // 草属性·光环流专用Debuff
   TANGLE = 'tangle',              // 缠绕：速度降低
   PARASITE = 'parasite',          // 寄生：每回合草伤害+施法者回复
-  LEAF_MARK = 'leaf_mark',        // 叶片标记：受到草属性攻击时+20%伤害
-  PARASITE_MARK = 'parasite_mark', // 寄生印记：每回合施法者HP的6%伤害+回复
+  WITHER = 'wither',             // 枯萎：每回合受到自身属性10点威力草属性伤害/层
   // 岩石属性·防御流专用Debuff
   STUN = 'stun'                  // 眩晕：完全无法行动，持续1回合
 }
@@ -295,7 +293,8 @@ export enum EnergyCost {
   HIGH = 3,       // 高消耗（3能量）
   ULTRA = 4,      // 超高消耗（4能量）
   ULTIMATE = 5,   // 终极技能（5能量）
-  MEGA = 6        // mega级技能（6能量，通常为特殊效果技能）
+  MEGA = 6,        // mega级技能（6能量，通常为特殊效果技能）
+  ENVIRONMENT = 8  // 环境型技能（8能量，召唤环境的特殊技能）
 }
 
 /**
@@ -310,6 +309,7 @@ export function getEnergyCostText(cost: number): string {
     case 4: return '4能量';
     case 5: return '5能量';
     case 6: return '6能量';
+    case 8: return '8能量';
     default: return `${cost}能量`;
   }
 }
@@ -321,7 +321,8 @@ export enum DamageType {
   PHYSICAL = 'physical',  // 物理伤害
   SPECIAL = 'special',    // 特殊伤害
   STATUS = 'status',      // 变化技能
-  TRUE = 'true'          // 真实伤害
+  TRUE = 'true',          // 真实伤害
+  MULTI_HIT = 'multi_hit' // 多段伤害（多次攻击）
 }
 
 /**
@@ -458,7 +459,6 @@ export const STRING_TO_BUFF_TYPE: Record<string, BuffType> = {
   'fire_shield': BuffType.FIRE_SHIELD,
   'flame_body': BuffType.FLAME_BODY,
   'wall_of_fire': BuffType.WALL_OF_FIRE,
-  'heat_counter': BuffType.HEAT_COUNTER,
   'flame_charge': BuffType.FLAME_CHARGE,
   'blaze_will': BuffType.BLAZE_WILL,
   // 水属性Buff
@@ -466,15 +466,7 @@ export const STRING_TO_BUFF_TYPE: Record<string, BuffType> = {
   'clear_spring': BuffType.CLEAR_SPRING,
   'flow': BuffType.FLOW,
   'water_resist': BuffType.WATER_RESIST,
-  // 电属性Buff
-  'static_shield': BuffType.STATIC_SHIELD,
-  'static_body': BuffType.STATIC_BODY,
-  'electric_deflect': BuffType.ELECTRIC_DEFLECT,
-  'electromagnetic_induction': BuffType.ELECTROMAGNETIC_INDUCTION,
-  'thunder_domain': BuffType.THUNDER_DOMAIN,
-  'combo_charge': BuffType.COMBO_CHARGE,
-  'electric_field': BuffType.ELECTRIC_FIELD,
-  'thunder_fury': BuffType.THUNDER_FURY,
+  'water_soak': BuffType.WATER_SOAK,
   // 超能属性Buff
   'mind_shield': BuffType.MIND_SHIELD,
   'reflect': BuffType.REFLECT,
@@ -483,15 +475,22 @@ export const STRING_TO_BUFF_TYPE: Record<string, BuffType> = {
   'intent_blur': BuffType.INTENT_BLUR,
   // 草属性Buff
   'vine_body': BuffType.VINE_BODY,
-  'life_body': BuffType.LIFE_BODY,
-  'vine_power': BuffType.VINE_POWER,
-  'growth': BuffType.GROWTH,
+  'light_gather': BuffType.LIGHT_GATHER,
+  'fragrant_env': BuffType.FRAGRANT_ENV,
+  'counter_stance': BuffType.COUNTER_STANCE,
+  'nutrient': BuffType.NUTRIENT,
   'root_bound': BuffType.ROOT_BOUND,
-  'leaf_barrier': BuffType.LEAF_BARRIER,
   // 岩石属性Buff
   'rock_armor': BuffType.ROCK_ARMOR,
   'iron_wall': BuffType.IRON_WALL,
   'quake_body': BuffType.QUAKE_BODY,
+  // 电属性Buff
+  'charge': BuffType.CHARGE,
+  'overload': BuffType.OVERLOAD,
+  'charging': BuffType.CHARGING,
+  'electric_field_buff': BuffType.ELECTRIC_FIELD_BUFF,
+  'static_body': BuffType.STATIC_BODY,
+  'electric_deflect': BuffType.ELECTRIC_DEFLECT,
 };
 
 /**
@@ -516,24 +515,23 @@ export const STRING_TO_DEBUFF_TYPE: Record<string, DebuffType> = {
   'ice_dot': DebuffType.ICE_DOT,
   'frost': DebuffType.FROST,
   'frost_mark': DebuffType.FROST_MARK,
+  'extreme_cold_mark': DebuffType.EXTREME_COLD_MARK,
   // 火属性Debuff
   'burn_mark': DebuffType.BURN_MARK,
   'combustion_mark': DebuffType.COMBUSTION_MARK,
   // 水属性Debuff
   'wet': DebuffType.WET,
-  'drowning': DebuffType.DROWNING,
   'turbulence': DebuffType.TURBULENCE,
+  'water_soak': DebuffType.WATER_SOAK,
   // 电属性Debuff
   'static': DebuffType.STATIC,
-  'electric_shock': DebuffType.ELECTRIC_SHOCK,
   // 超能属性Debuff
   'mind_wound': DebuffType.MIND_WOUND,
   'forbidden': DebuffType.FORBIDDEN,
   // 草属性Debuff
   'tangle': DebuffType.TANGLE,
   'parasite': DebuffType.PARASITE,
-  'leaf_mark': DebuffType.LEAF_MARK,
-  'parasite_mark': DebuffType.PARASITE_MARK,
+  'wither': DebuffType.WITHER,
   // 岩石属性Debuff
   'stun': DebuffType.STUN,
 };

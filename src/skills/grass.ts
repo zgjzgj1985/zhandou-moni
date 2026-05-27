@@ -1,13 +1,13 @@
 /**
- * 循迹之境 - 草属性·光环流技能库
+ * 循迹之境 - 草属性·光环流技能库 v2.0
  * 
- * 基于"草属性 → 光环流/增益流"设计
- * 核心机制：层数叠加、持续增益、消耗型爆发
+ * 基于洛克王国世界草系技能设计
+ * 核心机制：光能汇聚、芬芳环境、养分循环
  * 
  * 技能分类：
- * - 攻击倾向（4种）：藤鞭连击、寄生种子、飞叶快刀、阳光烈焰
- * - 防御倾向（3种）：扎根之躯、藤蔓护甲、绿叶屏障
- * - 辅助倾向（3种）：成长之舞、寄生印记、光合爆发
+ * - 攻击倾向（5种）：纤维化、叶绿光束、光能爆轰、韶光、绽放之舞
+ * - 防御倾向（3种）：扎根之躯、藤蔓护甲、防反之姿
+ * - 辅助倾向（4种）：芬芳绽放、光能聚集、寄生之种、养分汲取
  */
 
 import {
@@ -29,17 +29,15 @@ import {
   Buff,
   Debuff,
   VineBodyBuff,
-  LifeBodyBuff,
-  VinePowerBuff,
-  GrowthBuff,
   RootBoundBuff,
-  LeafBarrierBuff,
+  LightGatherBuff,
+  FragrantEnvBuff,
+  CounterStanceBuff,
+  NutrientBuff,
   ParasiteDebuff,
-  LeafMarkDebuff,
-  ParasiteMarkDebuff,
-  TangleDebuff
+  TangleDebuff,
+  WitherDebuff
 } from '../effects';
-import { CombatUnit } from '../battle/CombatUnit';
 
 // ==================== 技能倾向工厂函数 ====================
 
@@ -52,7 +50,8 @@ export function createGrassAttackSkill(
   description: string,
   basePower: number,
   target: SkillTarget,
-  energyCost: number = 2
+  energyCost: number = 2,
+  damageType: DamageType = DamageType.SPECIAL
 ): Skill {
   const definition: SkillDefinition = {
     id,
@@ -65,7 +64,7 @@ export function createGrassAttackSkill(
     effects: [{
       damage: {
         basePower,
-        damageType: DamageType.SPECIAL,
+        damageType,
         element: ElementType.GRASS
       }
     }],
@@ -121,130 +120,159 @@ export function createGrassSupportSkill(
   return new Skill(definition);
 }
 
-// ==================== 攻击倾向技能（4种）====================
+// ==================== 攻击倾向技能（5种）====================
 
 /**
- * 【攻击倾向1】藤鞭连击
- * 攻击目标，造成55威力伤害，并获得1层「藤蔓之力」
- * 藤蔓之力：每层+1级攻击（最多3层）
+ * 【攻击倾向1】纤维化 v2.0
+ * 攻击目标，造成40威力伤害，获得1层「光能汇聚」
+ * 光能汇聚：下次使用的草系输出技能威力+60
  */
-export const VINE_WHIP_COMBO: Skill = (() => {
+export const FIBER_WEAVE: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'vine_whip_combo',
-    name: '藤鞭连击',
-    description: '攻击单体目标，造成55威力草属性伤害，获得1层藤蔓之力（每层+1级攻击，最多3层）',
+    id: 'fiber_weave',
+    name: '纤维化',
+    description: '攻击单体目标，造成40威力草属性伤害，获得1层光能汇聚（下次草系输出技能+60威力）',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
     effects: [{
       damage: {
-        basePower: 55,
+        basePower: 40,
         damageType: DamageType.SPECIAL,
         element: ElementType.GRASS
       }
     }, {
       applyBuff: {
-        buffType: BuffType.VINE_POWER,
-        duration: 3,
+        buffType: BuffType.LIGHT_GATHER,
+        duration: 999,
         stacks: 1
       }
     }],
     category: '草光环流·攻击',
-    tags: ['草', '光环流', '攻击', '层数叠加', '攻击强化']
+    tags: ['草', '光环流', '攻击', '光能汇聚']
   };
   return new Skill(definition);
 })();
 
 /**
- * 【攻击倾向2】寄生种子
- * 攻击目标，造成50威力伤害，并附加「寄生」状态
- * 寄生：每回合受到草属性伤害，同时施法者回复等量HP（持续3回合）
+ * 【攻击倾向2】叶绿光束 v2.0
+ * 攻击目标，造成80威力伤害
+ * 若处于芬芳环境中，额外附加「枯萎」状态
+ * 枯萎：每回合受到自身属性10点威力草属性伤害/层，持续2回合
  */
-export const PARASITIC_SEED: Skill = (() => {
+export const LEAF_BEAM: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'parasitic_seed',
-    name: '寄生种子',
-    description: '攻击单体目标，造成50威力草属性伤害，附加「寄生」（每回合受到草伤害+施法者回复等量HP，持续3回合）',
+    id: 'leaf_beam',
+    name: '叶绿光束',
+    description: '攻击单体目标，造成80威力草属性伤害，若处于芬芳环境则附加1层枯萎（每回合受到自身属性10点威力草属性伤害/层）',
     type: 'action',
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
     effects: [{
       damage: {
-        basePower: 50,
+        basePower: 80,
         damageType: DamageType.SPECIAL,
         element: ElementType.GRASS
       }
     }, {
       applyDebuff: {
-        debuffType: 'parasite' as any,
-        duration: 3
+        debuffType: 'wither' as any,
+        duration: 2
       }
     }],
     category: '草光环流·攻击',
-    tags: ['草', '光环流', '攻击', '持续伤害', '吸血']
+    tags: ['草', '光环流', '攻击', '枯萎', '芬芳联动']
   };
   return new Skill(definition);
 })();
 
 /**
- * 【攻击倾向3】飞叶快刀
- * 攻击目标，造成70威力伤害，附加「叶片标记」
- * 叶片标记：被标记目标受到草属性攻击时额外承受20%伤害（持续2回合）
+ * 【攻击倾向3】绽放之舞 v2.0
+ * 攻击目标，造成90威力物理伤害
+ * 本次攻击必定暴击（伤害×1.5）
  */
-export const LEAF_BLADE: Skill = (() => {
+export const BLOOM_DANCE: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'leaf_blade',
-    name: '飞叶快刀',
-    description: '攻击单体目标，造成70威力草属性伤害，附加「叶片标记」（受到草属性攻击时+20%伤害）',
+    id: 'bloom_dance',
+    name: '绽放之舞',
+    description: '攻击单体目标，造成90威力草属性物理伤害，本回合必定暴击（×1.5）',
+    type: 'action',
+    energyCost: EnergyCost.HIGH,
+    target: SkillTarget.SINGLE,
+    tendency: SkillTendency.ATTACK,
+    effects: [{
+      damage: {
+        basePower: 90,
+        damageType: DamageType.PHYSICAL,
+        element: ElementType.GRASS,
+        guaranteed: true
+      }
+    }],
+    category: '草光环流·攻击',
+    tags: ['草', '光环流', '攻击', '物理', '必定暴击']
+  };
+  return new Skill(definition);
+})();
+
+/**
+ * 【攻击倾向4】韶光 v2.0
+ * 攻击目标，造成140威力伤害
+ * 召唤「芬芳环境」（持续4回合）
+ * 若已有芬芳环境，额外提升本次伤害20%
+ */
+export const SPLENDOR: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'splendor',
+    name: '韶光',
+    description: '攻击单体目标，造成140威力草属性伤害，召唤芬芳环境（持续4回合），已有环境时伤害+20%',
+    type: 'action',
+    energyCost: EnergyCost.ENVIRONMENT,
+    target: SkillTarget.SINGLE,
+    tendency: SkillTendency.ATTACK,
+    effects: [{
+      damage: {
+        basePower: 140,
+        damageType: DamageType.SPECIAL,
+        element: ElementType.GRASS
+      }
+    }, {
+      applyBuff: {
+        buffType: BuffType.FRAGRANT_ENV,
+        duration: 4
+      }
+    }],
+    category: '草光环流·攻击',
+    tags: ['草', '光环流', '攻击', '芬芳环境', '高威力']
+  };
+  return new Skill(definition);
+})();
+
+/**
+ * 【攻击倾向5】光能爆轰 v2.0
+ * 消耗所有「光能汇聚」层数，造成伤害
+ * 伤害公式：100 + 60×层数
+ * 3层光能时：100 + 180 = 280威力
+ */
+export const SOLAR_DETONATION: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'solar_detonation',
+    name: '光能爆轰',
+    description: '消耗所有光能汇聚层数，造成（100+60×层数）威力草属性伤害【消耗型终极技能】',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
     effects: [{
       damage: {
-        basePower: 70,
-        damageType: DamageType.SPECIAL,
-        element: ElementType.GRASS
-      }
-    }, {
-      applyDebuff: {
-        debuffType: 'leaf_mark' as any,
-        duration: 2
-      }
-    }],
-    category: '草光环流·攻击',
-    tags: ['草', '光环流', '攻击', '标记', '增伤']
-  };
-  return new Skill(definition);
-})();
-
-/**
- * 【攻击倾向4】阳光烈焰
- * 蓄力1回合后发动，消耗所有增益层造成伤害
- * 每消耗1层增益，伤害提升30%；最高叠加时威力约169
- */
-export const SOLAR_BEAM: Skill = (() => {
-  const definition: SkillDefinition = {
-    id: 'solar_beam',
-    name: '阳光烈焰',
-    description: '蓄力1回合后发动，消耗所有增益层（每层+30%伤害）【终极爆发技能】',
-    type: 'action',
-    energyCost: EnergyCost.ULTIMATE,
-    target: SkillTarget.SINGLE,
-    tendency: SkillTendency.ATTACK,
-    chargeTurns: 1,
-    canBeInterrupted: true,
-    effects: [{
-      damage: {
-        basePower: 130,
+        basePower: 100,
         damageType: DamageType.SPECIAL,
         element: ElementType.GRASS
       }
     }],
     category: '草光环流·攻击',
-    tags: ['草', '光环流', '攻击', '蓄力', '消耗增益', '终极技能']
+    tags: ['草', '光环流', '攻击', '消耗光能', '终极技能']
   };
   return new Skill(definition);
 })();
@@ -252,7 +280,7 @@ export const SOLAR_BEAM: Skill = (() => {
 // ==================== 防御倾向技能（3种）====================
 
 /**
- * 【防御倾向1】扎根之躯
+ * 【防御倾向1】扎根之躯 v2.0
  * 获得「扎根」状态，持续3回合
  * 扎根：每回合回复最大HP的8%，但速度-1级
  */
@@ -260,7 +288,7 @@ export const ROOT_BOUND: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'root_bound',
     name: '扎根之躯',
-    description: '获得「扎根」状态（持续3回合），每回合回复最大HP的8%，但速度-1级',
+    description: '获得扎根状态（持续3回合），每回合回复最大HP的8%，但速度-1级',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SELF,
@@ -284,15 +312,15 @@ export const ROOT_BOUND: Skill = (() => {
 })();
 
 /**
- * 【防御倾向2】藤蔓护甲
- * 获得「藤蔓护体」状态
- * 藤蔓护体：受到伤害降低50%，受到攻击时缠绕目标（速度-2级）
+ * 【防御倾向2】藤蔓护甲 v2.0
+ * 本回合受到伤害降低50%
+ * 受到攻击时缠绕目标（使目标速度-2级）
  */
 export const VINE_ARMOR: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'vine_armor',
     name: '藤蔓护甲',
-    description: '受到伤害降低50%，受到攻击缠绕目标（速度-2级）',
+    description: '本回合受到伤害降低50%，受到攻击时缠绕攻击者（速度-2级）',
     type: 'action',
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SELF,
@@ -301,7 +329,7 @@ export const VINE_ARMOR: Skill = (() => {
       applyBuff: {
         buffType: BuffType.VINE_BODY,
         duration: 1,
-        value: 0.5  // 50%减伤
+        value: 0.5
       }
     }],
     category: '草光环流·防御',
@@ -311,109 +339,144 @@ export const VINE_ARMOR: Skill = (() => {
 })();
 
 /**
- * 【防御倾向3】绿叶屏障
- * 获得「绿叶屏障」状态
- * 绿叶屏障：己方全体获得40点护盾，对草属性攻击抗性+25%（持续2回合）
+ * 【防御倾向3】防反之姿 v2.0
+ * 获得「防反」状态
+ * 敌方使用攻击技能时，反弹60%伤害
+ * 反弹后获得先手+1效果
  */
-export const LEAF_BARRIER: Skill = (() => {
+export const GRASS_COUNTER_STANCE: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'leaf_barrier',
-    name: '绿叶屏障',
-    description: '己方全体获得40点护盾，对草属性攻击抗性+25%（持续2回合）',
+    id: 'grass_counter_stance',
+    name: '防反之姿',
+    description: '获得防反状态（持续1回合），敌方攻击时反弹60%伤害，反弹后获得先手+1',
     type: 'action',
-    energyCost: EnergyCost.HIGH,
-    target: SkillTarget.ALLY_ALL,
+    energyCost: EnergyCost.MEDIUM,
+    target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
     effects: [{
       applyBuff: {
-        buffType: BuffType.LEAF_BARRIER,
-        duration: 2
+        buffType: BuffType.COUNTER_STANCE,
+        duration: 1
       }
     }],
     category: '草光环流·防御',
-    tags: ['草', '光环流', '防御', '群体护盾', '抗性']
+    tags: ['草', '光环流', '防御', '反弹', '先手']
   };
   return new Skill(definition);
 })();
 
-// ==================== 辅助倾向技能（3种）====================
+// ==================== 辅助倾向技能（4种）====================
 
 /**
- * 【辅助倾向1】成长之舞
- * 为己方单体施加「成长」状态
- * 成长：每回合获得+1级攻击和+1级特攻，最多叠加3层（持续3回合）
+ * 【辅助倾向1】芬芳绽放 v2.0
+ * 召唤「芬芳环境」
+ * 芬芳环境效果（持续4回合）：
+ * - 己方草系技能伤害+25%
+ * - 己方草系单位每回合回复5%HP
  */
-export const GROWTH_DANCE: Skill = (() => {
+export const FRAGRANT_BLOOM: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'growth_dance',
-    name: '成长之舞',
-    description: '为己方单体施加「成长」（每回合攻击+特攻各+1级，最多叠加3层，持续3回合）',
+    id: 'fragrant_bloom',
+    name: '芬芳绽放',
+    description: '召唤芬芳环境（持续4回合）：己方草系技能伤害+25%，每回合回复5%HP',
     type: 'action',
-    energyCost: EnergyCost.LOW,
-    target: SkillTarget.ALLY,
+    energyCost: EnergyCost.ENVIRONMENT,
+    target: SkillTarget.ALLY_ALL,
     tendency: SkillTendency.SUPPORT,
     effects: [{
       applyBuff: {
-        buffType: BuffType.GROWTH,
-        duration: 3
+        buffType: BuffType.FRAGRANT_ENV,
+        duration: 4
       }
     }],
     category: '草光环流·辅助',
-    tags: ['草', '光环流', '辅助', '持续强化', '层数叠加']
+    tags: ['草', '光环流', '辅助', '芬芳环境', '群体增益']
   };
   return new Skill(definition);
 })();
 
 /**
- * 【辅助倾向2】寄生印记
- * 对单体敌人施加「寄生印记」
- * 寄生印记：每回合受到施法者最大HP的6%伤害，且施法者回复等量HP（持续4回合）
- * 印记叠加：多个寄生印记伤害递增
+ * 【辅助倾向2】光能聚集 v2.0
+ * 获得1层「光能汇聚」
+ * 光能汇聚：下次使用的草系输出技能威力+60
  */
-export const PARASITE_MARK: Skill = (() => {
+export const LIGHT_GATHER: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'parasite_mark',
-    name: '寄生印记',
-    description: '对单体敌人施加「寄生印记」（每回合受到施法者HP的6%伤害+施法者回复，持续4回合）【印记可叠加】',
+    id: 'light_gather',
+    name: '光能聚集',
+    description: '获得1层光能汇聚（下次草系输出技能+60威力）【核心攒层技能】',
+    type: 'action',
+    energyCost: EnergyCost.LOW,
+    target: SkillTarget.SELF,
+    tendency: SkillTendency.SUPPORT,
+    effects: [{
+      applyBuff: {
+        buffType: BuffType.LIGHT_GATHER,
+        duration: 999,
+        stacks: 1
+      }
+    }],
+    category: '草光环流·辅助',
+    tags: ['草', '光环流', '辅助', '光能汇聚', '核心技能']
+  };
+  return new Skill(definition);
+})();
+
+/**
+ * 【辅助倾向3】寄生之种 v2.0
+ * 对单体敌人施加「寄生种子」
+ * 寄生：每回合受到施法者最大HP的6%伤害
+ * 施法者回复等量HP（持续4回合）
+ */
+export const PARASITIC_SEED: Skill = (() => {
+  const definition: SkillDefinition = {
+    id: 'parasitic_seed',
+    name: '寄生之种',
+    description: '对单体敌人施加寄生种子（每回合受到施法者HP的6%伤害+施法者回复，持续4回合）',
     type: 'action',
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.SUPPORT,
     effects: [{
       applyDebuff: {
-        debuffType: 'parasite_mark' as any,
+        debuffType: 'parasite' as any,
         duration: 4
       }
     }],
     category: '草光环流·辅助',
-    tags: ['草', '光环流', '辅助', '持续伤害', '吸血', '印记']
+    tags: ['草', '光环流', '辅助', '持续伤害', '吸血']
   };
   return new Skill(definition);
 })();
 
 /**
- * 【辅助倾向3】光合爆发
- * 消耗所有「藤蔓之力」和「成长」层数
- * 每消耗1层，回复施法者最大HP的15%
- * 同时清除自身的所有负面状态
+ * 【辅助倾向4】养分汲取 v2.0
+ * 为己方单体回复最大HP的20%
+ * 使目标获得4点能量
  */
-export const PHOTOSYNTHESIS_BURST: Skill = (() => {
+export const NUTRIENT_ABSORPTION: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'photosynthesis_burst',
-    name: '光合爆发',
-    description: '消耗所有增益，每层回复最大HP的15%，并清除自身所有负面状态【治愈型终极技能】',
+    id: 'nutrient_absorption',
+    name: '养分汲取',
+    description: '为己方单体回复最大HP的20%，并使其获得4点能量',
     type: 'action',
-    energyCost: EnergyCost.MEGA,
-    target: SkillTarget.SELF,
+    energyCost: EnergyCost.HIGH,
+    target: SkillTarget.ALLY,
     tendency: SkillTendency.SUPPORT,
     effects: [{
-      special: {
-        type: 'consume_buff_heal',
-        value: 0.15  // 每层回复15%最大HP
+      healing: {
+        amount: 0,
+        percent: 0.2
+      }
+    }, {
+      applyBuff: {
+        buffType: BuffType.NUTRIENT,
+        duration: 999,
+        value: 4
       }
     }],
     category: '草光环流·辅助',
-    tags: ['草', '光环流', '辅助', '消耗增益', '治疗', '净化', '终极技能']
+    tags: ['草', '光环流', '辅助', '治疗', '充能']
   };
   return new Skill(definition);
 })();
@@ -421,43 +484,47 @@ export const PHOTOSYNTHESIS_BURST: Skill = (() => {
 // ==================== 草属性光环流技能库导出 ====================
 
 /**
- * 草属性·光环流技能库
+ * 草属性·光环流技能库 v2.0
  */
 export const GRASS_AURA_SKILLS = {
-  // 攻击倾向（4种）
+  // 攻击倾向（5种）
   ATTACK: {
-    VINE_WHIP_COMBO,      // 藤鞭连击
-    PARASITIC_SEED,       // 寄生种子
-    LEAF_BLADE,           // 飞叶快刀
-    SOLAR_BEAM            // 阳光烈焰
+    FIBER_WEAVE,           // 纤维化
+    LEAF_BEAM,             // 叶绿光束
+    BLOOM_DANCE,           // 绽放之舞
+    SPLENDOR,              // 韶光
+    SOLAR_DETONATION       // 光能爆轰
   },
   
   // 防御倾向（3种）
   DEFENSE: {
-    ROOT_BOUND,           // 扎根之躯
-    VINE_ARMOR,           // 藤蔓护甲
-    LEAF_BARRIER          // 绿叶屏障
+    ROOT_BOUND,             // 扎根之躯
+    VINE_ARMOR,            // 藤蔓护甲
+    GRASS_COUNTER_STANCE   // 防反之姿
   },
   
-  // 辅助倾向（3种）
+  // 辅助倾向（4种）
   SUPPORT: {
-    GROWTH_DANCE,         // 成长之舞
-    PARASITE_MARK,        // 寄生印记
-    PHOTOSYNTHESIS_BURST // 光合爆发
+    FRAGRANT_BLOOM,         // 芬芳绽放
+    LIGHT_GATHER,           // 光能聚集
+    PARASITIC_SEED,        // 寄生之种
+    NUTRIENT_ABSORPTION    // 养分汲取
   },
   
   // 全部技能
   ALL: [
-    VINE_WHIP_COMBO,
-    PARASITIC_SEED,
-    LEAF_BLADE,
-    SOLAR_BEAM,
+    FIBER_WEAVE,
+    LEAF_BEAM,
+    BLOOM_DANCE,
+    SPLENDOR,
+    SOLAR_DETONATION,
     ROOT_BOUND,
     VINE_ARMOR,
-    LEAF_BARRIER,
-    GROWTH_DANCE,
-    PARASITE_MARK,
-    PHOTOSYNTHESIS_BURST
+    GRASS_COUNTER_STANCE,
+    FRAGRANT_BLOOM,
+    LIGHT_GATHER,
+    PARASITIC_SEED,
+    NUTRIENT_ABSORPTION
   ]
 };
 
@@ -489,17 +556,15 @@ export function getGrassSkillDescription(skill: Skill): string {
 }
 
 /**
- * 计算草属性技能的实际威力（含层数加成）
+ * 计算草属性技能的实际威力（含光能汇聚加成）
  */
-export function calculateGrassSkillPower(basePower: number, stackCount: number, bonusPerStack: number = 0.3): number {
-  return Math.floor(basePower * (1 + stackCount * bonusPerStack));
+export function calculateGrassSkillPower(basePower: number, lightGatherStacks: number, bonusPerStack: number = 60): number {
+  return basePower + (lightGatherStacks * bonusPerStack);
 }
 
 /**
- * 检查草属性增益层数
+ * 获取光能汇聚加成威力
  */
-export function getGrassBuffStacks(unit: CombatUnit): number {
-  // 返回单位当前的藤蔓之力/成长层数
-  // 具体实现需要根据战斗系统中的Buff机制
-  return 0;
+export function getLightGatherBonus(stacks: number, bonusPerStack: number = 60): number {
+  return stacks * bonusPerStack;
 }

@@ -144,7 +144,7 @@ export function createDeepFishSkills(): Skill[] {
     createCreatureAttackSkill('deep_fish_water_gun', '水枪', 40, 1, ElementType.WATER),
     createCreatureAttackSkill('deep_fish_rush', '水流冲击', 65, 2, ElementType.WATER),
     createCreatureShieldSkill('deep_fish_guard', '水之守护', 45),
-    createCreatureAttackSkill('deep_fish_vortex', '深渊漩涡', 100, 3, ElementType.WATER),
+    createCreatureAttackSkill('deep_fish_vortex', '漩涡', 100, 3, ElementType.WATER),
   ];
 }
 
@@ -247,81 +247,6 @@ export const PoisonVineDefinition: CreatureDefinition = {
   expReward: 18
 };
 
-// ==================== 电属性生物 ====================
-
-/**
- * 闪电貂 - 电属性伙伴/怪物
- * 连击流：最高速度，多段攻击
- */
-export function createLightningMartenSkills(): Skill[] {
-  return [
-    createCreatureAttackSkill('lightning_marten_zap', '电光斩', 45, 1, ElementType.ELECTRIC),
-    createCreatureAttackSkill('lightning_marten_combo', '雷霆连击', 70, 2, ElementType.ELECTRIC),
-    createCreatureShieldSkill('lightning_marten_shield', '静电护盾', 40),
-    createCreatureBuffSkill('lightning_marten_charge', '充能加速', '速度+2级'),
-  ];
-}
-
-export const LightningMartenDefinition: CreatureDefinition = {
-  id: 'lightning_marten',
-  name: '闪电貂',
-  description: '如闪电般迅捷的貂类，能释放强大电流',
-  level: 10,
-  maxHp: 75,
-  attack: 70,
-  defense: 60,
-  spAttack: 110,
-  spDefense: 65,
-  speed: 120,
-  elements: [ElementType.ELECTRIC],
-  skills: createLightningMartenSkills(),
-  aiStrategy: AIDifficulty.NORMAL,
-  intentPattern: [
-    { turn: 1, intent: 1, power: 55 },
-    { turn: 2, intent: 1, power: 60 },
-    { turn: 3, intent: 2, probability: 1.0 },
-    { turn: 4, intent: 1, power: 70 },
-  ],
-  goldReward: 16,
-  expReward: 28
-};
-
-/**
- * 雷鸣蝠 - 电属性伙伴/怪物
- */
-export function createThunderBatSkills(): Skill[] {
-  return [
-    createCreatureAttackSkill('thunder_bat_zap', '电光斩', 45, 1, ElementType.ELECTRIC),
-    createCreatureBuffSkill('thunder_bat_paralyze', '电磁波', '目标麻痹'),
-    createCreatureAttackSkill('thunder_bat_combo', '雷霆连击', 70, 2, ElementType.ELECTRIC),
-    createCreatureAttackSkill('thunder_bat_thunder', '雷电', 90, 3, ElementType.ELECTRIC),
-  ];
-}
-
-export const ThunderBatDefinition: CreatureDefinition = {
-  id: 'thunder_bat',
-  name: '雷鸣蝠',
-  description: '在雷雨天出没的蝙蝠，能召唤雷电',
-  level: 8,
-  maxHp: 70,
-  attack: 80,
-  defense: 55,
-  spAttack: 95,
-  spDefense: 60,
-  speed: 110,
-  elements: [ElementType.ELECTRIC],
-  skills: createThunderBatSkills(),
-  aiStrategy: AIDifficulty.NORMAL,
-  intentPattern: [
-    { turn: 1, intent: 1, power: 50 },
-    { turn: 2, intent: 3, probability: 0.8 },
-    { turn: 3, intent: 1, power: 70 },
-    { turn: 4, intent: 1, power: 80 },
-  ],
-  goldReward: 14,
-  expReward: 22
-};
-
 // ==================== 冰属性生物 ====================
 
 /**
@@ -367,7 +292,7 @@ export const FrostWolfDefinition: CreatureDefinition = {
 export function createIceCrystalSkills(): Skill[] {
   return [
     createCreatureAttackSkill('ice_crystal_chill', '冰冻之风', 55, 2, ElementType.ICE),
-    createCreatureAttackSkill('ice_crystal_zero', '绝对零度', 80, 3, ElementType.ICE),
+    createCreatureAttackSkill('ice_crystal_explosion', '冰爆', 130, 5, ElementType.ICE),
     createCreatureShieldSkill('ice_crystal_armor', '冰霜护甲', 50),
     createCreatureBuffSkill('ice_crystal_field', '绝对零域', '全体减速'),
   ];

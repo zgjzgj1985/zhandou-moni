@@ -4,6 +4,14 @@
  */
 
 import { BuffType } from '../../types';
+import {
+  ChargeBuff,
+  OverloadBuff,
+  ChargingBuff,
+  ElectricFieldBuff,
+  StaticBodyBuff,
+  ElectricDeflectBuff
+} from './electric-buffs-v2';
 
 /**
  * 临时属性强化Buff
@@ -199,64 +207,25 @@ export class IceResistBuff extends Buff {
 
 /**
  * 冰墙buff：冰属性·冻结破冰流v3.0
- * 50%闪避+格挡（冰墙存在期间敌方每次攻击有25%概率被格挡）
+ * 50%伤害减免
  */
 export class IceWallBuff extends Buff {
-  dodgeChance: number;      // 本回合闪避概率
-  blockChance: number;       // 持续期间的格挡概率
-  
+  damageReduction: number;      // 伤害减免比例
+
   constructor(
     duration: number = 2,
-    dodgeChance: number = 0.5,
-    blockChance: number = 0.25
+    damageReduction: number = 0.5
   ) {
     super('冰墙', BuffType.ICE_WALL, 1, duration);
-    this.dodgeChance = dodgeChance;
-    this.blockChance = blockChance;
-  }
-
-  tryDodge(): boolean {
-    return Math.random() < this.dodgeChance;
-  }
-
-  tryBlock(): boolean {
-    return Math.random() < this.blockChance;
-  }
-
-  clone(): IceWallBuff {
-    const cloned = new IceWallBuff(this.remainingDuration, this.dodgeChance, this.blockChance);
-    return cloned;
-  }
-}
-
-/**
- * 极寒领域buff：冰属性·冻结破冰流v3.0
- * 受到伤害降低60%，敌方全体每次行动前有30%概率被冻结
- */
-export class FrostFieldBuff extends Buff {
-  damageReduction: number;    // 减伤比例
-  freezeChance: number;      // 冻结概率
-  
-  constructor(
-    duration: number = 1,
-    damageReduction: number = 0.6,
-    freezeChance: number = 0.3
-  ) {
-    super('极寒领域', BuffType.FROST_FIELD, 1, duration);
     this.damageReduction = damageReduction;
-    this.freezeChance = freezeChance;
   }
 
   getDamageReduction(): number {
     return this.damageReduction;
   }
 
-  tryFreeze(): boolean {
-    return Math.random() < this.freezeChance;
-  }
-
-  clone(): FrostFieldBuff {
-    const cloned = new FrostFieldBuff(this.remainingDuration, this.damageReduction, this.freezeChance);
+  clone(): IceWallBuff {
+    const cloned = new IceWallBuff(this.remainingDuration, this.damageReduction);
     return cloned;
   }
 }
@@ -349,35 +318,7 @@ export class WallOfFireBuff extends Buff {
   }
 }
 
-/**
- * 灼热反击buff：火属性爆发流
- * 受攻击时反弹50%伤害的火属性反击
- */
-export class HeatCounterBuff extends Buff {
-  counterPercent: number;
-
-  constructor(duration: number = 2, counterPercent: number = 0.5) {
-    super('灼热反击', BuffType.HEAT_COUNTER, 1, duration);
-    this.counterPercent = counterPercent;
-  }
-
-  onDamaged(_unit: BuffCombatUnit, damage: number): void {
-    // 此方法在战斗管理器中调用，用于触发反击
-  }
-
-  getCounterDamage(damage: number): number {
-    return Math.floor(damage * this.counterPercent);
-  }
-
-  clone(): HeatCounterBuff {
-    return new HeatCounterBuff(this.remainingDuration, this.counterPercent);
-  }
-}
-
-/**
- * 蓄焰buff：火属性爆发流
- * 根据当前能量增加下次火属性攻击威力（每点能量+10威力）
- */
+// ==================== 火属性·爆发流专用Buff ====================
 export class FlameChargeBuff extends Buff {
   bonusPerEnergy: number;
   consumed: boolean;
@@ -599,140 +540,44 @@ export class WaterResistBuff extends Buff {
   }
 }
 
-// ==================== 电属性·连击流专用Buff ====================
-
 /**
- * 静电护盾buff：电属性连击流
- * 吸收伤害的同时积累静电，下一次攻击附带额外伤害
+ * 浸透buff：水属性控制流
+ * 使目标特防-1级，持续2回合
+ * 每次叠加刷新持续时间
  */
-export class StaticShieldBuff extends Buff {
-  value: number;
-  maxValue: number;
-  staticCharge: number;
+export class WaterSoakBuff extends Buff {
+  defenseReduction: number;
+  maxStacks: number;
+  baseDuration: number;
 
-  constructor(value: number = 50) {
-    super('静电护盾', BuffType.STATIC_SHIELD, 1, 999);
-    this.maxValue = value;
-    this.value = value;
-    this.staticCharge = 0;
+  constructor(defenseReduction: number = 1, maxStacks: number = 6, baseDuration: number = 2) {
+    super('浸透', BuffType.WATER_SOAK, 1, baseDuration);
+    this.defenseReduction = defenseReduction;
+    this.maxStacks = maxStacks;
+    this.baseDuration = baseDuration;
   }
 
-  absorbDamage(damage: number): { absorbed: number; remaining: number } {
-    const absorbed = Math.min(this.value, damage);
-    this.value -= absorbed;
-    this.staticCharge += Math.floor(absorbed / 10);
-    if (this.value <= 0) {
-      this.remainingDuration = 0;
+  addStack(): boolean {
+    if (this.stacks < this.maxStacks) {
+      this.stacks++;
     }
-    return { absorbed, remaining: damage - absorbed };
+    this.refreshDuration();
+    return true;
   }
 
-  consumeStaticCharge(): number {
-    const charge = this.staticCharge;
-    this.staticCharge = 0;
-    return charge;
+  refreshDuration(): void {
+    this.remainingDuration = this.baseDuration;
   }
 
-  clone(): StaticShieldBuff {
-    const cloned = new StaticShieldBuff(this.maxValue);
-    cloned.value = this.value;
-    cloned.staticCharge = this.staticCharge;
+  getDefenseReduction(): number {
+    return this.stacks * this.defenseReduction;
+  }
+
+  clone(): WaterSoakBuff {
+    const cloned = new WaterSoakBuff(this.defenseReduction, this.maxStacks, this.baseDuration);
+    cloned.stacks = this.stacks;
+    cloned.remainingDuration = this.remainingDuration;
     return cloned;
-  }
-}
-
-/**
- * 连击充能buff：电属性连击流
- * 记录连击次数，下次攻击根据连击次数提升威力
- */
-export class ComboChargeBuff extends Buff {
-  comboCount: number;
-  maxComboCount: number;
-
-  constructor(maxComboCount: number = 5, duration: number = 3) {
-    super('连击充能', BuffType.COMBO_CHARGE, 1, duration);
-    this.comboCount = 0;
-    this.maxComboCount = maxComboCount;
-  }
-
-  addCombo(): void {
-    this.comboCount = Math.min(this.comboCount + 1, this.maxComboCount);
-    this.remainingDuration = this.duration;
-  }
-
-  resetCombo(): void {
-    this.comboCount = 0;
-  }
-
-  getComboMultiplier(): number {
-    return 1 + (this.comboCount * 0.2);
-  }
-
-  clone(): ComboChargeBuff {
-    const cloned = new ComboChargeBuff(this.maxComboCount, this.duration);
-    cloned.comboCount = this.comboCount;
-    return cloned;
-  }
-}
-
-/**
- * 电场加速buff：电属性连击流
- * 回合结束时积累电场层数，下回合攻击附带额外效果
- */
-export class ElectricFieldBuff extends Buff {
-  fieldLayers: number;
-  maxFieldLayers: number;
-
-  constructor(maxFieldLayers: number = 3) {
-    super('电场加速', BuffType.ELECTRIC_FIELD, 1, 999);
-    this.fieldLayers = 0;
-    this.maxFieldLayers = maxFieldLayers;
-  }
-
-  addLayer(): void {
-    this.fieldLayers = Math.min(this.fieldLayers + 1, this.maxFieldLayers);
-  }
-
-  consumeFieldLayers(): number {
-    const layers = this.fieldLayers;
-    this.fieldLayers = 0;
-    return layers;
-  }
-
-  getSpeedBonus(): number {
-    return this.fieldLayers * 0.15;
-  }
-
-  clone(): ElectricFieldBuff {
-    const cloned = new ElectricFieldBuff(this.maxFieldLayers);
-    cloned.fieldLayers = this.fieldLayers;
-    return cloned;
-  }
-}
-
-/**
- * 雷霆之势buff：电属性连击流
- * 攻击附带连锁效果，可以弹射到其他目标
- */
-export class ThunderFuryBuff extends Buff {
-  chainCount: number;
-  chainDamageMultiplier: number;
-
-  constructor(chainCount: number = 2, chainDamageMultiplier: number = 0.5) {
-    super('雷霆之势', BuffType.THUNDER_FURY, 1, 2);
-    this.chainCount = chainCount;
-    this.chainDamageMultiplier = chainDamageMultiplier;
-  }
-
-  getChainInfo(): { count: number; multiplier: number } {
-    return {
-      count: this.chainCount,
-      multiplier: this.chainDamageMultiplier
-    };
-  }
-
-  clone(): ThunderFuryBuff {
-    return new ThunderFuryBuff(this.chainCount, this.chainDamageMultiplier);
   }
 }
 
@@ -1137,101 +982,6 @@ export class VineBodyBuff extends Buff {
 }
 
 /**
- * 生机护体buff：草属性光环流
- * 受到伤害降低70%，本回合受伤时回复最大HP的10%
- */
-export class LifeBodyBuff extends Buff {
-  damageReduction: number;
-  healPercent: number;
-
-  constructor(damageReduction: number = 0.7, healPercent: number = 0.1, duration: number = 1) {
-    super('生机护体', BuffType.LIFE_BODY, 1, duration);
-    this.damageReduction = damageReduction;
-    this.healPercent = healPercent;
-  }
-
-  getDamageReduction(): number {
-    return this.damageReduction;
-  }
-
-  getHealPercent(): number {
-    return this.healPercent;
-  }
-
-  clone(): LifeBodyBuff {
-    return new LifeBodyBuff(this.damageReduction, this.healPercent, this.remainingDuration);
-  }
-}
-
-// ==================== 草属性·光环流专用Buff ====================
-
-/**
- * 藤蔓之力buff：草属性光环流
- * 每层+1级攻击，最多叠加3层
- */
-export class VinePowerBuff extends Buff {
-  maxStacks: number;
-
-  constructor(duration: number = 3, maxStacks: number = 3) {
-    super('藤蔓之力', BuffType.VINE_POWER, 1, duration);
-    this.maxStacks = maxStacks;
-  }
-
-  getAttackBonus(): number {
-    return this.stacks;
-  }
-
-  addStack(): void {
-    if (this.stacks < this.maxStacks) {
-      this.stacks++;
-    }
-  }
-
-  clone(): VinePowerBuff {
-    const cloned = new VinePowerBuff(this.remainingDuration, this.maxStacks);
-    cloned.stacks = this.stacks;
-    return cloned;
-  }
-}
-
-/**
- * 成长buff：草属性光环流
- * 每回合攻击+特攻各+1级，最多叠加3层
- */
-export class GrowthBuff extends Buff {
-  maxStacks: number;
-
-  constructor(duration: number = 3, maxStacks: number = 3) {
-    super('成长', BuffType.GROWTH, 1, duration);
-    this.maxStacks = maxStacks;
-  }
-
-  onTurnStart(_unit: BuffCombatUnit): void {
-    this.addStack();
-  }
-
-  addStack(): void {
-    if (this.stacks < this.maxStacks) {
-      this.stacks++;
-    }
-  }
-
-  getAttackBonus(): number {
-    return this.stacks;
-  }
-
-  getSpAttackBonus(): number {
-    return this.stacks;
-  }
-
-  clone(): GrowthBuff {
-    const cloned = new GrowthBuff(this.remainingDuration, this.maxStacks);
-    cloned.stacks = this.stacks;
-    return cloned;
-  }
-}
-
-/**
  * 扎根buff：草属性光环流
  * 每回合回复最大HP的8%，但速度-1级
  */
@@ -1257,35 +1007,124 @@ export class RootBoundBuff extends Buff {
   }
 }
 
+// ==================== 草属性·光环流专用Buff v2.0 ====================
+
 /**
- * 绿叶屏障buff：草属性光环流
- * 群体护盾40点，对草属性攻击抗性+25%
+ * 光能汇聚buff：草属性光环流v2.0
+ * 使用其他草系技能后，下次使用的草系输出技能威力永久+60
  */
-export class LeafBarrierBuff extends Buff {
-  shieldValue: number;
-  resistBonus: number;
+export class LightGatherBuff extends Buff {
+  powerBonus: number;
 
-  constructor(shieldValue: number = 40, resistBonus: number = 0.25, duration: number = 2) {
-    super('绿叶屏障', BuffType.LEAF_BARRIER, 1, duration);
-    this.shieldValue = shieldValue;
-    this.resistBonus = resistBonus;
+  constructor(duration: number = 999, powerBonus: number = 60) {
+    super('光能汇聚', BuffType.LIGHT_GATHER, 1, duration);
+    this.powerBonus = powerBonus;
   }
 
-  absorbDamage(damage: number): { absorbed: number; remaining: number } {
-    const absorbed = Math.min(this.shieldValue, damage);
-    this.shieldValue -= absorbed;
-    if (this.shieldValue <= 0) {
-      this.remainingDuration = 0;
+  addStack(): void {
+    this.stacks++;
+  }
+
+  getPowerBonus(): number {
+    return this.stacks * this.powerBonus;
+  }
+
+  clone(): LightGatherBuff {
+    const cloned = new LightGatherBuff(this.remainingDuration, this.powerBonus);
+    cloned.stacks = this.stacks;
+    return cloned;
+  }
+}
+
+/**
+ * 芬芳环境buff：草属性光环流v2.0
+ * 己方草系技能伤害+25%，每回合回复5%HP
+ */
+export class FragrantEnvBuff extends Buff {
+  damageBonus: number;
+  healPercent: number;
+
+  constructor(duration: number = 4, damageBonus: number = 0.25, healPercent: number = 0.05) {
+    super('芬芳环境', BuffType.FRAGRANT_ENV, 1, duration);
+    this.damageBonus = damageBonus;
+    this.healPercent = healPercent;
+  }
+
+  onTurnStart(unit: BuffCombatUnit): void {
+    const healAmount = Math.floor(unit.maxHp * this.healPercent);
+    unit.heal(healAmount);
+  }
+
+  getDamageBonus(): number {
+    return this.damageBonus;
+  }
+
+  getHealPercent(): number {
+    return this.healPercent;
+  }
+
+  clone(): FragrantEnvBuff {
+    return new FragrantEnvBuff(this.remainingDuration, this.damageBonus, this.healPercent);
+  }
+}
+
+/**
+ * 防反之姿buff：草属性光环流v2.0
+ * 反弹60%伤害并获得先手+1
+ */
+export class CounterStanceBuff extends Buff {
+  damageReflection: number;
+  priorityBonus: number;
+  used: boolean;
+
+  constructor(duration: number = 1, damageReflection: number = 0.6, priorityBonus: number = 1) {
+    super('防反之姿', BuffType.COUNTER_STANCE, 1, duration);
+    this.damageReflection = damageReflection;
+    this.priorityBonus = priorityBonus;
+    this.used = false;
+  }
+
+  onDamaged(unit: BuffCombatUnit, damage: number): number {
+    if (!this.used) {
+      this.used = true;
+      return Math.floor(damage * this.damageReflection);
     }
-    return { absorbed, remaining: damage - absorbed };
+    return 0;
   }
 
-  getGrassResistMultiplier(): number {
-    return 1 - this.resistBonus;
+  getPriorityBonus(): number {
+    return this.priorityBonus;
   }
 
-  clone(): LeafBarrierBuff {
-    const cloned = new LeafBarrierBuff(this.shieldValue, this.resistBonus, this.remainingDuration);
+  isActive(): boolean {
+    return !this.used && this.remainingDuration > 0;
+  }
+
+  clone(): CounterStanceBuff {
+    const cloned = new CounterStanceBuff(this.remainingDuration, this.damageReflection, this.priorityBonus);
+    cloned.used = this.used;
+    return cloned;
+  }
+}
+
+/**
+ * 养分汲取buff：草属性光环流v2.0
+ * 能量回复加成
+ */
+export class NutrientBuff extends Buff {
+  energyRegenBonus: number;
+
+  constructor(duration: number = 999, energyRegenBonus: number = 4) {
+    super('养分汲取', BuffType.NUTRIENT, 1, duration);
+    this.energyRegenBonus = energyRegenBonus;
+  }
+
+  getEnergyRegenBonus(): number {
+    return this.energyRegenBonus;
+  }
+
+  clone(): NutrientBuff {
+    const cloned = new NutrientBuff(this.remainingDuration, this.energyRegenBonus);
     return cloned;
   }
 }
@@ -1408,8 +1247,6 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
     // 冰属性·冻结破冰流v3.0专用Buff
     case BuffType.ICE_WALL:
       return new IceWallBuff(duration);
-    case BuffType.FROST_FIELD:
-      return new FrostFieldBuff(duration);
     case BuffType.FROST_MARK:
       return new FrostMarkBuff(duration);
     // 火属性爆发流专用Buff
@@ -1419,8 +1256,6 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
       return new FlameBodyBuff(duration);
     case BuffType.WALL_OF_FIRE:
       return new WallOfFireBuff(duration);
-    case BuffType.HEAT_COUNTER:
-      return new HeatCounterBuff(duration);
     case BuffType.FLAME_CHARGE:
       return new FlameChargeBuff(duration);
     case BuffType.BLAZE_WILL:
@@ -1434,15 +1269,8 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
       return new FlowBuff(duration);
     case BuffType.WATER_RESIST:
       return new WaterResistBuff(duration);
-    // 电属性连击流专用Buff
-    case BuffType.STATIC_SHIELD:
-      return new StaticShieldBuff();
-    case BuffType.COMBO_CHARGE:
-      return new ComboChargeBuff();
-    case BuffType.ELECTRIC_FIELD:
-      return new ElectricFieldBuff();
-    case BuffType.THUNDER_FURY:
-      return new ThunderFuryBuff();
+    case BuffType.WATER_SOAK:
+      return new WaterSoakBuff();
     // 超能属性奥秘流专用Buff
     case BuffType.MIND_SHIELD:
       return createMindShieldBuff({ maxHp: 100, heal: () => 0, takeDamage: () => 0 } as BuffCombatUnit);
@@ -1457,16 +1285,16 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
     // 草属性光环流专用Buff
     case BuffType.VINE_BODY:
       return new VineBodyBuff(0.5, 2, 2, duration);
-    case BuffType.LIFE_BODY:
-      return new LifeBodyBuff(0.7, 0.1, duration);
-    case BuffType.VINE_POWER:
-      return new VinePowerBuff(duration);
-    case BuffType.GROWTH:
-      return new GrowthBuff(duration);
+    case BuffType.LIGHT_GATHER:
+      return new LightGatherBuff();
+    case BuffType.FRAGRANT_ENV:
+      return new FragrantEnvBuff();
+    case BuffType.COUNTER_STANCE:
+      return new CounterStanceBuff();
+    case BuffType.NUTRIENT:
+      return new NutrientBuff();
     case BuffType.ROOT_BOUND:
       return new RootBoundBuff(duration);
-    case BuffType.LEAF_BARRIER:
-      return new LeafBarrierBuff();
     // 岩石属性防御流专用Buff
     case BuffType.ROCK_ARMOR:
       return new RockArmorBuff();
@@ -1474,6 +1302,19 @@ export function createBuff(type: BuffType, stacks: number = 1, duration: number 
       return new IronWallBuff();
     case BuffType.QUAKE_BODY:
       return new QuakeBodyBuff();
+    // 电属性电磁脉冲流专用Buff
+    case BuffType.CHARGE:
+      return new ChargeBuff();
+    case BuffType.OVERLOAD:
+      return new OverloadBuff(duration);
+    case BuffType.CHARGING:
+      return new ChargingBuff(duration);
+    case BuffType.ELECTRIC_FIELD_BUFF:
+      return new ElectricFieldBuff(duration);
+    case BuffType.STATIC_BODY:
+      return new StaticBodyBuff(duration);
+    case BuffType.ELECTRIC_DEFLECT:
+      return new ElectricDeflectBuff(duration);
     default:
       throw new Error(`Unknown BuffType: ${type}`);
   }
@@ -1506,3 +1347,14 @@ export function createWaterShieldBuff(unit: BuffCombatUnit, shieldValue: number 
 export function createMindShieldBuff(unit: BuffCombatUnit, value: number = 60, ppDrainPerHit: number = 1): MindShieldBuff {
   return new MindShieldBuff(unit, value, ppDrainPerHit);
 }
+
+// ==================== 电属性电磁脉冲流专用Buff导出 ====================
+
+export {
+  ChargeBuff,
+  OverloadBuff,
+  ChargingBuff,
+  ElectricFieldBuff,
+  StaticBodyBuff,
+  ElectricDeflectBuff
+};

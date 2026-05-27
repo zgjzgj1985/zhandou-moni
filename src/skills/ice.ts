@@ -1,15 +1,15 @@
 /**
  * 循迹之境 - 冰属性·冰霜蓄力流技能库 v4.0
  * 
- * 基于"冰霜蓄力+破冰爆发"设计
- * 核心机制：冰霜叠加（3层触发冻结）、冰霜代价（每层+1技能消耗）、破冰双倍伤害
+ * 基于"冰霜蓄力"设计
+ * 核心机制：冰霜叠加（5层触发冻结）、冰霜代价（速度-1级/层）
  * 
  * 设计文档：冰属性·冰霜蓄力流 v4.0
  * 
  * 技能分类：
- * - 攻击倾向（4种）：冰晶射击、霜冻之息、破冰斩、绝对零度
- * - 防御倾向（3种）：冰霜护甲、冰墙、极寒领域
- * - 辅助倾向（3种）：寒气凝聚、冰霜印记、永冻领域
+ * - 攻击倾向（4种）：冰晶射击、霜冻之息、冰片、冰爆
+ * - 防御倾向（2种）：冰霜护甲、冰墙
+ * - 辅助倾向（3种）：寒气凝聚、冰霜印记、冻土
  */
 
 import {
@@ -26,7 +26,6 @@ import {
 // ==================== 常量定义 ====================
 
 /** 冰霜蓄力流核心常量 */
-const FROST_SHATTER_BONUS = 2.0;  // 破冰倍率：冻结目标×2伤害
 const FROST_MAX_STACKS = 3;        // 最大冰霜层数
 const FREEZE_DURATION = 1;         // 冻结持续回合
 
@@ -38,20 +37,19 @@ const FREEZE_DURATION = 1;         // 冻结持续回合
  * 能量消耗: 1
  * 目标类型: 单体敌人
  * 技能威力: 35
- * 特效: 先手+冰霜+1层
+ * 特效: 冰霜+1层
  * 
- * 效果描述：如闪电般快速的射击，造成35威力冰属性伤害，使目标获得1层「冰霜」，先手攻击
+ * 效果描述：造成35威力冰属性伤害，使目标获得1层「冰霜」
  */
 export const ICE_SHOT: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'ice_shot',
     name: '冰晶射击',
-    description: '如闪电般快速的射击，造成35威力冰属性伤害，使目标获得1层「冰霜」，先手攻击',
+    description: '造成35威力冰属性伤害，使目标获得1层「冰霜」',
     type: 'action',
     energyCost: 1,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
-    priority: 1,  // 先手
     effects: [{
       damage: {
         basePower: 35,
@@ -61,11 +59,11 @@ export const ICE_SHOT: Skill = (() => {
       applyDebuff: {
         debuffType: 'frost',
         stacks: 1,
-        maxStacks: FROST_MAX_STACKS  // 冰霜最大3层
+        maxStacks: FROST_MAX_STACKS
       }
     }],
     category: '冰·冰霜蓄力流·攻击',
-    tags: ['冰', '冰霜蓄力流', '攻击', '先手', '冰霜']
+    tags: ['冰', '冰霜蓄力流', '攻击', '冰霜']
   };
   return new Skill(definition);
 })();
@@ -76,15 +74,15 @@ export const ICE_SHOT: Skill = (() => {
  * 能量消耗: 2
  * 目标类型: 单体敌人
  * 技能威力: 50
- * 特效: 冰霜+2层
+ * 特效: 极寒印记（下次技能能耗+2）
  * 
- * 效果描述：喷吐刺骨寒气，造成50威力冰属性伤害，使目标获得2层「冰霜」
+ * 效果描述：喷吐刺骨寒气，造成50威力冰属性伤害并附加「极寒印记」（下次使用技能能耗+2）
  */
 export const FROST_BREATH: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'frost_breath',
     name: '霜冻之息',
-    description: '喷吐刺骨寒气，造成50威力冰属性伤害，使目标获得2层「冰霜」',
+    description: '喷吐刺骨寒气，造成50威力冰属性伤害并附加「极寒印记」（下次使用技能能耗+2）',
     type: 'action',
     energyCost: 2,
     target: SkillTarget.SINGLE,
@@ -96,9 +94,9 @@ export const FROST_BREATH: Skill = (() => {
         element: ElementType.ICE
       },
       applyDebuff: {
-        debuffType: 'frost',
-        stacks: 2,
-        maxStacks: FROST_MAX_STACKS  // 冰霜最大3层
+        debuffType: 'extreme_cold_mark',
+        stacks: 1,
+        successRate: 1.0
       }
     }],
     category: '冰·冰霜蓄力流·攻击',
@@ -108,82 +106,78 @@ export const FROST_BREATH: Skill = (() => {
 })();
 
 /**
- * 【攻击倾向3】破冰斩
- * 技能ID: ice_shatter
+ * 【攻击倾向3】冰片
+ * 技能ID: ice_shard
  * 能量消耗: 3
  * 目标类型: 单体敌人
- * 技能威力: 20 × 3（多段）
- * 特效: 多段冻结 + 攻击蓄力
+ * 技能威力: 20（每次命中）
+ * 初始连击次数: 3
  * 
- * 效果描述：连续三次斩击，共造成60威力冰属性伤害。
- * 每次命中目标有25%概率将其冻结，且有25%概率自身攻击+1级。
+ * 效果描述：发射冰片造成冰属性伤害，如果命中冻结目标，连击次数+1。
+ * 作为多段伤害技能，受到连击次数属性影响。
  */
-export const ICE_SHATTER: Skill = (() => {
+export const ICE_SHARD: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'ice_shatter',
-    name: '破冰斩',
-    description: '连续三次斩击，共造成60威力冰属性伤害。每次命中有25%概率冻结目标，25%概率自身攻击+1级',
+    id: 'ice_shard',
+    name: '冰片',
+    description: '发射冰片造成冰属性伤害，如果命中冻结目标，连击次数+1',
     type: 'action',
     energyCost: 3,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
+    baseHits: 3,  // 初始3次连击
     effects: [{
       damage: {
         basePower: 20,
         damageType: DamageType.PHYSICAL,
         element: ElementType.ICE,
-        hits: 3  // 3次斩击
+        hits: 3
       },
       applyDebuff: {
-        debuffType: 'freeze',
-        duration: FREEZE_DURATION,
-        successRate: 0.25  // 25%冻结概率
+        debuffType: 'frost',
+        duration: 999,
+        stacks: 1,
+        maxStacks: 5
       }
     }],
     category: '冰·冰霜蓄力流·攻击',
-    tags: ['冰', '冰霜蓄力流', '攻击', '多段', '冻结', '攻击蓄力']
+    tags: ['冰', '冰霜蓄力流', '攻击', '多段', '冰霜']
   };
   return new Skill(definition);
 })();
 
 /**
- * 【攻击倾向4】绝对零度
- * 技能ID: absolute_zero
+ * 【攻击倾向4】冰爆
+ * 技能ID: ice_explosion
  * 能量消耗: 5
  * 目标类型: 单体敌人
  * 技能威力: 130
- * 特效: 蓄力+直接冻结
- * 
- * 效果描述：蓄力1回合后发动，造成130威力冰属性伤害，使目标直接进入「冻结」状态（跳过冰霜叠加）
- * 
- * 蓄力机制：
- * - 蓄力期间若被攻击则技能取消
- * - 蓄力成功后必定冻结目标
+ * 特效: 冻结增伤
+ *
+ * 效果描述：造成130威力冰属性伤害，如果目标处于「冻结」状态则造成3倍伤害
  */
-export const ABSOLUTE_ZERO: Skill = (() => {
+export const ICE_EXPLOSION: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'absolute_zero',
-    name: '绝对零度',
-    description: '蓄力1回合后发动，造成130威力冰属性伤害，使目标直接进入「冻结」状态（跳过冰霜叠加）【蓄力可被打断】',
+    id: 'ice_explosion',
+    name: '冰爆',
+    description: '造成130威力冰属性伤害，如果目标处于「冻结」状态则造成3倍伤害',
     type: 'action',
     energyCost: 5,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
-    chargeTurns: 1,
-    canBeInterrupted: true,
     effects: [{
       damage: {
         basePower: 130,
         damageType: DamageType.SPECIAL,
-        element: ElementType.ICE
-      },
-      applyDebuff: {
-        debuffType: 'freeze',
-        duration: FREEZE_DURATION  // 1回合冻结
+        element: ElementType.ICE,
+        conditionMultiplier: {
+          condition: 'freeze',
+          multiplier: 3
+        }
       }
     }],
     category: '冰·冰霜蓄力流·攻击',
-    tags: ['冰', '冰霜蓄力流', '攻击', '蓄力', '直接冻结', '终极']
+    tags: ['冰', '冰霜蓄力流', '攻击', '冻结增伤', '终极']
   };
   return new Skill(definition);
 })();
@@ -225,69 +219,31 @@ export const FROST_ARMOR: Skill = (() => {
 /**
  * 【防御倾向2】冰墙
  * 技能ID: ice_wall
- * 能量消耗: 2
- * 目标类型: 自身
- * 闪避效果: 50%
+ * 能量消耗: 3
+ * 目标类型: 己方单体
+ * 减伤效果: 50%
  * 持续回合: 2回合
- * 
- * 效果描述：创造一道冰墙屏障（持续2回合），本回合获得50%闪避，
- * 冰墙存在期间敌方每次攻击有25%概率被格挡
+ *
+ * 效果描述：创造冰墙屏障（持续2回合），获得50%伤害减免
  */
 export const ICE_WALL: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'ice_wall',
     name: '冰墙',
-    description: '创造一道冰墙屏障（持续2回合），本回合获得50%闪避，冰墙存在期间敌方每次攻击有25%概率被格挡',
+    description: '创造冰墙屏障（持续2回合），获得50%伤害减免',
     type: 'action',
-    energyCost: 2,
-    target: SkillTarget.SELF,
+    energyCost: 3,
+    target: SkillTarget.ALLY,
     tendency: SkillTendency.DEFENSE,
     effects: [{
       applyBuff: {
         buffType: 'ice_wall',
         duration: 2,
-        value: 0.5  // 50%闪避
+        value: 0.5  // 50%减伤
       }
     }],
     category: '冰·冰霜蓄力流·防御',
-    tags: ['冰', '冰霜蓄力流', '防御', '闪避', '格挡']
-  };
-  return new Skill(definition);
-})();
-
-/**
- * 【防御倾向3】极寒领域
- * 技能ID: freezing_field
- * 能量消耗: 3
- * 目标类型: 自身
- * 减伤效果: 60%
- * 特效: 群体冰霜
- * 
- * 效果描述：展开极寒领域，本回合受到伤害降低60%，使敌方全体获得1层「冰霜」
- */
-export const FREEZING_FIELD: Skill = (() => {
-  const definition: SkillDefinition = {
-    id: 'freezing_field',
-    name: '极寒领域',
-    description: '展开极寒领域，本回合受到伤害降低60%，使敌方全体获得1层「冰霜」',
-    type: 'action',
-    energyCost: 3,
-    target: SkillTarget.SELF,
-    tendency: SkillTendency.DEFENSE,
-    effects: [{
-      applyBuff: {
-        buffType: 'frost_field',
-        duration: 1,
-        value: 0.6  // 60%减伤
-      },
-      applyDebuffAll: {
-        debuffType: 'frost',
-        stacks: 1,
-        maxStacks: FROST_MAX_STACKS  // 敌方全体+1层冰霜
-      }
-    }],
-    category: '冰·冰霜蓄力流·防御',
-    tags: ['冰', '冰霜蓄力流', '防御', '减伤', '群体冰霜', '领域']
+    tags: ['冰', '冰霜蓄力流', '防御', '减伤', '护盾']
   };
   return new Skill(definition);
 })();
@@ -299,29 +255,29 @@ export const FREEZING_FIELD: Skill = (() => {
  * 技能ID: cold_aura
  * 能量消耗: 1
  * 目标类型: 己方单体
- * 加速效果: 速度+2级
- * 持续回合: 3回合
- * 
- * 效果描述：为己方单体赋予「寒气凝聚」，速度+2级（持续3回合）
+ * 强化效果: 防御+1级
+ * 持续回合: 2回合
+ *
+ * 效果描述：为己方单体赋予「寒气凝聚」，防御+1级（持续2回合）
  */
 export const COLD_AURA: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'cold_aura',
     name: '寒气凝聚',
-    description: '为己方单体赋予「寒气凝聚」，速度+2级（持续3回合）',
+    description: '为己方单体赋予「寒气凝聚」，防御+1级（持续2回合）',
     type: 'action',
     energyCost: 1,
     target: SkillTarget.ALLY,
     tendency: SkillTendency.SUPPORT,
     effects: [{
       statBoost: {
-        stat: 'speed',
-        stages: 2,
-        duration: 3
+        stat: 'defense',
+        stages: 1,
+        duration: 2
       }
     }],
     category: '冰·冰霜蓄力流·辅助',
-    tags: ['冰', '冰霜蓄力流', '辅助', '加速']
+    tags: ['冰', '冰霜蓄力流', '辅助', '防御强化']
   };
   return new Skill(definition);
 })();
@@ -331,16 +287,16 @@ export const COLD_AURA: Skill = (() => {
  * 技能ID: frost_mark
  * 能量消耗: 1
  * 目标类型: 单体敌人
- * 持续回合: 3回合
- * 特效: 下次冰系攻击额外+1层
+ * 持续回合: 2回合
+ * 特效: 受到冰属性攻击时，有25%概率附加1层冰霜
  * 
- * 效果描述：为目标施加「冰霜印记」（持续3回合），下次受到冰属性攻击时，额外获得1层冰霜
+ * 效果描述：为目标施加「冰霜印记」（持续2回合），受到冰属性攻击时，有25%概率附加1层「冰霜」
  */
 export const FROST_MARK: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'frost_mark',
     name: '冰霜印记',
-    description: '为目标施加「冰霜印记」（持续3回合），下次受到冰属性攻击时，额外获得1层冰霜',
+    description: '为目标施加「冰霜印记」（持续2回合），受到冰属性攻击时，有25%概率附加1层「冰霜」',
     type: 'action',
     energyCost: 1,
     target: SkillTarget.SINGLE,
@@ -348,9 +304,9 @@ export const FROST_MARK: Skill = (() => {
     effects: [{
       applyDebuff: {
         debuffType: 'frost_mark',
-        duration: 3,
+        duration: 2,
         stacks: 1,
-        successRate: 1.0
+        successRate: 0.25
       }
     }],
     category: '冰·冰霜蓄力流·辅助',
@@ -360,33 +316,33 @@ export const FROST_MARK: Skill = (() => {
 })();
 
 /**
- * 【辅助倾向3】永冻领域
- * 技能ID: eternal_frost_domain
+ * 【辅助倾向3】冻土
+ * 技能ID: frozen_land
  * 能量消耗: 5
- * 目标类型: 敌方全体
+ * 目标类型: 己方全体
  * 持续回合: 3回合
- * 特效: 群体冰霜
- * 
- * 效果描述：创造永冻领域（持续3回合），使敌方全体获得2层「冰霜」
+ * 特效: 冻土环境
+ *
+ * 效果描述：创造冻土环境，所有生物冰属性技能能量消耗-1（持续3回合）
  */
-export const ETERNAL_FROST_DOMAIN: Skill = (() => {
+export const FROZEN_LAND: Skill = (() => {
   const definition: SkillDefinition = {
-    id: 'eternal_frost_domain',
-    name: '永冻领域',
-    description: '创造永冻领域（持续3回合），使敌方全体获得2层「冰霜」',
+    id: 'frozen_land',
+    name: '冻土',
+    description: '创造冻土环境，所有生物冰属性技能能量消耗-1（持续3回合）',
     type: 'action',
     energyCost: 5,
-    target: SkillTarget.ENEMY_ALL,
+    target: SkillTarget.ALLY_ALL,
     tendency: SkillTendency.SUPPORT,
     effects: [{
-      applyDebuffAll: {
-        debuffType: 'frost',
-        stacks: 2,
-        maxStacks: FROST_MAX_STACKS  // 全体+2层冰霜
+      applyBuff: {
+        buffType: 'frozen_land_env',
+        duration: 3,
+        value: 1  // 冰属性技能能耗-1
       }
     }],
     category: '冰·冰霜蓄力流·辅助',
-    tags: ['冰', '冰霜蓄力流', '辅助', '群体冰霜', '终极领域']
+    tags: ['冰', '冰霜蓄力流', '辅助', '环境', '冻土', '终极领域']
   };
   return new Skill(definition);
 })();
@@ -396,41 +352,39 @@ export const ETERNAL_FROST_DOMAIN: Skill = (() => {
 /**
  * 冰属性·冰霜蓄力流技能库 v4.0
  */
-export const ICE_SHATTER_SKILLS = {
+export const ICE_SHARD_SKILLS = {
   // 攻击倾向（4种）
   ATTACK: {
     ICE_SHOT,      // 冰晶射击
     FROST_BREATH,  // 霜冻之息
-    ICE_SHATTER,   // 破冰斩
-    ABSOLUTE_ZERO  // 绝对零度
+    ICE_SHARD,     // 冰片
+    ICE_EXPLOSION  // 冰爆
   },
   
-  // 防御倾向（3种）
+  // 防御倾向（2种）
   DEFENSE: {
     FROST_ARMOR,      // 冰霜护甲
-    ICE_WALL,         // 冰墙
-    FREEZING_FIELD    // 极寒领域
+    ICE_WALL         // 冰墙
   },
   
   // 辅助倾向（3种）
   SUPPORT: {
     COLD_AURA,           // 寒气凝聚
     FROST_MARK,          // 冰霜印记
-    ETERNAL_FROST_DOMAIN // 永冻领域
+    FROZEN_LAND         // 冻土
   },
   
   // 全部技能
   ALL: [
     ICE_SHOT,           // 冰晶射击
     FROST_BREATH,       // 霜冻之息
-    ICE_SHATTER,        // 破冰斩
-    ABSOLUTE_ZERO,      // 绝对零度
+    ICE_SHARD,          // 冰片
+    ICE_EXPLOSION,      // 冰爆
     FROST_ARMOR,        // 冰霜护甲
     ICE_WALL,           // 冰墙
-    FREEZING_FIELD,     // 极寒领域
     COLD_AURA,          // 寒气凝聚
     FROST_MARK,         // 冰霜印记
-    ETERNAL_FROST_DOMAIN // 永冻领域
+    FROZEN_LAND        // 冻土
   ]
 };
 
@@ -462,24 +416,24 @@ export function getFullIceSkillDescription(skill: Skill): string {
 }
 
 /**
- * 计算破冰斩对冻结目标的伤害
- * @param basePower 基础威力
- * @param isFrozen 目标是否冻结
- * @returns 最终伤害
+ * 计算冰片的实际连击次数
+ * 如果目标冻结，连击次数+1
+ * @param baseHits 基础连击次数
+ * @param isTargetFrozen 目标是否冻结
+ * @returns 最终连击次数
  */
-export function calculateShatterDamage(basePower: number, isFrozen: boolean): number {
-  if (isFrozen) {
-    return Math.floor(basePower * FROST_SHATTER_BONUS);
+export function calculateIceShardHits(baseHits: number, isTargetFrozen: boolean): number {
+  if (isTargetFrozen) {
+    return baseHits + 1;
   }
-  return basePower;
+  return baseHits;
 }
 
 /**
- * 计算冰霜代价（技能额外消耗）
+ * 计算冰霜代价（速度降低级数）
  * @param frostStacks 冰霜层数
- * @param baseCost 基础能量消耗
- * @returns 最终能量消耗
+ * @returns 速度降低级数
  */
-export function calculateFrostCost(frostStacks: number, baseCost: number): number {
-  return baseCost + frostStacks;
+export function calculateFrostSpeedPenalty(frostStacks: number): number {
+  return frostStacks;
 }

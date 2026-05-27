@@ -17,18 +17,18 @@ import { Debuff } from '../effects';
  */
 export interface SkillEffect {
   // 伤害效果
-  damage?: {
-    basePower: number;
-    damageType: DamageType;
-    element?: ElementType;
-    hits?: number;        // 攻击次数
-    guaranteed?: boolean; // 是否必定触发（如爆炸烈焰的必定灼伤）
-    extraEffect?: 'burn_mark' | 'ice_dot'; // 额外效果类型
-    typeBonus?: {         // 属性克制加成
-      targetElement: ElementType;
-      multiplier: number; // 倍率，如2表示克制时伤害翻倍
-    };
-  };
+      damage?: {
+        basePower: number;
+        damageType: DamageType;
+        element?: ElementType;
+        hits?: number;        // 攻击次数（多段伤害）
+        guaranteed?: boolean; // 是否必定触发（如爆炸烈焰的必定灼伤）
+        extraEffect?: 'burn_mark' | 'ice_dot'; // 额外效果类型
+        conditionMultiplier?: {  // 条件增伤
+          condition: string;    // 触发条件（如 'freeze'）
+          multiplier: number;   // 增伤倍率
+        };
+      };
 
   // 治疗效果
   healing?: {
@@ -67,6 +67,14 @@ export interface SkillEffect {
     stacks?: number;
     maxStacks?: number;  // 最大层数
     successRate?: number; // 命中率/触发率
+    value?: number;
+  };
+
+  // 自身Debuff效果（施法者获得）
+  selfDebuff?: {
+    debuffType: DebuffType | string;
+    duration?: number;
+    stacks?: number;
     value?: number;
   };
 
@@ -112,23 +120,23 @@ export interface SkillDefinition {
   name: string;
   description: string;
   type: 'action' | 'trait';
-  
+
   // 能量消耗系统（替代PP）
   energyCost: number;      // 能量消耗值
-  
+
   // 目标
   target: SkillTarget;
-  
+
   // 效果
   effects: SkillEffect[];
-  
+
   // 元数据
   category?: string;     // 分类
   tags?: string[];       // 标签
-  
+
   // 技能倾向
   tendency?: SkillTendency;
-  
+
   // 蓄力相关
   chargeTurns?: number;   // 蓄力回合数
   canBeInterrupted?: boolean; // 蓄力是否可被打断
@@ -138,6 +146,12 @@ export interface SkillDefinition {
     turns: number;          // 延迟回合数
     effect: SkillEffect;    // 延迟触发的效果
   };
+
+  // 先手值（影响行动顺序）
+  priority?: number;        // 先手值，默认0，高者优先
+
+  // 连击相关
+  baseHits?: number;         // 初始连击次数（多段伤害技能）
 }
 
 /**

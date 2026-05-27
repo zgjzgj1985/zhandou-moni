@@ -177,7 +177,6 @@ export const DEFAULT_SKILLS = {
   WATER_GUN: createAttackSkill('water_gun', '水枪', 40, SkillTarget.SINGLE, DamageType.SPECIAL, ElementType.WATER, EnergyCost.LOW),
   HYDRO_PUMP: createAttackSkill('hydro_pump', '水炮', 120, SkillTarget.SINGLE, DamageType.SPECIAL, ElementType.WATER, EnergyCost.ULTRA),
   RAZOR_LEAF: createAttackSkill('razor_leaf', '飞叶快刀', 55, SkillTarget.SINGLE, DamageType.SPECIAL, ElementType.GRASS, EnergyCost.MEDIUM),
-  THUNDERBOLT: createAttackSkill('thunderbolt', '雷电', 90, SkillTarget.SINGLE, DamageType.SPECIAL, ElementType.ELECTRIC, EnergyCost.HIGH),
   ICE_BEAM: createAttackSkill('ice_beam', '冰冻光线', 90, SkillTarget.SINGLE, DamageType.SPECIAL, ElementType.ICE, EnergyCost.HIGH),
   PSYCHIC: createAttackSkill('psychic', '精神光线', 90, SkillTarget.SINGLE, DamageType.SPECIAL, ElementType.PSYCHIC, EnergyCost.HIGH),
   

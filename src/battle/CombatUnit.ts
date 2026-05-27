@@ -190,7 +190,6 @@ export abstract class CombatUnit {
     // 应用防御Buff的减伤效果
     const damageReductionBuff = this.buffs.find(b =>
       b.type === BuffType.VINE_BODY ||
-      b.type === BuffType.LIFE_BODY ||
       b.type === BuffType.ICE_ARMOR ||
       b.type === BuffType.ROCK_ARMOR ||
       b.type === BuffType.IRON_WALL ||
@@ -400,20 +399,20 @@ export abstract class CombatUnit {
     if (powerBuff) {
       damage += powerBuff.stacks;
     }
-    
+
     // 考虑虚弱Debuff
     const weaknessDebuff = target.debuffs.find(d => d.type === DebuffType.WEAKNESS);
     if (weaknessDebuff) {
       const reduction = Math.min(weaknessDebuff.stacks * 3, damage - 1);
       damage = Math.max(1, damage - reduction);
     }
-    
+
     // 考虑踉跄
     if (this.isStaggered) {
       damage = Math.floor(damage * 0.5);
       this.isStaggered = false;
     }
-    
+
     return Math.max(1, damage);
   }
   

@@ -21,7 +21,7 @@ import { PlayerUnit } from './PlayerUnit';
 import { EnemyUnit } from './EnemyUnit';
 import { DamageType } from '../types';
 import { SkillDefinition } from '../skills/Skill';
-import { VineBodyBuff, LifeBodyBuff, IceArmorBuff, IceWallBuff, FrostFieldBuff, HeatCounterBuff } from '../effects/buffs';
+import { VineBodyBuff, IceArmorBuff, IceWallBuff, FrostFieldBuff } from '../effects/buffs';
 import {
   TangleDebuff,
   ParalysisDebuff,
@@ -29,7 +29,7 @@ import {
   FrostMarkDebuff,
   WetDebuff,
   SlowDebuff,
-  DrowningDebuff,
+  DrowningStatusDebuff,
   TurbulenceDebuff,
   StunDebuff,
   BurnDebuff,
@@ -50,8 +50,6 @@ import {
   MindWoundDebuff,
   ForbiddenDebuff,
   ParasiteDebuff,
-  LeafMarkDebuff,
-  ParasiteMarkDebuff,
   Debuff
 } from '../effects/debuffs';
 
@@ -482,16 +480,10 @@ export class BattleManager {
       // 水属性Debuff
       case DebuffType.WET:
         return new WetDebuff(duration);
-      case DebuffType.DROWNING:
-        return new DrowningDebuff(duration);
+      case DebuffType.DROWNING_STATUS:
+        return new DrowningStatusDebuff(duration);
       case DebuffType.TURBULENCE:
         return new TurbulenceDebuff(duration);
-
-      // 电属性Debuff
-      case DebuffType.STATIC:
-        return new StaticDebuff(duration);
-      case DebuffType.ELECTRIC_SHOCK:
-        return new ElectricShockDebuff(duration);
 
       // 超能属性Debuff
       case DebuffType.MIND_WOUND:
@@ -504,10 +496,6 @@ export class BattleManager {
         return new TangleDebuff(stacks, duration);
       case DebuffType.PARASITE:
         return new ParasiteDebuff(duration);
-      case DebuffType.LEAF_MARK:
-        return new LeafMarkDebuff(duration);
-      case DebuffType.PARASITE_MARK:
-        return new ParasiteMarkDebuff(duration);
 
       default:
         console.warn(`未处理的DebuffType: ${debuffType}`);
@@ -711,6 +699,12 @@ export class BattleManager {
       }
     }
 
+    // 检查虚弱状态 - 虚弱状态下无法使用技能
+    const hasWeakness = player.debuffs.some(d => d.type === DebuffType.WEAKNESS);
+    if (hasWeakness) {
+      return { success: false, message: '虚弱状态下无法使用技能' };
+    }
+
     // 检查铁壁状态 - 铁壁状态下无法使用攻击技能
     if (isAttackSkill) {
       const ironWallBuff = player.buffs.find(b => b.type === BuffType.IRON_WALL);
@@ -894,6 +888,19 @@ export class BattleManager {
         }
       }
 
+      // 处理自身Debuff效果（施法者获得）
+      if (effect.selfDebuff) {
+        const debuff = this.createDebuffFromType(
+          effect.selfDebuff.debuffType as DebuffType,
+          effect.selfDebuff.stacks ?? 1,
+          effect.selfDebuff.duration ?? 2
+        );
+        if (debuff) {
+          player.addDebuff(debuff);
+          results.push(`自身获得「${debuff.name}」`);
+        }
+      }
+
       // 处理属性强化效果
       // stages > 0：对自身施放强化；stages < 0：对目标施放削弱
       if (effect.statBoost) {
@@ -997,22 +1004,6 @@ export class BattleManager {
       );
     }
 
-    // 检查生机护体效果
-    const lifeBodyBuff = target.buffs.find(b => b.type === BuffType.LIFE_BODY);
-    if (lifeBodyBuff) {
-      const lifeBuff = lifeBodyBuff as LifeBodyBuff;
-      const healPercent = lifeBuff.getHealPercent();
-      const healAmount = Math.floor(target.maxHp * healPercent);
-      if (healAmount > 0) {
-        target.heal(healAmount);
-        this.addLog(
-          'heal_effect',
-          `${target.name} 的生机护体触发`,
-          `回复 ${healAmount} HP`
-        );
-      }
-    }
-
     // 检查冰霜护甲效果 - 受伤时冻结攻击者
     const iceArmorBuff = target.buffs.find(b => b.type === BuffType.ICE_ARMOR);
     if (iceArmorBuff) {
@@ -1040,29 +1031,6 @@ export class BattleManager {
           `${target.name} 的火盾触发`,
           `对 ${attacker.name} 附加灼烧（1层）`
         );
-      }
-    }
-
-    // 检查灼热反击效果 - 受伤时反弹50%火属性伤害
-    const heatCounterBuff = target.buffs.find(b => b.type === BuffType.HEAT_COUNTER);
-    if (heatCounterBuff) {
-      const heatCounter = heatCounterBuff as HeatCounterBuff;
-      if (heatCounter.remainingDuration > 0) {
-        // 反弹伤害 = 受到伤害的50%，作为火属性特殊伤害
-        const counterDamage = Math.floor(target.lastDamageTaken * heatCounter.counterPercent);
-        if (counterDamage > 0) {
-          const actualDamage = attacker.takeDamage(counterDamage, 'special');
-          this.addLog(
-            'counter_effect',
-            `${target.name} 的灼热反击触发`,
-            `对 ${attacker.name} 反弹 ${actualDamage} 点火属性伤害`
-          );
-          // 触发攻击者的反制效果
-          this.triggerOnDamagedEffects(attacker, target);
-          if (attacker.isDead) {
-            this.handleUnitDeath(attacker);
-          }
-        }
       }
     }
 
@@ -1277,28 +1245,63 @@ export class BattleManager {
    */
   private executeEnemyTurn(): void {
     this.addLog('enemy_turn', '敌人回合开始');
-    
-    // 按速度排序敌人
+
+    // 按先手值+速度排序敌人
     const sortedEnemies = [...this.enemies]
       .filter(e => !e.isDead)
-      .sort((a, b) => b.getActualSpeed() - a.getActualSpeed());
-    
+      .sort((a, b) => this.compareActionOrder(a, b));
+
     // 执行每个敌人的行动
     for (const enemy of sortedEnemies) {
       if (enemy.isDead) continue;
-      
+
       const decision = enemy.decideAction();
       this.executeEnemyAction(enemy, decision);
-      
+
       // 检查玩家是否全灭
       if (this.checkAllPlayersDead()) {
         this.endBattle(BattleResult.DEFEAT, '玩家全灭');
         return;
       }
     }
-    
+
     // 敌人回合结束，进入下一回合
     this.endTurn();
+  }
+
+  /**
+   * 比较两个单位的行动顺序
+   * 先手值高的优先出手，先手值相同时速度高的优先
+   */
+  private compareActionOrder(a: CombatUnit, b: CombatUnit): number {
+    const priorityA = this.getUnitPriority(a);
+    const priorityB = this.getUnitPriority(b);
+
+    // 先比较先手值
+    if (priorityA !== priorityB) {
+      return priorityB - priorityA; // 先手值高的在前
+    }
+
+    // 先手值相同时，按速度排序
+    return b.getActualSpeed() - a.getActualSpeed();
+  }
+
+  /**
+   * 获取单位的先手值
+   * 考虑技能和Buff的先手加成
+   */
+  private getUnitPriority(unit: CombatUnit): number {
+    let priority = 0;
+
+    // 检查是否有先手相关的Buff效果
+    for (const buff of unit.buffs) {
+      if (buff.type === BuffType.FLOW) {
+        // 流水状态：速度+1级间接提升先手
+        priority += 1;
+      }
+    }
+
+    return priority;
   }
   
   /**

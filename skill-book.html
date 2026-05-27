@@ -100,6 +100,10 @@
     .el-dragon.active { background: #bf5af2; color: #fff; }
     .el-psychic { background: rgba(236,64,122,0.15); color: #ec407a; }
     .el-psychic.active { background: #ec407a; color: #fff; }
+    .el-buff { background: rgba(52,199,89,0.15); color: #34c759; }
+    .el-buff.active { background: #34c759; color: #000; }
+    .el-debuff { background: rgba(255,69,58,0.15); color: #ff453a; }
+    .el-debuff.active { background: #ff453a; color: #fff; }
 
     /* 属性介绍 */
     .element-intro {
@@ -123,7 +127,35 @@
     }
     .intro-name { font-size: 17px; font-weight: 600; }
     .intro-style { font-size: 13px; color: #8e8e93; margin-bottom: 8px; }
-    .intro-desc { font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.5; }
+    .intro-desc { font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.5; margin-bottom: 12px; }
+
+    /* 特性系统样式 */
+    .intro-traits {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: rgba(255,204,0,0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(255,204,0,0.2);
+    }
+    .trait-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #ffd60a;
+      margin-bottom: 8px;
+    }
+    .trait-item {
+      font-size: 12px;
+      color: rgba(255,255,255,0.8);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .trait-item:last-child { margin-bottom: 0; }
+    .trait-name {
+      color: #ffd60a;
+      font-weight: 500;
+    }
 
     /* 分隔标题 */
     .section-title {
@@ -194,6 +226,100 @@
 
     /* 底部留白 */
     .bottom-space { height: 40px; }
+
+    /* Buff/Debuff 标签页样式 */
+    .buff-tabs {
+      display: flex;
+      gap: 8px;
+    }
+    .buff-tab {
+      padding: 6px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.05);
+    }
+    .buff-tab.active {
+      background: #fff;
+      color: #000;
+    }
+
+    /* Buff卡片样式 */
+    .buff-card, .debuff-card {
+      margin: 0 16px 16px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .buff-card-header, .debuff-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .buff-name, .debuff-name {
+      font-size: 17px;
+      font-weight: 600;
+    }
+    .buff-badge {
+      background: rgba(52,199,89,0.2);
+      color: #34c759;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .debuff-badge {
+      background: rgba(255,69,58,0.2);
+      color: #ff453a;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .buff-effect {
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+    .buff-attr {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 6px 16px;
+      font-size: 13px;
+    }
+    .buff-attr-label {
+      color: #8e8e93;
+    }
+    .buff-attr-value {
+      color: #fff;
+    }
+
+    /* Buff效果表 */
+    .buff-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+    .buff-table th, .buff-table td {
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      font-size: 13px;
+    }
+    .buff-table th {
+      color: #8e8e93;
+      font-weight: 500;
+    }
+    .buff-table td {
+      color: rgba(255,255,255,0.8);
+    }
+
+    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -216,6 +342,8 @@
         <div class="element-tab el-rock" data-el="rock">岩</div>
         <div class="element-tab el-dragon" data-el="dragon">龙</div>
         <div class="element-tab el-psychic" data-el="psychic">超能</div>
+        <div class="element-tab el-buff" data-el="buff">Buff</div>
+        <div class="element-tab el-debuff" data-el="debuff">Debuff</div>
       </div>
     </div>
 
@@ -244,16 +372,7 @@
         <div class="intro-name">草属性</div>
       </div>
       <div class="intro-style">光环流 / 增益流</div>
-      <div class="intro-desc">厚积薄发的自然之力，以时间换力量。核心机制：层数叠加、持续增益、消耗型爆发。</div>
-    </div>
-
-    <div class="element-intro" id="intro-electric">
-      <div class="intro-header">
-        <div class="intro-dot" style="background:#ffd60a"></div>
-        <div class="intro-name">电属性</div>
-      </div>
-      <div class="intro-style">多段伤害流 / 快攻流</div>
-      <div class="intro-desc">雷霆万钧的多段艺术，用速度淹没一切。核心机制：多段伤害、连击次数加成、速度压制。</div>
+      <div class="intro-desc">核心机制：光能汇聚（层数无限叠加）、芬芳环境（环境型技能8能量）、养分循环。厚积薄发的自然之力，以时间换力量。</div>
     </div>
 
     <div class="element-intro" id="intro-ice">
@@ -262,7 +381,23 @@
         <div class="intro-name">冰属性</div>
       </div>
       <div class="intro-style">冰霜蓄力流</div>
-      <div class="intro-desc">冰霜如狱的层层束缚，以破冰斩毁灭目标。核心机制：冰霜叠加（3层触发冻结）、冰霜代价（每层+1技能消耗）、破冰双倍伤害。</div>
+      <div class="intro-desc">冰霜如狱的层层束缚，以冻结控制目标。核心机制：冰霜叠加（每层降速）、极寒印记（能耗+2）、冻结控制（5层冻结）。</div>
+    </div>
+
+    <div class="element-intro" id="intro-electric">
+      <div class="intro-header">
+        <div class="intro-dot" style="background:#ffd60a"></div>
+        <div class="intro-name">电属性</div>
+      </div>
+      <div class="intro-style">多段伤害流 / 电荷蓄能</div>
+      <div class="intro-desc">雷霆万钧的爆发美学，蓄满临界的一击必杀。核心机制：电荷积累（每层+20%威力，上限5层）、电磁脉冲（消耗电荷爆发）、临界（蓄满5层时伤害翻倍+范围连锁）。</div>
+      <div class="intro-traits">
+        <div class="trait-title">特性系统</div>
+        <div class="trait-item"><span class="trait-name">静电亲和</span> 攻击时额外+1电荷</div>
+        <div class="trait-item"><span class="trait-name">电磁感应</span> 电荷≥3层时速度+15%</div>
+        <div class="trait-item"><span class="trait-name">放电体质</span> 受攻击时攻击者获得静电debuff</div>
+        <div class="trait-item"><span class="trait-name">绝缘体质</span> 免疫麻痹状态</div>
+      </div>
     </div>
 
     <div class="element-intro" id="intro-rock">
@@ -292,14 +427,215 @@
       <div class="intro-desc">心灵异能的迷雾，让对手在猜谜中犯错。核心机制：延迟触发、信息操控、心理博弈。</div>
     </div>
 
+    <!-- Buff介绍 -->
+    <div class="element-intro" id="intro-buff">
+      <div class="intro-header">
+        <div class="intro-dot" style="background:#34c759"></div>
+        <div class="intro-name">Buff 效果</div>
+      </div>
+      <div class="intro-style">强化状态 / 正面效果</div>
+      <div class="intro-desc">Buff是强化己方的正面状态效果，可以提升属性、获得特殊能力或产生持续增益。合理利用Buff是取得战斗胜利的关键。</div>
+    </div>
+
+    <!-- Debuff介绍 -->
+    <div class="element-intro" id="intro-debuff">
+      <div class="intro-header">
+        <div class="intro-dot" style="background:#ff453a"></div>
+        <div class="intro-name">Debuff 效果</div>
+      </div>
+      <div class="intro-style">弱化状态 / 负面效果</div>
+      <div class="intro-desc">Debuff是削弱敌方的负面状态效果，可以降低属性、限制行动或造成持续伤害。控制流和消耗战的核心手段。</div>
+    </div>
+
     <!-- 技能内容 -->
     <div id="skillsContainer"></div>
+
+    <!-- Buff内容 -->
+    <div id="buffContainer" class="hidden"></div>
+
+    <!-- Debuff内容 -->
+    <div id="debuffContainer" class="hidden"></div>
+
     <div class="bottom-space"></div>
   </div>
 
 <script src="skills-data.js"></script>
 <script>
 let current = 'fire';
+
+// Buff数据
+const BUFF_DB = {
+  water_soak: {
+    name: '浸透',
+    type: 'debuff',
+    effect: '特防-1级/层',
+    maxStacks: 6,
+    duration: 2,
+    refreshOnStack: true,
+    source: '水流冲击',
+    table: [
+      { stacks: 0, spdef: '0', damage_taken: '100%' },
+      { stacks: 1, spdef: '-1', damage_taken: '109%' },
+      { stacks: 2, spdef: '-2', damage_taken: '118%' },
+      { stacks: 3, spdef: '-3', damage_taken: '127%' },
+      { stacks: 4, spdef: '-4', damage_taken: '136%' },
+      { stacks: 5, spdef: '-5', damage_taken: '145%' },
+      { stacks: 6, spdef: '-6', damage_taken: '154%' }
+    ]
+  },
+  defense_up_70: {
+    name: '减伤（70%）',
+    type: 'buff',
+    effect: '受到伤害降低70%',
+    duration: 1,
+    source: '水之守护'
+  },
+  clear_spring: {
+    name: '清泉',
+    type: 'buff',
+    effect: '每回合恢复10%HP，清除1个Debuff',
+    duration: 3,
+    source: '清泉护盾'
+  },
+  flow: {
+    name: '流水',
+    type: 'buff',
+    effect: '速度+1级',
+    duration: 2,
+    source: '水疗之术'
+  },
+  // 草属性 Buff
+  light_gather: {
+    name: '光能汇聚',
+    type: 'buff',
+    effect: '使用其他草系技能后，下次草系输出技能威力+60',
+    maxStacks: 3,
+    duration: 999,
+    source: '光能聚集、纤维化'
+  },
+  fragrant_env: {
+    name: '芬芳环境',
+    type: 'buff',
+    effect: '己方草系技能伤害+25%，每回合回复5%HP',
+    duration: 4,
+    source: '芬芳绽放、韶光'
+  },
+  counter_stance: {
+    name: '防反之姿',
+    type: 'buff',
+    effect: '敌方攻击时反弹60%伤害，反弹后获得先手+1',
+    duration: 1,
+    source: '防反之姿'
+  },
+  nutrient: {
+    name: '养分汲取',
+    type: 'buff',
+    effect: '能量回复加成',
+    duration: 999,
+    source: '养分汲取'
+  },
+  // 电属性 Buff
+  charge: {
+    name: '电荷',
+    type: 'buff',
+    effect: '电属性核心资源，每层+20%电属性技能威力，上限5层',
+    maxStacks: 5,
+    duration: 999,
+    refreshOnStack: true,
+    source: '电光一闪、蓄电护体',
+    table: [
+      { stacks: 0, bonus: '+0', base: 150, emp: 150, emp_crit: 300 },
+      { stacks: 1, bonus: '+20', base: 170, emp: 170, emp_crit: 340 },
+      { stacks: 2, bonus: '+40', base: 190, emp: 190, emp_crit: 380 },
+      { stacks: 3, bonus: '+60', base: 210, emp: 210, emp_crit: 420 },
+      { stacks: 4, bonus: '+80', base: 230, emp: 230, emp_crit: 460 },
+      { stacks: 5, bonus: '+100', base: 250, emp: 250, emp_crit: 500 }
+    ]
+  },
+  overload: {
+    name: '超载',
+    type: 'buff',
+    effect: '下一次攻击附带连锁效果',
+    duration: 1,
+    source: '电磁脉冲（临界时）'
+  },
+  electric_field: {
+    name: '电场',
+    type: 'buff',
+    effect: '己方全体电荷积累速度翻倍',
+    duration: 3,
+    source: '电场展开'
+  },
+  static_body: {
+    name: '蓄电护体',
+    type: 'buff',
+    effect: '本回合减伤50%，回合结束时额外+1层电荷',
+    duration: 1,
+    source: '蓄电护体'
+  },
+  electric_deflect: {
+    name: '电磁偏转',
+    type: 'buff',
+    effect: '本回合获得70%闪避，被击中时自动反击20威力电属性伤害',
+    duration: 1,
+    source: '电磁偏转'
+  }
+};
+
+// Debuff数据
+const DEBUFF_DB = {
+  slow: {
+    name: '减速',
+    type: 'debuff',
+    effect: '速度-1级',
+    duration: 2,
+    source: '水炮'
+  },
+  drowning_status: {
+    name: '溺水',
+    type: 'debuff',
+    effect: '下一次能量消耗>3的技能伤害-30%',
+    duration: 3,
+    source: '漩涡'
+  },
+  // 草属性 Debuff
+  tangle: {
+    name: '缠绕',
+    type: 'debuff',
+    effect: '速度-2级',
+    duration: 2,
+    source: '藤蔓护甲'
+  },
+  parasite: {
+    name: '寄生',
+    type: 'debuff',
+    effect: '每回合受到施法者HP的6%伤害，施法者回复等量HP',
+    duration: 4,
+    source: '寄生之种'
+  },
+  wither: {
+    name: '枯萎',
+    type: 'debuff',
+    effect: '每回合受到自身属性10点威力草属性伤害/层，可叠加',
+    duration: 2,
+    source: '叶绿光束（芬芳环境时）'
+  },
+  // 电属性 Debuff
+  static: {
+    name: '静电',
+    type: 'debuff',
+    effect: '受到攻击时概率释放静电，对攻击者造成反伤',
+    duration: 3,
+    source: '交叉闪电'
+  },
+  paralysis: {
+    name: '麻痹',
+    type: 'debuff',
+    effect: '速度-1级，有概率跳过回合',
+    duration: 2,
+    source: '10万伏特'
+  }
+};
 
 document.querySelectorAll('.element-tab').forEach(tab => {
   tab.addEventListener('click', () => switchEl(tab.dataset.el));
@@ -309,7 +645,28 @@ function switchEl(el) {
   current = el;
   document.querySelectorAll('.element-tab').forEach(t => t.classList.toggle('active', t.dataset.el === el));
   document.querySelectorAll('.element-intro').forEach(i => i.classList.toggle('show', i.id === 'intro-' + el));
-  render();
+
+  // 控制容器显示/隐藏
+  const skillsContainer = document.getElementById('skillsContainer');
+  const buffContainer = document.getElementById('buffContainer');
+  const debuffContainer = document.getElementById('debuffContainer');
+
+  if (el === 'buff') {
+    skillsContainer.classList.add('hidden');
+    debuffContainer.classList.add('hidden');
+    buffContainer.classList.remove('hidden');
+    renderBuffs();
+  } else if (el === 'debuff') {
+    skillsContainer.classList.add('hidden');
+    buffContainer.classList.add('hidden');
+    debuffContainer.classList.remove('hidden');
+    renderDebuffs();
+  } else {
+    skillsContainer.classList.remove('hidden');
+    buffContainer.classList.add('hidden');
+    debuffContainer.classList.add('hidden');
+    render();
+  }
 }
 
 function render() {
@@ -329,7 +686,8 @@ function render() {
       let powerHtml = '';
       if (s.p) powerHtml = `<div style="color:#ff453a;font-size:14px;font-weight:600;margin-bottom:8px">威力 ${s.p}</div>`;
       else if (s.s) powerHtml = `<div style="color:#0a84ff;font-size:14px;font-weight:600;margin-bottom:8px">护盾 ${s.s}</div>`;
-      const tagsHtml = s.tags.map(t => `<span class="skill-tag">${t}</span>`).join('');
+      let tagsHtml = s.tags.map(t => `<span class="skill-tag">${t}</span>`).join('');
+      let priorityHtml = s.priority ? `<div style="color:#ffd60a;font-size:12px;margin-bottom:6px">⚡ 先手+${s.priority}</div>` : '';
       html += `
         <div class="skill-card">
           <div class="skill-header">
@@ -338,6 +696,7 @@ function render() {
               <div class="skill-energy">${s.e === 0 ? '免费' : s.e + ' 能量'}</div>
             </div>
           </div>
+          ${priorityHtml}
           <div class="skill-meta">
             <span class="skill-badge ${badge}">${sec.label}</span>
             <span class="skill-badge badge-target">${s.t}</span>
@@ -349,6 +708,72 @@ function render() {
     });
   });
   document.getElementById('skillsContainer').innerHTML = html || '<div style="text-align:center;color:#8e8e93;padding:40px">无技能</div>';
+}
+
+function renderBuffs() {
+  let html = '';
+  for (const key in BUFF_DB) {
+    const b = BUFF_DB[key];
+    html += `
+      <div class="buff-card">
+        <div class="buff-card-header">
+          <div class="buff-name">${b.name}</div>
+          <div class="buff-badge">Buff</div>
+        </div>
+        <div class="buff-effect">${b.effect}</div>
+        <div class="buff-attr">
+          <span class="buff-attr-label">持续时间</span>
+          <span class="buff-attr-value">${b.duration}回合</span>
+          <span class="buff-attr-label">获取来源</span>
+          <span class="buff-attr-value">${b.source}</span>
+          ${b.maxStacks ? '<span class="buff-attr-label">最高层数</span><span class="buff-attr-value">' + b.maxStacks + '层</span>' : ''}
+          ${b.refreshOnStack ? '<span class="buff-attr-label">叠加刷新时间</span><span class="buff-attr-value">是</span>' : ''}
+        </div>`;
+
+    // 如果有层数表，添加表格
+    if (b.table) {
+      // 根据表格内容决定表头
+      let tableHeaders = '<tr><th>层数</th><th>威力加成</th>';
+      if (b.name === '电荷') {
+        tableHeaders += '<th>基础伤害</th><th>电磁脉冲</th><th>临界伤害</th></tr>';
+      } else {
+        tableHeaders += '<th>水流冲击(60)</th><th>水炮(90)</th><th>漩涡(120)</th></tr>';
+      }
+      html += `<table class="buff-table"><thead>${tableHeaders}</thead><tbody>`;
+      b.table.forEach(row => {
+        if (b.name === '电荷') {
+          html += `<tr><td>${row.stacks}层</td><td>${row.bonus}威力</td><td>${row.base}</td><td>${row.emp}</td><td>${row.emp_crit}</td></tr>`;
+        } else {
+          html += `<tr><td>${row.stacks}层</td><td>${row.bonus}威力</td><td>${row.jet60}</td><td>${row.pump90}</td><td>${row.vortex120}</td></tr>`;
+        }
+      });
+      html += `</tbody></table>`;
+    }
+    html += `</div>`;
+  }
+  document.getElementById('buffContainer').innerHTML = html || '<div style="text-align:center;color:#8e8e93;padding:40px">无Buff</div>';
+}
+
+function renderDebuffs() {
+  let html = '';
+  for (const key in DEBUFF_DB) {
+    const d = DEBUFF_DB[key];
+    html += `
+      <div class="debuff-card">
+        <div class="debuff-card-header">
+          <div class="debuff-name">${d.name}</div>
+          <div class="debuff-badge">Debuff</div>
+        </div>
+        <div class="buff-effect">${d.effect}</div>
+        <div class="buff-attr">
+          <span class="buff-attr-label">持续时间</span>
+          <span class="buff-attr-value">${d.duration}回合</span>
+          <span class="buff-attr-label">获取来源</span>
+          <span class="buff-attr-value">${d.source}</span>
+        </div>
+      </div>`;
+  }
+  document.getElementById('debuffContainer').innerHTML = html || '<div style="text-align:center;color:#8e8e93;padding:40px">无Debuff</div>';
 }
 
 switchEl('fire');

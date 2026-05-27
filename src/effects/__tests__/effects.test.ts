@@ -12,17 +12,12 @@ import {
   IceResistBuff,
   FireShieldBuff,
   WallOfFireBuff,
-  HeatCounterBuff,
   FlameChargeBuff,
   BlazeWillBuff,
   WaterShieldBuff,
   ClearSpringBuff,
   FlowBuff,
   WaterResistBuff,
-  StaticShieldBuff,
-  ComboChargeBuff,
-  ElectricFieldBuff,
-  ThunderFuryBuff,
   // Debuff类
   Debuff,
   SlowDebuff,
@@ -32,10 +27,7 @@ import {
   BurnMarkDebuff,
   CombustionMarkDebuff,
   WetDebuff,
-  DrowningDebuff,
   TurbulenceDebuff,
-  StaticDebuff,
-  ElectricShockDebuff,
   FreezeDebuff
 } from '../index';
 import { BuffType, DebuffType } from '../../types';
@@ -122,14 +114,6 @@ describe('Buff 效果系统测试', () => {
       expect(buff.getResistMultiplier('water')).toBe(1);
     });
 
-    it('HeatCounterBuff - 灼热反击', () => {
-      const buff = new HeatCounterBuff(2, 0.5);
-      
-      expect(buff.name).toBe('灼热反击');
-      expect(buff.type).toBe(BuffType.HEAT_COUNTER);
-      expect(buff.getCounterDamage(100)).toBe(50);
-    });
-
     it('FlameChargeBuff - 蓄焰', () => {
       const buff = new FlameChargeBuff(3, 0.5);
       
@@ -191,61 +175,6 @@ describe('Buff 效果系统测试', () => {
       expect(buff.name).toBe('水抗');
       expect(buff.type).toBe(BuffType.WATER_RESIST);
       expect(buff.getResistMultiplier()).toBe(0.7);
-    });
-  });
-
-  describe('电属性 Buff', () => {
-    it('StaticShieldBuff - 静电护盾', () => {
-      const buff = new StaticShieldBuff(50);
-      
-      expect(buff.name).toBe('静电护盾');
-      expect(buff.type).toBe(BuffType.STATIC_SHIELD);
-      
-      // 测试吸收伤害积累静电
-      buff.absorbDamage(30);
-      expect(buff.staticCharge).toBe(3);
-      
-      // 测试消耗静电
-      const charge = buff.consumeStaticCharge();
-      expect(charge).toBe(3);
-      expect(buff.staticCharge).toBe(0);
-    });
-
-    it('ComboChargeBuff - 连击充能', () => {
-      const buff = new ComboChargeBuff(5);
-      
-      expect(buff.name).toBe('连击充能');
-      expect(buff.type).toBe(BuffType.COMBO_CHARGE);
-      expect(buff.getComboMultiplier()).toBe(1);
-      
-      buff.addCombo();
-      expect(buff.comboCount).toBe(1);
-      expect(buff.getComboMultiplier()).toBe(1.2);
-      
-      buff.resetCombo();
-      expect(buff.comboCount).toBe(0);
-    });
-
-    it('ElectricFieldBuff - 电场加速', () => {
-      const buff = new ElectricFieldBuff(3);
-      
-      expect(buff.name).toBe('电场加速');
-      expect(buff.type).toBe(BuffType.ELECTRIC_FIELD);
-      
-      buff.addLayer();
-      expect(buff.fieldLayers).toBe(1);
-      expect(buff.getSpeedBonus()).toBe(0.15);
-    });
-
-    it('ThunderFuryBuff - 雷霆之势', () => {
-      const buff = new ThunderFuryBuff(2, 0.5);
-      
-      expect(buff.name).toBe('雷霆之势');
-      expect(buff.type).toBe(BuffType.THUNDER_FURY);
-      
-      const chainInfo = buff.getChainInfo();
-      expect(chainInfo.count).toBe(2);
-      expect(chainInfo.multiplier).toBe(0.5);
     });
   });
 });
@@ -337,50 +266,12 @@ describe('Debuff 效果系统测试', () => {
       expect(debuff.getElectricDamageMultiplier()).toBe(1.3);
     });
 
-    it('DrowningDebuff - 溺亡', () => {
-      const mockUnit = createMockUnit(100);
-      const debuff = new DrowningDebuff(3, 0.06);
-      
-      expect(debuff.name).toBe('溺亡');
-      expect(debuff.type).toBe(DebuffType.DROWNING);
-      
-      debuff.onTurnStart(mockUnit);
-      expect(mockUnit.currentHp).toBe(94); // 100 - 100*0.06 = 94
-    });
-
     it('TurbulenceDebuff - 湍流', () => {
       const debuff = new TurbulenceDebuff(2, 1);
       
       expect(debuff.name).toBe('湍流');
       expect(debuff.type).toBe(DebuffType.TURBULENCE);
       expect(debuff.getEnergyIncrease()).toBe(1);
-    });
-  });
-
-  describe('电属性 Debuff', () => {
-    it('StaticDebuff - 静电', () => {
-      const debuff = new StaticDebuff(3, 15);
-      
-      expect(debuff.name).toBe('静电');
-      expect(debuff.type).toBe(DebuffType.STATIC);
-      
-      debuff.addBuildup(10);
-      expect(debuff.staticBuildup).toBe(10);
-      
-      const damage = debuff.discharge();
-      expect(damage).toBe(25); // 10 + 15
-      expect(debuff.staticBuildup).toBe(0);
-    });
-
-    it('ElectricShockDebuff - 电疗', () => {
-      const mockUnit = createMockUnit(100);
-      const debuff = new ElectricShockDebuff(3, 10, 0.25);
-      
-      expect(debuff.name).toBe('电疗');
-      expect(debuff.type).toBe(DebuffType.ELECTRIC_SHOCK);
-      
-      debuff.onTurnStart(mockUnit);
-      expect(mockUnit.currentHp).toBe(90);
     });
   });
 });

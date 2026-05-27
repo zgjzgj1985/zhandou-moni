@@ -6,7 +6,7 @@
  * 
  * 技能分类：
  * - 攻击倾向（4种）：火花、烈焰拳、大字爆炎、爆炸烈焰
- * - 防御倾向（3种）：火盾、烈焰壁垒、灼热反击
+ * - 防御倾向（2种）：火盾、烈焰壁垒
  * - 辅助倾向（3种）：蓄焰、燃尽、炎之意志
  */
 
@@ -120,37 +120,34 @@ export const FLARE_BLITZ: Skill = (() => {
 
 /**
  * 【攻击倾向4】爆炸烈焰
- * 终极爆发技能，蓄力1回合后造成150威力火属性伤害
- * 蓄力期间脆弱，若被攻击则技能取消
- * 攻击后使目标灼烧（必定生效，4层）
- * 每层灼烧回合结束时造成2%最大生命伤害，层数减半
+ * 终极爆发技能，6段多段伤害，每段必定灼烧
+ * 每次命中必定使目标灼烧
  */
 export const EXPLOSION_FLAME: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'explosion_flame',
     name: '爆炸烈焰',
-    description: '蓄力1回合后发动，造成150威力火属性伤害，必定使目标灼烧（4层）【每层2%最大HP伤害，层数减半】【蓄力可被打断】',
+    description: '6段火属性攻击（共150威力），每次命中必定灼烧（每次1层）【每层2%最大HP伤害，层数减半】',
     type: 'action',
     energyCost: 5,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
-    chargeTurns: 1,
-    canBeInterrupted: true,
     effects: [{
       damage: {
-        basePower: 150,
-        damageType: DamageType.SPECIAL,
+        basePower: 25,  // 150 / 6 ≈ 25每段
+        damageType: DamageType.MULTI_HIT,
+        hits: 6,        // 6段攻击
         element: ElementType.FIRE
       },
       applyDebuff: {
         debuffType: 'burn',
         duration: 3,
-        stacks: 4,
+        stacks: 1,      // 每次命中1层灼烧
         successRate: 1.0  // 必定灼伤
       }
     }],
     category: '火属性爆发流·攻击',
-    tags: ['火', '爆发流', '攻击', '终极', '蓄力', '必定灼烧', '4层灼烧']
+    tags: ['火', '爆发流', '攻击', '终极', '多段伤害', '必定灼烧']
   };
   return new Skill(definition);
 })();
@@ -211,36 +208,6 @@ export const WALL_OF_FLAMES: Skill = (() => {
     }],
     category: '火属性爆发流·防御',
     tags: ['火', '爆发流', '防御', '减伤', '火攻强化']
-  };
-  return new Skill(definition);
-})();
-
-/**
- * 【防御倾向3】灼热反击
- * 获得「灼热反击」状态，持续2回合
- * 受到攻击时反弹火属性伤害（伤害值=受到伤害的50%）
- */
-export const HEAT_COUNTER: Skill = (() => {
-  const definition: SkillDefinition = {
-    id: 'heat_counter',
-    name: '灼热反击',
-    description: '获得「灼热反击」状态（持续2回合），受攻击时反弹50%伤害的火属性反击',
-    type: 'action',
-    energyCost: 3,
-    target: SkillTarget.SELF,
-    tendency: SkillTendency.DEFENSE,
-    effects: [{
-      applyBuff: {
-        buffType: 'heat_counter',
-        duration: 2
-      },
-      special: {
-        type: 'counter',
-        value: 0.5  // 50%反弹
-      }
-    }],
-    category: '火属性爆发流·防御',
-    tags: ['火', '爆发流', '防御', '反击', '反伤']
   };
   return new Skill(definition);
 })();
@@ -354,11 +321,10 @@ export const FIRE_BURST_SKILLS = {
     EXPLOSION_FLAME
   },
   
-  // 防御倾向（3种）
+  // 防御倾向（2种）
   DEFENSE: {
     FIRE_SHIELD_SKILL,
-    WALL_OF_FLAMES,
-    HEAT_COUNTER
+    WALL_OF_FLAMES
   },
   
   // 辅助倾向（3种）
@@ -376,7 +342,6 @@ export const FIRE_BURST_SKILLS = {
     EXPLOSION_FLAME,
     FIRE_SHIELD_SKILL,
     WALL_OF_FLAMES,
-    HEAT_COUNTER,
     FLAME_CHARGE_SKILL,
     COMBUSTION,
     BLAZE_WILL

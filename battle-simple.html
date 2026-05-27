@@ -257,29 +257,9 @@
           { id: 'armor', name: '蟹钳加固', type: 'shield', energyCost: ENERGY_COST.medium, target: 'self', power: 40,
             description: '强化自身防御，施加40点护盾' },
           { id: 'water_jet', name: '水流冲击', type: 'water', energyCost: ENERGY_COST.medium, target: 'single_enemy', power: 60, element: 'water',
-            strategy: 'counter_first', effect: 'wet', description: '攻击单体目标，造成60威力水属性伤害，附加「潮湿」（受到电属性攻击时额外承受30%伤害）' },
+            strategy: 'counter_first', effect: 'water_soak', description: '攻击单体目标，造成60威力水属性伤害，目标获得「浸透」（特防-1级/层，最多6层，持续2回合）' },
           { id: 'tide_shield', name: '潮汐护盾', type: 'shield', energyCost: ENERGY_COST.medium, target: 'ally', power: 60,
             strategy: 'lowest_hp', description: '召唤潮汐之力保护队友，施加60点护盾' }
-        ]
-      },
-      {
-        id: 'lightning_marten',
-        name: '闪电貂',
-        level: 10,
-        maxHp: 75,
-        currentHp: 75,
-        speed: 120,
-        element: 'electric',
-        energy: MAX_ENERGY,
-        skills: [
-          { id: 'zap', name: '电光斩', type: 'special', energyCost: ENERGY_COST.low, target: 'single_enemy', power: 45, element: 'electric',
-            strategy: 'counter_first', effect: 'paralyze', paralyzeChance: 0.35, speedBoost: 1, description: '如闪电般快速的斩击，造成45威力伤害，35%概率使目标麻痹（持续1回合无法使用攻击技能），先手攻击' },
-          { id: 'combo', name: '雷霆连击', type: 'special', energyCost: ENERGY_COST.medium, target: 'single_enemy', power: 75, element: 'electric',
-            strategy: 'counter_first', effect: 'combo', comboHits: 3, comboPower: 25, description: '连续攻击造成大量伤害，共75威力（25×3）' },
-          { id: 'static_shield', name: '静电护盾', type: 'shield', energyCost: ENERGY_COST.medium, target: 'ally', power: 50, effect: 'static',
-            strategy: 'lowest_hp', description: '积累静电形成护盾，可反射50%特殊伤害，下次攻击附带额外伤害' },
-          { id: 'charge', name: '充能加速', type: 'buff', energyCost: ENERGY_COST.medium, target: 'self', power: 0,
-            speedBoost: 2, comboCharge: true, description: '积蓄电荷，大幅提升自身速度（+2级），获得「连击次数」状态（初始1层）' }
         ]
       }
     ];
@@ -727,7 +707,12 @@ syncSkillDescriptions();
           slow: '目标速度-1级',
           stun: '30%概率使目标昏迷1回合',
           reflect: '反射50%受到的特殊伤害',
-          barrier: '免疫下一次攻击'
+          barrier: '免疫下一次攻击',
+          paralyze: '目标麻痹',
+          combo: '多段攻击',
+          priority: '先手+1',
+          static_body: '蓄电护体：减伤+蓄电',
+          chain_damage: '连锁效果：扩散伤害'
         };
         const effectText = effectNames[skill.effect] || skill.effect;
         html += `<div class="skill-tooltip-effect">效果: ${effectText}</div>`;
@@ -1156,7 +1141,7 @@ syncSkillDescriptions();
         if (skill.effect === 'wet') {
           target.wet = true;
           target.wetTurns = 3;
-          addLog(`${target.name} 陷入潮湿状态！（受到电属性攻击额外承受30%伤害，速度-10%）`, 'debuff');
+          addLog(`${target.name} 陷入潮湿状态！（受到电属性攻击额外承受30%伤害）`, 'debuff');
         }
 
         updateHpBar(target);

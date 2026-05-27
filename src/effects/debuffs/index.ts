@@ -4,6 +4,7 @@
  */
 
 import { DebuffType } from '../../types';
+import { StaticDebuff } from './electric-debuffs-v2';
 
 /**
  * 前向引用CombatUnit（避免循环依赖）
@@ -270,27 +271,27 @@ export class FreezeDebuff extends Debuff {
 
 /**
  * 冰霜debuff v4.0：冰属性·冰霜蓄力流
- * 每层冰霜使目标所有技能消耗+1能量
- * 冰系技能命中叠加层数，达到3层时自动转化为冻结
+ * 每层冰霜使目标速度-1级
+ * 冰系技能命中叠加层数，达到5层时自动转化为冻结
  */
 export class FrostDebuff extends Debuff {
   maxStacks: number;
   
-  constructor(stacks: number = 1, duration: number = 999, maxStacks: number = 3) {
+  constructor(stacks: number = 1, duration: number = 999, maxStacks: number = 5) {
     super('冰霜', DebuffType.FROST, stacks, duration);
     this.maxStacks = maxStacks;
   }
 
   /**
-   * 获取冰霜代价（额外技能消耗）
+   * 获取冰霜代价（速度降低级数）
    */
-  getFrostCost(): number {
+  getFrostSpeedPenalty(): number {
     return this.stacks;
   }
 
   /**
    * 添加冰霜层数
-   * @returns 是否触发冻结（达到3层）
+   * @returns 是否触发冻结（达到5层）
    */
   addStacks(amount: number): boolean {
     this.stacks = Math.min(this.stacks + amount, this.maxStacks);
@@ -321,28 +322,53 @@ export class FrostDebuff extends Debuff {
 
 /**
  * 冰霜印记debuff：冰属性·冰霜蓄力流
- * 下次受到冰属性攻击时，冻结概率+30%
+ * 持续期间受到冰属性攻击时，有概率附加1层冰霜
  */
 export class FrostMarkDebuff extends Debuff {
-  freezeBonus: number;
-  
-  constructor(duration: number = 3, freezeBonus: number = 0.3) {
+  frostChance: number;  // 附加冰霜的概率
+
+  constructor(duration: number = 2, frostChance: number = 0.25) {
     super('冰霜印记', DebuffType.FROST_MARK, 1, duration);
-    this.freezeBonus = freezeBonus;
+    this.frostChance = frostChance;
   }
-  
-  getFreezeBonus(): number {
-    return this.freezeBonus;
+
+  getFrostChance(): number {
+    return this.frostChance;
   }
-  
+
+  tryApplyFrost(): boolean {
+    return Math.random() < this.frostChance;
+  }
+
+  clone(): FrostMarkDebuff {
+    const cloned = new FrostMarkDebuff(this.remainingDuration, this.frostChance);
+    return cloned;
+  }
+}
+
+/**
+ * 极寒印记debuff：冰属性·冰霜蓄力流
+ * 下次使用技能时，能量消耗+2
+ */
+export class ExtremeColdMarkDebuff extends Debuff {
+  energyPenalty: number;
+
+  constructor(energyPenalty: number = 2) {
+    super('极寒印记', DebuffType.EXTREME_COLD_MARK, 1, 999);
+    this.energyPenalty = energyPenalty;
+  }
+
+  getEnergyPenalty(): number {
+    return this.energyPenalty;
+  }
+
   consume(): void {
     this.remainingDuration = 0;
     this.stacks = 0;
   }
-  
-  clone(): FrostMarkDebuff {
-    const cloned = new FrostMarkDebuff(this.remainingDuration, this.freezeBonus);
-    return cloned;
+
+  clone(): ExtremeColdMarkDebuff {
+    return new ExtremeColdMarkDebuff(this.energyPenalty);
   }
 }
 
@@ -539,28 +565,6 @@ export class WetDebuff extends Debuff {
 }
 
 /**
- * 溺亡debuff：水属性控制流
- * 每回合损失最大HP的6%
- */
-export class DrowningDebuff extends Debuff {
-  damagePercent: number;
-
-  constructor(duration: number = 3, damagePercent: number = 0.06) {
-    super('溺亡', DebuffType.DROWNING, 1, duration);
-    this.damagePercent = damagePercent;
-  }
-
-  onTurnStart(unit: any): void {
-    const damage = Math.floor(unit.maxHp * this.damagePercent);
-    unit.takeDamage(damage, 'drowning');
-  }
-
-  clone(): DrowningDebuff {
-    return new DrowningDebuff(this.remainingDuration, this.damagePercent);
-  }
-}
-
-/**
  * 湍流debuff：水属性控制流
  * 所有技能消耗+1能量
  */
@@ -581,60 +585,33 @@ export class TurbulenceDebuff extends Debuff {
   }
 }
 
-// ==================== 电属性·连击流专用Debuff ====================
-
 /**
- * 静电debuff：电属性连击流
- * 受到攻击时概率释放静电，对攻击者造成反伤
+ * 溺水debuff：水属性控制流
+ * 下一次能量消耗高于3的技能，造成伤害-30%
  */
-export class StaticDebuff extends Debuff {
-  staticBuildup: number;
-  damageOnHit: number;
+export class DrowningStatusDebuff extends Debuff {
+  damageReduction: number;
+  energyThreshold: number;
 
-  constructor(duration: number = 3, damageOnHit: number = 15) {
-    super('静电', DebuffType.STATIC, 1, duration);
-    this.staticBuildup = 0;
-    this.damageOnHit = damageOnHit;
+  constructor(duration: number = 3, damageReduction: number = 0.3, energyThreshold: number = 3) {
+    super('溺水', DebuffType.DROWNING_STATUS, 1, duration);
+    this.damageReduction = damageReduction;
+    this.energyThreshold = energyThreshold;
   }
 
-  addBuildup(amount: number): void {
-    this.staticBuildup += amount;
+  consumeEffect(energyCost: number): boolean {
+    return energyCost > this.energyThreshold;
   }
 
-  discharge(): number {
-    const damage = this.staticBuildup + this.damageOnHit;
-    this.staticBuildup = 0;
-    return damage;
+  getDamageMultiplier(energyCost: number): number {
+    if (energyCost > this.energyThreshold) {
+      return 1 - this.damageReduction;
+    }
+    return 1;
   }
 
-  clone(): StaticDebuff {
-    const cloned = new StaticDebuff(this.remainingDuration, this.damageOnHit);
-    cloned.staticBuildup = this.staticBuildup;
-    return cloned;
-  }
-}
-
-/**
- * 电疗debuff：电属性连击流
- * 每回合开始时受到电流伤害，但速度提升
- */
-export class ElectricShockDebuff extends Debuff {
-  damagePerTurn: number;
-  speedBonus: number;
-
-  constructor(duration: number = 3, damagePerTurn: number = 10, speedBonus: number = 0.25) {
-    super('电疗', DebuffType.ELECTRIC_SHOCK, 1, duration);
-    this.damagePerTurn = damagePerTurn;
-    this.speedBonus = speedBonus;
-  }
-
-  onTurnStart(unit: any): void {
-    unit.takeDamage(this.damagePerTurn, 'electric_shock');
-  }
-
-  clone(): ElectricShockDebuff {
-    const cloned = new ElectricShockDebuff(this.remainingDuration, this.damagePerTurn, this.speedBonus);
-    return cloned;
+  clone(): DrowningStatusDebuff {
+    return new DrowningStatusDebuff(this.remainingDuration, this.damageReduction, this.energyThreshold);
   }
 }
 
@@ -727,53 +704,38 @@ export class ParasiteDebuff extends Debuff {
   }
 }
 
-/**
- * 叶片标记debuff：草属性光环流
- * 受到草属性攻击时额外承受20%伤害
- */
-export class LeafMarkDebuff extends Debuff {
-  damageBonus: number;
-
-  constructor(duration: number = 2, damageBonus: number = 0.2) {
-    super('叶片标记', DebuffType.LEAF_MARK, 1, duration);
-    this.damageBonus = damageBonus;
-  }
-
-  getGrassDamageMultiplier(): number {
-    return 1 + this.damageBonus;
-  }
-
-  clone(): LeafMarkDebuff {
-    return new LeafMarkDebuff(this.remainingDuration, this.damageBonus);
-  }
-}
+// ==================== 草属性·光环流专用Debuff v2.0 ====================
 
 /**
- * 寄生印记debuff：草属性光环流
- * 每回合受到施法者最大HP的6%伤害，施法者回复等量HP
- * 印记可叠加
+ * 枯萎debuff：草属性光环流v2.0
+ * 每回合受到自身属性10点威力草属性伤害/层
+ * 层数可叠加
  */
-export class ParasiteMarkDebuff extends Debuff {
-  percentDamage: number;
-  casterId?: string;
+export class WitherDebuff extends Debuff {
+  damagePerStack: number;
 
-  constructor(duration: number = 4, percentDamage: number = 0.06) {
-    super('寄生印记', DebuffType.PARASITE_MARK, 1, duration);
-    this.percentDamage = percentDamage;
+  constructor(duration: number = 2, damagePerStack: number = 10) {
+    super('枯萎', DebuffType.WITHER, 1, duration);
+    this.damagePerStack = damagePerStack;
   }
 
   onTurnStart(unit: DebuffCombatUnit): void {
-    const damage = Math.floor(unit.maxHp * this.percentDamage);
-    unit.takeDamage(damage, 'parasite_mark');
+    const damage = this.stacks * this.damagePerStack;
+    unit.takeDamage(damage, 'wither');
   }
 
-  getDamagePercent(): number {
-    return this.percentDamage;
+  addStack(): void {
+    this.stacks++;
+    this.remainingDuration = this.duration;
   }
 
-  clone(): ParasiteMarkDebuff {
-    const cloned = new ParasiteMarkDebuff(this.remainingDuration, this.percentDamage);
-    cloned.casterId = this.casterId;
+  getDamagePerTurn(): number {
+    return this.stacks * this.damagePerStack;
+  }
+
+  clone(): WitherDebuff {
+    const cloned = new WitherDebuff(this.remainingDuration, this.damagePerStack);
+    cloned.stacks = this.stacks;
     return cloned;
   }
 }
@@ -839,6 +801,8 @@ export function createDebuff(
     // 冰属性·冰霜蓄力流专用Debuff
     case DebuffType.FROST_MARK:
       return new FrostMarkDebuff(duration);
+    case DebuffType.EXTREME_COLD_MARK:
+      return new ExtremeColdMarkDebuff();
     // 火属性爆发流专用Debuff
     case DebuffType.BURN_MARK:
       return new BurnMarkDebuff();
@@ -847,15 +811,8 @@ export function createDebuff(
     // 水属性控制流专用Debuff
     case DebuffType.WET:
       return new WetDebuff(duration);
-    case DebuffType.DROWNING:
-      return new DrowningDebuff(duration);
     case DebuffType.TURBULENCE:
       return new TurbulenceDebuff(duration);
-    // 电属性连击流专用Debuff
-    case DebuffType.STATIC:
-      return new StaticDebuff(duration);
-    case DebuffType.ELECTRIC_SHOCK:
-      return new ElectricShockDebuff(duration);
     // 超能属性奥秘流专用Debuff
     case DebuffType.MIND_WOUND:
       return new MindWoundDebuff(duration);
@@ -866,14 +823,19 @@ export function createDebuff(
       return new TangleDebuff(stacks, duration);
     case DebuffType.PARASITE:
       return new ParasiteDebuff(duration);
-    case DebuffType.LEAF_MARK:
-      return new LeafMarkDebuff(duration);
-    case DebuffType.PARASITE_MARK:
-      return new ParasiteMarkDebuff(duration);
+    case DebuffType.WITHER:
+      return new WitherDebuff(duration);
     // 岩石属性防御流专用Debuff
     case DebuffType.STUN:
       return new StunDebuff(duration);
+    // 电属性电磁脉冲流专用Debuff
+    case DebuffType.STATIC:
+      return new StaticDebuff(duration);
     default:
       throw new Error(`Unknown DebuffType: ${type}`);
   }
 }
+
+// ==================== 电属性电磁脉冲流专用Debuff导出 ====================
+
+export { StaticDebuff };
