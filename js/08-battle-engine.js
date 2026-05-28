@@ -1263,7 +1263,8 @@ async function executeEnemySkill(enemy, skill, target) {
       const powerPerHit = skill.comboPower || Math.floor(skill.power / hits);
 
       for (let i = 0; i < hits; i++) {
-        const hitDamage = Math.floor((powerPerHit + powerBonus) * (0.8 + Math.random() * 0.4));
+        const result = calculatePokemonDamage(enemy, target, { ...skill, power: powerPerHit + powerBonus });
+        let hitDamage = result.damage;
 
         if (target.damageReduction && target.damageReduction > 0) {
           hitDamage = Math.floor(hitDamage * (1 - target.damageReduction));
@@ -1281,7 +1282,12 @@ async function executeEnemySkill(enemy, skill, target) {
         totalDamage += hitDamage;
         target.currentHp = Math.max(0, target.currentHp - hitDamage);
         showDamageNumber(target.id, hitDamage, 'damage');
-        addLog(`${enemy.name} 使用 ${skill.name}，第${i + 1}段攻击造成 ${hitDamage} 伤害`, 'damage');
+        
+        let logMsg = `${enemy.name} 使用 ${skill.name}，第${i + 1}段攻击造成 ${hitDamage} 伤害`;
+        if (result.isCrit) logMsg += '（暴击！）';
+        if (result.hasStab) logMsg += '【STAB】';
+        if (result.typeMultiplier !== 1) logMsg += `【${result.typeMultiplier >= 2 ? '效果拔群' : '效果微弱'}×${result.typeMultiplier}】`;
+        addLog(logMsg, 'damage');
         await delay(200);
       }
 
@@ -1302,8 +1308,9 @@ async function executeEnemySkill(enemy, skill, target) {
         addLog(`${target.name} 陷入灼烧状态！`, 'damage');
       }
     } else {
-      // 普通单次攻击
-      let damage = Math.floor((skill.power + powerBonus) * (0.8 + Math.random() * 0.4));
+      // 普通单次攻击 - 使用宝可梦公式
+      const result = calculatePokemonDamage(enemy, target, { ...skill, power: skill.power + powerBonus });
+      let damage = result.damage;
 
       if (target.damageReduction && target.damageReduction > 0) {
         damage = Math.floor(damage * (1 - target.damageReduction));
@@ -1321,7 +1328,12 @@ async function executeEnemySkill(enemy, skill, target) {
       totalDamage = damage;
       target.currentHp = Math.max(0, target.currentHp - damage);
       showDamageNumber(target.id, damage, 'damage');
-      addLog(`${enemy.name} 使用 ${skill.name}，对 ${target.name} 造成 ${damage} 伤害`, 'damage');
+      
+      let logMsg = `${enemy.name} 使用 ${skill.name}，对 ${target.name} 造成 ${damage} 伤害`;
+      if (result.isCrit) logMsg += '（暴击！）';
+      if (result.hasStab) logMsg += '【STAB】';
+      if (result.typeMultiplier !== 1) logMsg += `【${result.typeMultiplier >= 2 ? '效果拔群' : '效果微弱'}×${result.typeMultiplier}】`;
+      addLog(logMsg, 'damage');
     }
 
     // 灼烧效果
@@ -1402,6 +1414,7 @@ async function executeEnemyBasicAttack(enemy, target) {
 
   let logMsg = `${enemy.name} 攻击 ${target.name}，造成 ${damage} 伤害`;
   if (result.isCrit) logMsg += '（暴击！）';
+  if (result.hasStab) logMsg += '【STAB】';
   if (result.typeMultiplier !== 1) logMsg += `【${result.typeMultiplier >= 2 ? '效果拔群' : '效果微弱'}×${result.typeMultiplier}】`;
   addLog(logMsg, 'damage');
 
@@ -1418,49 +1431,54 @@ async function executeEnemyBasicAttack(enemy, target) {
   if (target.currentHp <= 0) addLog(`${target.name} 倒下了！`);
 }
 
-// 使用宝可梦公式计算伤害
+// 使用宝可梦官方伤害计算公式
+// 公式: (((Level × 2 / 5 + 2) × Power × A / D / 50 + 2) × STAB × Type × random)
+// 其中 random 为 217-255 / 255 (约 0.851 ~ 1.0)
 function calculatePokemonDamage(attacker, defender, skill, options = {}) {
   const powerBonus = options.powerBonus || 0;
   const level = attacker.level || 60;
-  const attack = attacker.attack || 75;
-  const defense = defender.defense || 75;
+  
+  // 根据技能类型选择攻击/防御属性
+  // 物理技能使用 attack/defense，特殊技能使用 spAttack/spDefense
+  const isPhysical = skill.type === 'physical' || skill.damageType === 'physical';
+  const attack = isPhysical ? (attacker.attack || 75) : (attacker.spAttack || 75);
+  const defense = isPhysical ? (defender.defense || 75) : (defender.spDefense || 75);
 
-  // 基础伤害 = 等级 × 2 / 5 + 2
-  let baseDamage = Math.floor(level * 2 / 5 + 2);
+  // 基础伤害 = (((Level × 2 / 5 + 2) × Power × A / D) / 50) + 2
+  const power = (skill.power || 40) + powerBonus;
+  let damage = Math.floor(((level * 2 / 5 + 2) * power * attack / defense / 50) + 2);
 
-  // × 技能威力
-  baseDamage = Math.floor(baseDamage * (skill.power + powerBonus));
+  // 随机系数 217-255 / 255 (约 0.851 ~ 1.0)
+  const randomFactor = (217 + Math.random() * 38) / 255;
+  damage = Math.floor(damage * randomFactor);
 
-  // × 攻击 / 防御
-  baseDamage = Math.floor(baseDamage * attack / defense);
+  // STAB 加成（属性一致加成，1.5 倍）
+  const hasStab = skill.element && skill.element === attacker.element;
+  const stabValue = hasStab ? 1.5 : 1;
+  damage = Math.floor(damage * stabValue);
 
-  // + 2
-  baseDamage = Math.floor(baseDamage / 2) + 2;
-
-  // 随机系数 0.85 - 1.0
-  const randomFactor = 0.85 + Math.random() * 0.15;
-  baseDamage = Math.floor(baseDamage * randomFactor);
-
-  // 属性克制
+  // 属性克制倍率
   let typeMultiplier = 1;
-  if (skill.element && defender.element) {
-    typeMultiplier = calculateDamageMultiplier(skill.element, defender.element);
+  if (skill.element) {
+    const targetElements = defender.elements || [defender.element];
+    typeMultiplier = calculateDamageMultiplier(skill.element, targetElements);
   }
-
-  // 最终伤害
-  const damage = Math.max(1, Math.floor(baseDamage * typeMultiplier));
+  damage = Math.floor(damage * typeMultiplier);
 
   // 暴击判定（1/16 概率，1.5 倍伤害）
   const isCrit = Math.random() < 1/16;
-  const finalDamage = isCrit ? Math.floor(damage * 1.5) : damage;
+  if (isCrit) {
+    damage = Math.floor(damage * 1.5);
+  }
 
-  // STAB 加成（属性一致加成，1.5 倍）
-  const stabBonus = (skill.element && skill.element === attacker.element) ? 1.5 : 1;
+  // 最终伤害（最小为1）
+  damage = Math.max(1, damage);
 
   return {
-    damage: finalDamage,
+    damage: damage,
     isCrit: isCrit,
     typeMultiplier: typeMultiplier,
-    stabBonus: stabBonus
+    stabBonus: stabValue,
+    hasStab: hasStab
   };
 }

@@ -66,8 +66,9 @@ async function executePlayerCommand(caster, skill, targetId) {
       let comboCount = caster.comboCount || 0;
 
       for (let i = 0; i < hits; i++) {
-        // 每次攻击的基础伤害 + 蓄焰/烈火护体增伤
-        let hitDamage = Math.floor((powerPerHit + powerBonus) * (0.8 + Math.random() * 0.4));
+        // 使用宝可梦公式计算伤害
+        const result = calculatePokemonDamage(caster, target, { ...skill, power: powerPerHit + powerBonus });
+        let hitDamage = result.damage;
 
         // 检查目标的减伤效果
         if (target.damageReduction && target.damageReduction > 0) {
@@ -147,7 +148,7 @@ async function executePlayerCommand(caster, skill, targetId) {
           }
         }
 
-        addLog(`${caster.name} 使用 ${skill.name}，第${i + 1}段攻击造成 ${hitDamage} 伤害`, 'damage');
+        addLog(`${caster.name} 使用 ${skill.name}，第${i + 1}段攻击造成 ${hitDamage} 伤害${result.isCrit ? '（暴击！）' : ''}${result.hasStab ? '【STAB】' : ''}${result.typeMultiplier !== 1 ? '【' + (result.typeMultiplier >= 2 ? '效果拔群' : '效果微弱') + '×' + result.typeMultiplier + '】' : ''}`, 'damage');
         await delay(200);
       }
 
@@ -159,7 +160,8 @@ async function executePlayerCommand(caster, skill, targetId) {
 
       // 25%概率追加额外攻击
       if (Math.random() < (skill.comboChance || 0.25)) {
-        let extraDamage = Math.floor((powerPerHit + powerBonus) * (0.8 + Math.random() * 0.4));
+        const result = calculatePokemonDamage(caster, target, { ...skill, power: powerPerHit + powerBonus });
+        let extraDamage = result.damage;
 
         // 检查目标的减伤和护盾
         if (target.damageReduction && target.damageReduction > 0) {
@@ -178,7 +180,7 @@ async function executePlayerCommand(caster, skill, targetId) {
         totalDamage += extraDamage;
         target.currentHp = Math.max(0, target.currentHp - extraDamage);
         showDamageNumber(target.id, extraDamage, 'damage');
-        addLog(`雷霆连击追加攻击！造成 ${extraDamage} 额外伤害`, 'damage');
+        addLog(`雷霆连击追加攻击！造成 ${extraDamage} 额外伤害${result.isCrit ? '（暴击！）' : ''}`, 'damage');
       }
 
       // 连击充能
@@ -193,9 +195,9 @@ async function executePlayerCommand(caster, skill, targetId) {
       }
 
     } else {
-      // 普通单次攻击：基础伤害 = (玩家攻击/特攻 + 技能威力) * 随机系数
-      const casterAttackStat = caster.spAttack || 75; // 使用施法者的特攻属性
-      let damage = Math.floor((casterAttackStat * 0.5 + skill.power + powerBonus) * (0.8 + Math.random() * 0.4));
+      // 普通单次攻击 - 使用宝可梦公式
+      const result = calculatePokemonDamage(caster, target, { ...skill, power: skill.power + powerBonus });
+      let damage = result.damage;
 
       // 检查目标的减伤效果
       if (target.damageReduction && target.damageReduction > 0) {
@@ -249,7 +251,11 @@ async function executePlayerCommand(caster, skill, targetId) {
         addLog(`${skill.name} 本回合必定暴击！`);
       }
 
-      addLog(`${caster.name} 使用 ${skill.name}，对 ${target.name} 造成 ${damage} 伤害`, 'damage');
+      let logMsg = `${caster.name} 使用 ${skill.name}，对 ${target.name} 造成 ${damage} 伤害`;
+      if (result.isCrit) logMsg += '（暴击！）';
+      if (result.hasStab) logMsg += '【STAB】';
+      if (result.typeMultiplier !== 1) logMsg += `【${result.typeMultiplier >= 2 ? '效果拔群' : '效果微弱'}×${result.typeMultiplier}】`;
+      addLog(logMsg, 'damage');
 
       // 枯萎效果（叶绿光束）
       if (skill.wither) {
