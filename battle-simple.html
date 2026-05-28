@@ -560,16 +560,20 @@
     // ==================== 常量配置 ====================
     const MAX_ENERGY = 10;  // 最大能量值
 
-    // 属性克制表
+    // 调试开关（生产环境设为 false 可关闭所有调试日志）
+    const DEBUG_MODE = false;
+    const debugLog = (...args) => { if (DEBUG_MODE) debugLog(...args); };
+
+    // 属性克制表（完整版，包含克制和抗性）
     const TYPE_CHART = {
-      fire: { grass: 2, water: 0.5, rock: 0.5, ice: 2 },
-      water: { fire: 2, grass: 0.5, electric: 0.5, rock: 2 },
-      grass: { water: 2, fire: 0.5, rock: 2, poison: 0.5 },
-      electric: { water: 2, grass: 0.5, flying: 2 },
-      ice: { grass: 2, water: 0.5, ground: 2, flying: 2 },
-      rock: { fire: 2, ice: 2, flying: 2 },
-      psychic: { fighting: 2, poison: 2 },
-      dragon: { dragon: 2 }
+      grass: { fire: 0.5, water: 2, grass: 0.5, electric: 1, ice: 1, poison: 0.5, rock: 2 },
+      fire: { fire: 0.5, water: 0.5, grass: 2, electric: 1, ice: 2, rock: 0.5, psychic: 1, dragon: 1 },
+      water: { fire: 2, water: 0.5, grass: 0.5, electric: 0.5, ice: 1, rock: 2, dragon: 1 },
+      electric: { fire: 1, water: 2, grass: 0.5, electric: 0.5, ice: 1, rock: 0, dragon: 0.5 },
+      ice: { fire: 0.5, water: 0.5, grass: 2, electric: 1, ice: 0.5, rock: 1, dragon: 1 },
+      rock: { fire: 2, water: 0.5, grass: 0.5, electric: 1, ice: 2, rock: 1, flying: 2 },
+      psychic: { fire: 1, water: 1, grass: 1, electric: 1, ice: 1, psychic: 0.5, dragon: 1 },
+      dragon: { fire: 1, water: 1, grass: 1, electric: 1, ice: 1, psychic: 2, dragon: 2 }
     };
 
     // ==================== 能量消耗配置 ====================
@@ -1698,9 +1702,9 @@
       enemyUnits.forEach(unit => {
         unit.skills = assignSkillsByElement(unit.element, unit.id);
       });
-      console.log('=== 敌人技能分配 ===');
+      debugLog('=== 敌人技能分配 ===');
       enemyUnits.forEach(unit => {
-        console.log(`${unit.name} (${unit.element}):`, unit.skills.map(s => `${s.name}[${s.energyCost}能量]`).join(', '));
+        debugLog(`${unit.name} (${unit.element}):`, unit.skills.map(s => `${s.name}[${s.energyCost}能量]`).join(', '));
       });
       // 为每个敌人生成初始意图
       enemyUnits.forEach(unit => {
@@ -1714,9 +1718,9 @@
     initializeCompanionSkills();
     
     // 调试日志：检查技能分配结果
-    console.log('=== 技能分配调试 ===');
+    debugLog('=== 技能分配调试 ===');
     playerUnits.forEach(unit => {
-      console.log(`${unit.name} (${unit.element}):`, unit.skills.map(s => `${s.name}[${s.energyCost}能量]`).join(', '));
+      debugLog(`${unit.name} (${unit.element}):`, unit.skills.map(s => `${s.name}[${s.energyCost}能量]`).join(', '));
     });
 
     // 从 effects 数组生成技能描述
@@ -1903,21 +1907,9 @@ syncSkillDescriptions();
 
     // ==================== 工具函数 ====================
 
-    // 属性克制表
-    const typeChart = {
-      grass: { fire: 0.5, water: 2, grass: 0.5, electric: 1, ice: 1, poison: 0.5, rock: 2 },
-      fire: { fire: 0.5, water: 0.5, grass: 2, electric: 1, ice: 2, rock: 0.5, psychic: 1, dragon: 1 },
-      water: { fire: 2, water: 0.5, grass: 0.5, electric: 0.5, ice: 1, rock: 2, dragon: 1 },
-      electric: { fire: 1, water: 2, grass: 0.5, electric: 0.5, ice: 1, rock: 0, dragon: 0.5 },
-      ice: { fire: 0.5, water: 0.5, grass: 2, electric: 1, ice: 0.5, rock: 1, dragon: 1 },
-      rock: { fire: 2, water: 0.5, grass: 0.5, electric: 1, ice: 2, rock: 1, flying: 2 },
-      psychic: { fire: 1, water: 1, grass: 1, electric: 1, ice: 1, psychic: 0.5, dragon: 1 },
-      dragon: { fire: 1, water: 1, grass: 1, electric: 1, ice: 1, psychic: 2, dragon: 2 }
-    };
-
     // 检查属性克制
     function isCounter(attackElement, defenseElement) {
-      const multiplier = typeChart[attackElement]?.[defenseElement];
+      const multiplier = TYPE_CHART[attackElement]?.[defenseElement];
       return multiplier === 2;
     }
 
@@ -5029,19 +5021,6 @@ syncSkillDescriptions();
           }
         }
 
-        // 寄生种子效果（寄生之种）
-        if (skill.parasiticSeed) {
-          target.debuffs = target.debuffs.filter(d => d.type !== 'parasitic_seed');
-          target.debuffs.push({
-            type: 'parasitic_seed',
-            caster: enemy,  // 保存施法者引用用于吸血
-            drainPercent: skill.parasiticSeedDrain || 0.06, // 吸取施法者HP的6%
-            remainingDuration: skill.parasiticSeedTurns || 4,
-            stacks: 1
-          });
-          addLog(`${target.name} 被施加「寄生种子」！（每回合受到施法者${Math.round((skill.parasiticSeedDrain || 0.06) * 100)}%HP伤害+施法者回复，持续${skill.parasiticSeedTurns || 4}回合）`, 'debuff');
-        }
-
         // 清除目标增益效果（火焰冲击等对策技）
         if (skill.clearBuff && target) {
           let clearedCount = 0;
@@ -6443,7 +6422,7 @@ syncSkillDescriptions();
       };
 
       // 调试日志
-      console.log(`${enemy.name} 欲望评分:`, desires);
+      debugLog(`${enemy.name} 欲望评分:`, desires);
 
       // 选择欲望最高的行动
       const sorted = Object.entries(desires).sort((a, b) => b[1] - a[1]);
@@ -6580,14 +6559,14 @@ syncSkillDescriptions();
 
       // 1. 决策行动类型
       let actionType = decideActionType(enemy);
-      console.log(`${enemy.name} 决定行动: ${actionType}`);
+      debugLog(`${enemy.name} 决定行动: ${actionType}`);
 
       // 2. 选择具体技能
       let usableSkills = getUsableSkills(enemy, actionType);
 
       // 如果首选类型没有可用技能，尝试降级
       if (usableSkills.length === 0) {
-        console.log(`${enemy.name} 没有可用的${actionType}技能，尝试备用方案`);
+        debugLog(`${enemy.name} 没有可用的${actionType}技能，尝试备用方案`);
 
         // 能量不足时优先休息
         if (enemy.energy < 3) {
@@ -6616,7 +6595,7 @@ syncSkillDescriptions();
 
       // 如果仍然没有可用技能，默认休息
       if (usableSkills.length === 0) {
-        console.log(`${enemy.name} 没有可用技能，选择休息`);
+        debugLog(`${enemy.name} 没有可用技能，选择休息`);
         enemy.intent = {
           type: 'defend',
           skillId: 'rest',
@@ -6635,7 +6614,7 @@ syncSkillDescriptions();
       }));
       scored.sort((a, b) => b.score - a.score);
       const bestSkill = scored[0].skill;
-      console.log(`${enemy.name} 选择技能: ${bestSkill.name} (评分: ${scored[0].score.toFixed(1)})`);
+      debugLog(`${enemy.name} 选择技能: ${bestSkill.name} (评分: ${scored[0].score.toFixed(1)})`);
 
       // 3. 选择目标
       let targetId;
@@ -6672,7 +6651,7 @@ syncSkillDescriptions();
         element: bestSkill.element || enemy.element
       };
 
-      console.log(`${enemy.name} 意图: 技能=${bestSkill.name}(target=${bestSkill.target}), 类型=${enemy.intent.type}, 目标=${targetId}`);
+      debugLog(`${enemy.name} 意图: 技能=${bestSkill.name}(target=${bestSkill.target}), 类型=${enemy.intent.type}, 目标=${targetId}`);
       renderEnemyUnits();
     }
 
@@ -6750,10 +6729,10 @@ syncSkillDescriptions();
       INITIAL_ENEMY_CONFIG = JSON.parse(JSON.stringify(enemyUnits));
 
       // 调试日志：验证初始化状态
-      console.log('=== 战斗初始化 ===');
-      console.log('当前模式: ' + getModeName(currentBattleMode));
+      debugLog('=== 战斗初始化 ===');
+      debugLog('当前模式: ' + getModeName(currentBattleMode));
       playerUnits.forEach(unit => {
-        console.log(`${unit.name}: HP=${unit.currentHp}/${unit.maxHp}, energy=${unit.energy}, skills=${unit.skills.length}`);
+        debugLog(`${unit.name}: HP=${unit.currentHp}/${unit.maxHp}, energy=${unit.energy}, skills=${unit.skills.length}`);
         if (unit.skills.length === 0) {
           console.warn(`警告: ${unit.name} 没有技能！`);
         }
