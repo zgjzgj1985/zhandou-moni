@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>战斗模拟</title>
+  <script src="status-data.js"></script>
   <script src="skills-data.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -155,11 +156,49 @@
     .skill-element-badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 500; background: #3a3a3c; color: #fff; }
 
     /* 单位状态图标 */
-    .status-icons { display: flex; gap: 4px; margin-top: 4px; }
+    .status-icons { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
     .status-icon { padding: 2px 4px; border-radius: 4px; font-size: 9px; font-weight: 600; }
     .status-icon.shield-icon { background: #0a84ff; color: #fff; }
     .status-icon.reduction-icon { background: #bf5af2; color: #fff; }
     .status-icon.resistance-icon { background: #30d158; color: #fff; }
+
+    /* Buff/Debuff状态标签 */
+    .debuff-tags { display: flex; gap: 3px; margin-top: 3px; flex-wrap: wrap; }
+    .debuff-tag { padding: 1px 4px; border-radius: 3px; font-size: 8px; font-weight: 600; color: #fff; white-space: nowrap; }
+    .debuff-tag.burn { background: #ff453a; } /* 灼烧 - 红色 */
+    .debuff-tag.freeze { background: #5ac8fa; } /* 冻结 - 冰蓝 */
+    .debuff-tag.paralyze { background: #ffcc00; color: #333; } /* 麻痹 - 黄色 */
+    .debuff-tag.poison { background: #32d74b; } /* 中毒 - 绿色 */
+    .debuff-tag.water_soak { background: #007aff; } /* 浸透 - 蓝色 */
+    .debuff-tag.drowning { background: #1c1c1e; } /* 溺水 - 深灰 */
+    .debuff-tag.combustion { background: #ff9500; } /* 燃尽 - 橙色 */
+    .debuff-tag.burn_mark { background: #ff6b6b; } /* 灼伤印记 - 浅红 */
+    .debuff-tag.wither { background: #8b4513; } /* 枯萎 - 棕色 */
+    .debuff-tag.muddy { background: #8b7355; } /* 浑浊 - 土色 */
+    .debuff-tag.parasitic { background: #228b22; } /* 寄生种子 - 深绿 */
+    .debuff-tag.steam { background: #708090; } /* 蒸汽灼伤 - 灰蓝 */
+    .debuff-tag.weakness { background: #9370db; } /* 虚弱 - 紫罗兰 */
+
+    .buff-tags { display: flex; gap: 3px; margin-top: 3px; flex-wrap: wrap; }
+    .buff-tag { padding: 1px 4px; border-radius: 3px; font-size: 8px; font-weight: 600; color: #fff; white-space: nowrap; }
+    .buff-tag.attack_boost { background: #ff453a; } /* 攻击强化 */
+    .buff-tag.sp_atk_boost { background: #bf5af2; } /* 特攻强化 */
+    .buff-tag.speed_boost { background: #30d158; } /* 速度强化 */
+    .buff-tag.defense_boost { background: #0a84ff; } /* 防御强化 */
+    .buff-tag.fire_damage_boost { background: #ff9500; } /* 火属性伤害强化 */
+    .buff-tag.flame_charge { background: #ff6b35; } /* 蓄焰 */
+    .buff-tag.wall_of_flames { background: #ff3d00; } /* 烈火护体 */
+    .buff-tag.freeze_tag { background: #5ac8fa; } /* 冻结免疫 */
+    .buff-tag.charge { background: #ffd60a; color: #333; } /* 充能 */
+    .buff-tag.aqua_shield { background: #00bfff; } /* 水之守护 */
+    .buff-tag.counter { background: #daa520; } /* 防反 */
+    .buff-tag.entangle { background: #228b22; } /* 藤蔓 */
+    .buff-tag.root { background: #8b4513; } /* 扎根 */
+    .buff-tag.light_gather { background: #ffff00; color: #333; } /* 光能汇聚 */
+    .buff-tag.combo { background: #ff69b4; } /* 连击充能 */
+    .buff-tag.fragrant { background: #ff1493; } /* 芬芳 */
+    .buff-tag.clear_spring { background: #00ced1; } /* 清泉 */
+    .buff-tag.flow { background: #4169e1; } /* 流水 */
 
     .intent-tooltip { position: fixed; background: rgba(30, 30, 30, 0.98); border-radius: 8px; padding: 8px 12px; color: #fff; font-size: 11px; z-index: 10001; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.5); line-height: 1.4; }
 
@@ -182,7 +221,244 @@
     .mode-switch-btn.mode-1 { border-left: 3px solid #0a84ff; }
     .mode-switch-btn.mode-2 { border-left: 3px solid #ff9f0a; }
     .mode-switch-btn.mode-3 { border-left: 3px solid #bf5af2; }
+    .mode-switch-btn.custom-btn { border-left: 3px solid #30d158; margin-top: 8px; }
+    .mode-switch-btn.custom-btn:hover { border-color: #30d158; }
     .mode-title { font-size: 10px; color: #8e8e93; margin-bottom: 2px; }
+
+    /* 自定义战斗编辑界面样式 */
+    .custom-battle-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .custom-battle-overlay.visible {
+      display: flex;
+    }
+    .custom-battle-panel {
+      background: #1c1c1e;
+      border-radius: 16px;
+      padding: 24px;
+      width: 680px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+    .custom-battle-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #3a3a3c;
+    }
+    .custom-battle-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      flex: 1;
+    }
+    .custom-battle-close {
+      background: none;
+      border: none;
+      color: #8e8e93;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .custom-battle-close:hover {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+    .custom-battle-mode-select {
+      display: flex;
+      gap: 4px;
+      background: #2c2c2e;
+      padding: 3px;
+      border-radius: 8px;
+    }
+    .custom-mode-btn {
+      background: transparent;
+      border: none;
+      color: #8e8e93;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .custom-mode-btn:hover {
+      color: #fff;
+    }
+    .custom-mode-btn.active {
+      background: #007aff;
+      color: #fff;
+    }
+    .custom-battle-section {
+      margin-bottom: 20px;
+    }
+    .custom-battle-section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #8e8e93;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .custom-battle-section-title .count {
+      background: #3a3a3c;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+    .custom-battle-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .custom-battle-unit {
+      background: #2c2c2e;
+      border-radius: 10px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 200px;
+      border: 1px solid #3a3a3c;
+    }
+    .custom-battle-unit.element-fire { border-left: 3px solid #ff453a; }
+    .custom-battle-unit.element-water { border-left: 3px solid #0a84ff; }
+    .custom-battle-unit.element-grass { border-left: 3px solid #30d158; }
+    .custom-battle-unit.element-electric { border-left: 3px solid #ffd60a; }
+    .custom-battle-unit.element-ice { border-left: 3px solid #5ac8fa; }
+    .custom-battle-unit.element-rock { border-left: 3px solid #ac8e68; }
+    .custom-battle-unit.element-psychic { border-left: 3px solid #bf5af2; }
+    .custom-battle-unit.element-dragon { border-left: 3px solid #ff6b35; }
+    .custom-battle-unit-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: #fff;
+      flex: 1;
+    }
+    .custom-battle-unit-stats {
+      font-size: 10px;
+      color: #8e8e93;
+    }
+    .custom-battle-type-select {
+      background: #3a3a3c;
+      border: 1px solid #48484a;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .custom-battle-type-select:focus {
+      outline: none;
+      border-color: #007aff;
+    }
+    .custom-battle-level-select {
+      background: #2c2c2e;
+      border: 1px solid #48484a;
+      color: #ffd60a;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      min-width: 70px;
+    }
+    .custom-battle-level-select:focus {
+      outline: none;
+      border-color: #ffd60a;
+    }
+    .custom-battle-type-badge {
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .custom-battle-type-badge.normal { background: #8e8e93; color: #fff; }
+    .custom-battle-type-badge.elite { background: #ff9f0a; color: #000; }
+    .custom-battle-type-badge.boss { background: #ff453a; color: #fff; }
+    .custom-battle-btn {
+      background: #007aff;
+      border: none;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .custom-battle-btn:hover {
+      background: #0a84ff;
+    }
+    .custom-battle-btn.secondary {
+      background: #3a3a3c;
+    }
+    .custom-battle-btn.secondary:hover {
+      background: #48484a;
+    }
+    .custom-battle-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #3a3a3c;
+    }
+    .custom-battle-add-btn {
+      background: rgba(48, 209, 88, 0.15);
+      border: 1px dashed #30d158;
+      color: #30d158;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .custom-battle-add-btn:hover {
+      background: rgba(48, 209, 88, 0.25);
+    }
+    .custom-battle-remove-btn {
+      background: none;
+      border: none;
+      color: #ff453a;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    .custom-battle-remove-btn:hover {
+      background: rgba(255, 69, 58, 0.2);
+    }
+    .custom-battle-hint {
+      font-size: 11px;
+      color: #8e8e93;
+      margin-top: 8px;
+    }
+    .custom-battle-hint span { color: #ff9f0a; }
+    .custom-battle-empty {
+      color: #8e8e93;
+      font-size: 12px;
+      padding: 16px;
+      text-align: center;
+      background: #2c2c2e;
+      border-radius: 8px;
+      border: 1px dashed #3a3a3c;
+    }
   </style>
 </head>
 <body>
@@ -195,6 +471,52 @@
       <button class="mode-switch-btn mode-1 active" id="mode1Btn" onclick="switchBattleMode(1)">经典模式</button>
       <button class="mode-switch-btn mode-2" id="mode2Btn" onclick="switchBattleMode(2)">宝可梦模式</button>
       <button class="mode-switch-btn mode-3" id="mode3Btn" onclick="switchBattleMode(3)">以太术士模式</button>
+      <button class="mode-switch-btn custom-btn" id="customBtn" onclick="openCustomBattleEditor()">自定义战斗</button>
+    </div>
+
+    <!-- 自定义战斗编辑界面 -->
+    <div class="custom-battle-overlay" id="customBattleOverlay">
+      <div class="custom-battle-panel">
+        <div class="custom-battle-header">
+          <div class="custom-battle-title">自定义战斗配置</div>
+          <div class="custom-battle-mode-select">
+            <button class="custom-mode-btn active" id="customMode1" onclick="selectCustomMode(1)">经典</button>
+            <button class="custom-mode-btn" id="customMode2" onclick="selectCustomMode(2)">宝可梦</button>
+            <button class="custom-mode-btn" id="customMode3" onclick="selectCustomMode(3)">术士</button>
+          </div>
+          <button class="custom-battle-close" onclick="closeCustomBattleEditor()">&times;</button>
+        </div>
+
+        <!-- 伙伴配置 -->
+        <div class="custom-battle-section">
+          <div class="custom-battle-section-title">
+            <span>己方伙伴</span>
+            <span class="count" id="playerCount">3/5</span>
+          </div>
+          <div id="playerList"></div>
+          <button class="custom-battle-add-btn" id="addPlayerBtn" onclick="addCustomPlayer()">+ 添加伙伴</button>
+        </div>
+
+        <!-- 敌人配置 -->
+        <div class="custom-battle-section">
+          <div class="custom-battle-section-title">
+            <span>敌方单位</span>
+            <span class="count" id="enemyCount">3/5</span>
+          </div>
+          <div id="enemyList"></div>
+          <button class="custom-battle-add-btn" id="addEnemyBtn" onclick="addCustomEnemy()">+ 添加敌人</button>
+          <div class="custom-battle-hint">
+            <span>普通</span>: 基础属性 |
+            <span>精英</span>: 生命&times;2.5, 攻/防/特攻/特防&times;1.3, 速度不变 |
+            <span>首领</span>: 生命&times;8, 攻/特攻&times;1.6, 防/特防&times;1.3, 速度不变
+          </div>
+        </div>
+
+        <div class="custom-battle-actions">
+          <button class="custom-battle-btn secondary" onclick="closeCustomBattleEditor()">取消</button>
+          <button class="custom-battle-btn" onclick="applyCustomBattle()">载入战斗</button>
+        </div>
+      </div>
     </div>
 
     <div class="turn-info">
@@ -268,43 +590,134 @@
       return cost + '能量';
     }
 
-    // ==================== 玩家单位数据（伙伴）====================
-    // 伙伴定义 - 只包含基础信息，技能从共享数据源获取
-    const playerUnits = [
-      {
-        id: 'flame_bear',
-        name: '焰爪熊',
-        level: 10,
-        maxHp: 220,
-        currentHp: 220,
-        speed: 70,
-        element: 'fire',
-        energy: MAX_ENERGY,
-        debuffs: []
-      },
-      {
-        id: 'torrent_crab',
-        name: '激流蟹',
-        level: 10,
-        maxHp: 200,
-        currentHp: 200,
-        speed: 60,
-        element: 'water',
-        energy: MAX_ENERGY,
-        debuffs: []
-      },
-      {
-        id: 'frost_wolf',
-        name: '寒霜狼',
-        level: 10,
-        maxHp: 180,
-        currentHp: 180,
-        speed: 100,
-        element: 'ice',
-        energy: MAX_ENERGY,
-        debuffs: []
-      }
+    // ==================== 宝可梦风格属性计算系统 ====================
+    // 种族值定义（对应宝可梦的 Base Stats）
+    // 每种生物都有独立的种族值，通过阵营(side)区分伙伴与敌人
+
+    // 所有生物模板（20种，任何生物都可以作为伙伴或敌人）
+    const CREATURE_TEMPLATES = [
+      // 火属性
+      { id: 'flame_bear', name: '焰爪熊', element: 'fire', style: '爆发流' },
+      { id: 'flame_salamander', name: '焰心蜥', element: 'fire', style: '爆发流' },
+      { id: 'blaze_beast', name: '炎爆兽', element: 'fire', style: '爆发流' },
+      // 水属性
+      { id: 'torrent_crab', name: '激流蟹', element: 'water', style: '控制流' },
+      { id: 'deep_fish', name: '深海鱼', element: 'water', style: '控制流' },
+      // 草属性
+      { id: 'vine_turtle', name: '藤蔓龟', element: 'grass', style: '光环流' },
+      { id: 'poison_vine', name: '毒藤怪', element: 'grass', style: '光环流' },
+      // 电属性
+      { id: 'lightning_marten', name: '闪电貂', element: 'electric', style: '多段伤害流' },
+      { id: 'thunder_bat', name: '雷鸣蝠', element: 'electric', style: '多段伤害流' },
+      // 冰属性
+      { id: 'frost_wolf', name: '寒霜狼', element: 'ice', style: '冰霜蓄力流' },
+      { id: 'ice_crystal', name: '冰晶魔', element: 'ice', style: '冰霜蓄力流' },
+      // 岩石属性
+      { id: 'rock_ox', name: '磐石牛', element: 'rock', style: '天气流' },
+      { id: 'rock_armadillo', name: '岩甲兽', element: 'rock', style: '天气流' },
+      // 超能属性
+      { id: 'spirit_fox', name: '灵狐', element: 'psychic', style: '奥秘流' },
+      { id: 'dream_butterfly', name: '幻蝶', element: 'psychic', style: '奥秘流' },
+      { id: 'mind_master', name: '念力怪', element: 'psychic', style: '奥秘流' },
+      { id: 'shadow_panther', name: '暗影豹', element: 'psychic', style: '奥秘流' },
+      // 龙属性
+      { id: 'star_dragon', name: '星瞳龙', element: 'dragon', style: '血脉压制流' },
+      { id: 'young_dragon', name: '幼龙', element: 'dragon', style: '血脉压制流' },
+      { id: 'volcano_dragon', name: '火山龙', element: 'dragon', style: '血脉压制流', isBoss: true }
     ];
+
+    // 全部生物的种族值（统一数据源）
+    const CREATURE_BASE_STATS = {
+      // 火属性
+      flame_bear: { hp: 110, attack: 100, defense: 85, spAttack: 75, spDefense: 70, speed: 70 },
+      flame_salamander: { hp: 100, attack: 95, defense: 65, spAttack: 85, spDefense: 60, speed: 75 },
+      blaze_beast: { hp: 100, attack: 110, defense: 75, spAttack: 95, spDefense: 70, speed: 65 },
+      // 水属性
+      torrent_crab: { hp: 100, attack: 80, defense: 95, spAttack: 70, spDefense: 85, speed: 60 },
+      deep_fish: { hp: 85, attack: 70, defense: 75, spAttack: 90, spDefense: 80, speed: 85 },
+      // 草属性
+      vine_turtle: { hp: 115, attack: 65, defense: 90, spAttack: 85, spDefense: 80, speed: 55 },
+      poison_vine: { hp: 95, attack: 75, defense: 80, spAttack: 85, spDefense: 70, speed: 65 },
+      // 电属性
+      lightning_marten: { hp: 75, attack: 70, defense: 60, spAttack: 110, spDefense: 65, speed: 120 },
+      thunder_bat: { hp: 70, attack: 80, defense: 55, spAttack: 95, spDefense: 60, speed: 110 },
+      // 冰属性
+      frost_wolf: { hp: 90, attack: 95, defense: 70, spAttack: 60, spDefense: 75, speed: 100 },
+      ice_crystal: { hp: 80, attack: 65, defense: 70, spAttack: 100, spDefense: 85, speed: 70 },
+      // 岩石属性
+      rock_ox: { hp: 130, attack: 90, defense: 110, spAttack: 50, spDefense: 85, speed: 45 },
+      rock_armadillo: { hp: 120, attack: 85, defense: 100, spAttack: 50, spDefense: 75, speed: 50 },
+      // 超能属性
+      spirit_fox: { hp: 80, attack: 55, defense: 70, spAttack: 115, spDefense: 95, speed: 90 },
+      dream_butterfly: { hp: 70, attack: 50, defense: 65, spAttack: 100, spDefense: 85, speed: 110 },
+      mind_master: { hp: 85, attack: 55, defense: 70, spAttack: 110, spDefense: 90, speed: 95 },
+      shadow_panther: { hp: 75, attack: 100, defense: 60, spAttack: 85, spDefense: 70, speed: 115 },
+      // 龙属性
+      star_dragon: { hp: 95, attack: 85, defense: 75, spAttack: 105, spDefense: 80, speed: 80 },
+      young_dragon: { hp: 100, attack: 90, defense: 75, spAttack: 95, spDefense: 80, speed: 75 },
+      volcano_dragon: { hp: 110, attack: 105, defense: 80, spAttack: 100, spDefense: 75, speed: 60 }
+    };
+
+    // ==================== 宝可梦风格属性计算系统 ====================
+    // 简化版属性计算公式（仅种族值 + 等级）：
+    // HP = floor(BaseHP × 2 × Level / 30) + Level + 10
+    // 其他 = floor(BaseStat × Level / 30) + 5
+    // 速度 = BaseSpeed（直接使用种族值，不随等级变化）
+    function calculateStats(baseStats, level) {
+      return {
+        maxHp: Math.floor(baseStats.hp * 2 * level / 30) + level + 10,
+        attack: Math.floor(baseStats.attack * level / 30) + 5,
+        defense: Math.floor(baseStats.defense * level / 30) + 5,
+        spAttack: Math.floor(baseStats.spAttack * level / 30) + 5,
+        spDefense: Math.floor(baseStats.spDefense * level / 30) + 5,
+        speed: baseStats.speed
+      };
+    }
+
+    // 根据模板ID和等级获取完整属性
+    function getCreatureStats(templateId, level) {
+      const baseStats = CREATURE_BASE_STATS[templateId];
+      if (!baseStats) {
+        // 备用：默认种族值
+        const defaultBase = { hp: 65, attack: 65, defense: 65, spAttack: 65, spDefense: 65, speed: 65 };
+        return calculateStats(defaultBase, level);
+      }
+      return calculateStats(baseStats, level);
+    }
+
+    // ==================== 玩家单位数据（伙伴）====================
+    // 玩家初始配置（用于重置战斗）
+    const PLAYER_INITIAL_CONFIG = [
+      { id: 'flame_bear', name: '焰爪熊', element: 'fire', level: 60 },
+      { id: 'torrent_crab', name: '激流蟹', element: 'water', level: 60 },
+      { id: 'vine_turtle', name: '藤蔓龟', element: 'grass', level: 60 }
+    ];
+
+    // 根据初始配置创建玩家单位
+    function createPlayerUnits() {
+      return PLAYER_INITIAL_CONFIG.map(config => {
+        const stats = getCreatureStats(config.id, config.level);
+        return {
+          id: config.id,
+          name: config.name,
+          element: config.element,
+          level: config.level,
+          side: 'player',  // 阵营标记：伙伴
+          maxHp: stats.maxHp,
+          currentHp: stats.maxHp,
+          attack: stats.attack,
+          spAttack: stats.spAttack,
+          defense: stats.defense,
+          spDefense: stats.spDefense,
+          speed: stats.speed,
+          energy: MAX_ENERGY,
+          debuffs: [],
+          buffs: []
+        };
+      });
+    }
+
+    let playerUnits = createPlayerUnits();
 
     // ==================== 技能分配规则 ====================
     // 从数组中随机选取n个元素
@@ -370,7 +783,249 @@
       return skills;
     }
 
-    // 将 skills-data.js 中的技能格式转换为战斗系统格式
+    // 状态效果映射表 - 根据 statusId 映射到战斗系统格式
+    const STATUS_EFFECT_MAP = {
+      'burn': { effect: 'burn', burnStacks: 5, burnChance: null },
+      'burn_mark': { effect: 'burnMark', burnMarkPower: 40 },
+      'flow': { flowEffect: true, speedBoost: 1, duration: 2 },
+      'clear_spring': { clearSpringEffect: true, clearSpringDuration: 3 },
+      'water_soak': { waterSoakEffect: true, waterSoakPower: 1, waterSoakDuration: 2, waterSoakMaxStacks: 6 },
+      'muddy': { muddyEffect: true, muddyMaxStacks: 3 },
+      'paralysis': { effect: 'paralyze' },
+      'confusion': { effect: 'confuse' },
+      'frozen': { effect: 'freeze' },
+      'wither': { wither: true, witherPower: 10 },
+      'fire_shield': { type: 'shield', damageReduction: 0.55 },
+      'rainy_day': { rainyDayEffect: true, rainyDayDuration: 3, rainyDayPowerBoost: 0.5 },
+      'fragrant_environment': { effect: 'fragrantEnvironment' },
+      'parasitic_seed': { parasiticSeed: true, parasiticSeedDrain: 0.06, parasiticSeedTurns: 4 },
+      'counter_stance': { effect: 'counterStance', reflectDamage: 0.6 },
+      'weakness': { weaknessEffect: true, weaknessDuration: 2 },
+      'light_gather': { lightGather: 1 },
+      'root_bound': { effect: 'rootBound' },
+      'entangle': { effect: 'entangle' },
+      'slow': { effect: 'slow' },
+      'burn_mark_custom': { effect: 'burnMark', burnMarkPower: 40 }
+    };
+
+    // 根据 statusId 获取状态效果配置
+    function getStatusEffectConfig(statusId) {
+      return STATUS_EFFECT_MAP[statusId] || null;
+    }
+
+    // 应用 add_status 效果的辅助函数
+    function applyAddStatusEffect(effectData) {
+      const result = {};
+      const statusId = effectData.statusId;
+      const stacks = effectData.stacks || 1;
+      const duration = effectData.duration || 2;
+      const chance = effectData.chance || 1; // 默认100%概率
+
+      const statusConfig = getStatusEffectConfig(statusId);
+      if (!statusConfig) {
+        console.warn(`未找到状态配置: ${statusId}`);
+        return result;
+      }
+
+      // 合并状态配置
+      Object.assign(result, statusConfig);
+
+      // 处理可变参数
+      if (effectData.stacks !== undefined) {
+        if (statusConfig.burnStacks !== undefined) {
+          result.burnStacks = effectData.stacks;
+        }
+        if (statusConfig.waterSoakEffect) {
+          result.waterSoakPower = effectData.stacks;
+        }
+      }
+
+      if (effectData.damage !== undefined) {
+        if (statusConfig.burnMarkPower !== undefined) {
+          result.burnMarkPower = effectData.damage;
+        }
+        if (statusConfig.witherPower !== undefined) {
+          result.witherPower = effectData.damage;
+        }
+      }
+
+      if (effectData.percent !== undefined) {
+        if (statusConfig.parasiticSeed) {
+          result.parasiticSeedDrain = effectData.percent / 100;
+        }
+        if (statusConfig.clearSpringEffect) {
+          result.healPercent = effectData.percent / 100;
+        }
+      }
+
+      // 设置概率（如果有）
+      if (effectData.chance !== undefined && effectData.chance < 1) {
+        if (statusConfig.burnStacks !== undefined) {
+          result.burnChance = effectData.chance;
+        }
+      }
+
+      return result;
+    }
+
+    // 解析 effects 数组中的单个效果
+    function parseSingleEffect(effect) {
+      const result = {};
+
+      switch (effect.type) {
+        case 'damage':
+          // 伤害效果：{ type: 'damage', power: 80, damageType: 'special' }
+          if (effect.power !== undefined) {
+            result.power = effect.power;
+            if (effect.damageType === 'physical') {
+              result.type = 'physical';
+            } else if (effect.damageType === 'special') {
+              result.type = 'special';
+            }
+          }
+          if (effect.comboHits !== undefined) {
+            result.comboHits = effect.comboHits;
+            result.comboPower = effect.power;
+            result.power = effect.power * effect.comboHits;
+          }
+          break;
+
+        case 'heal':
+          // 治疗效果：{ type: 'heal', percent: 15 }
+          result.healPercent = (effect.percent || 0) / 100;
+          result.type = 'heal';
+          break;
+
+        case 'shield':
+          // 护盾/减伤效果：{ type: 'shield', reduction: 0.55 }
+          result.type = 'shield';
+          if (effect.reduction !== undefined) {
+            result.damageReduction = effect.reduction;
+          }
+          break;
+
+        case 'add_status':
+          // 添加状态：{ type: 'add_status', statusId: 'burn', stacks: 5 }
+          Object.assign(result, applyAddStatusEffect(effect));
+          break;
+
+        case 'buff':
+          // 属性提升：{ type: 'buff', stat: 'attack', value: 1 }
+          if (effect.stats) {
+            // 批量属性提升
+            if (effect.stats.attack !== undefined) result.attackBoost = effect.stats.attack;
+            if (effect.stats.spAtk !== undefined) result.spAtkBoost = effect.stats.spAtk;
+            if (effect.stats.speed !== undefined) result.speedBoost = effect.stats.speed;
+            if (effect.stats.defense !== undefined) result.defenseBoost = effect.stats.defense;
+          }
+          if (effect.attack !== undefined) result.attackBoost = effect.attack;
+          if (effect.spAtk !== undefined) result.spAtkBoost = effect.spAtk;
+          if (effect.speed !== undefined) result.speedBoost = effect.speed;
+          if (effect.defense !== undefined) result.defenseBoost = effect.defense;
+          break;
+
+        case 'debuff':
+          // 属性降低（对敌人）
+          if (effect.stats) {
+            if (effect.stats.attack !== undefined) result.enemyAttackDebuff = effect.stats.attack;
+            if (effect.stats.speed !== undefined) result.enemySpeedDebuff = effect.stats.speed;
+            if (effect.stats.accuracy !== undefined) result.enemyAccuracyDebuff = effect.stats.accuracy;
+          }
+          break;
+
+        case 'buff_all':
+          // 全队属性提升：{ type: 'buff_all', stats: { attack: 1, speed: 1 } }
+          if (effect.stats) {
+            if (effect.stats.attack !== undefined) result.attackBoost = effect.stats.attack;
+            if (effect.stats.spAtk !== undefined) result.spAtkBoost = effect.stats.spAtk;
+            if (effect.stats.speed !== undefined) result.speedBoost = effect.stats.speed;
+            if (effect.stats.defense !== undefined) result.defenseBoost = effect.stats.defense;
+          }
+          // 属性伤害加成
+          if (effect.fireDamageBoost !== undefined) result.fireDamageBoost = effect.fireDamageBoost;
+          if (effect.grassDamageBoost !== undefined) result.grassDamageBoost = effect.grassDamageBoost;
+          if (effect.waterDamageBoost !== undefined) result.waterDamageBoost = effect.waterDamageBoost;
+          break;
+
+        case 'clear_buff':
+          // 清除增益
+          result.clearBuff = true;
+          break;
+
+        case 'add_fire_power':
+          // 火属性攻击威力加成
+          result.addFirePower = effect.value || 0;
+          break;
+
+        case 'light_gather':
+          // 光能汇聚
+          result.lightGather = effect.stacks || 1;
+          break;
+
+        case 'wither':
+          // 枯萎效果
+          result.wither = true;
+          result.witherPower = effect.power || 10;
+          break;
+
+        case 'crit_guarantee':
+          // 必定暴击
+          result.guaranteedCrit = true;
+          break;
+
+        case 'drowning':
+          // 溺水效果
+          result.drowningEffect = true;
+          result.drowningDuration = effect.duration || 3;
+          break;
+
+        case 'clear_debuff':
+          // 清除负面状态
+          result.clearDebuff = true;
+          break;
+
+        case 'energy_restore':
+          // 回复能量
+          result.energyRestore = effect.value || 0;
+          break;
+
+        case 'multi_hit':
+          // 多段攻击：{ type: 'multi_hit', hits: 3, damage: 25, burnChance: 0.5, burnStacks: 2 }
+          result.comboHits = effect.hits || 3;
+          result.comboPower = effect.damage || 25;
+          result.power = result.comboHits * result.comboPower;
+          if (effect.burnChance !== undefined) {
+            result.burnChance = effect.burnChance;
+          }
+          if (effect.burnStacks !== undefined) {
+            result.burnStacks = effect.burnStacks;
+          }
+          if (effect.alwaysBurn) {
+            result.burnChance = 1;
+            result.burnStacks = effect.burnStacks || 1;
+          }
+          break;
+
+        case 'self_debuff':
+          // 自我弱化（使用后自身获得debuff）
+          if (effect.statusId === 'weakness') {
+            result.weaknessEffect = true;
+          }
+          if (effect.stats) {
+            // 解析属性降低
+            if (effect.stats.attack !== undefined) result.attackBoost = -Math.abs(effect.stats.attack);
+            if (effect.stats.spAtk !== undefined) result.spAtkBoost = -Math.abs(effect.stats.spAtk);
+          }
+          break;
+
+        default:
+          console.warn(`未知的效果类型: ${effect.type}`);
+      }
+
+      return result;
+    }
+
+    // 将 skills-data.js 中的技能格式转换为战斗系统格式（新版 - 从 effects 数组解析）
     function convertSkillToBattleFormat(skillData, element) {
       // 获取能量消耗
       let energyCost = ENERGY_COST.medium;
@@ -384,13 +1039,22 @@
         }
       }
 
-      // 获取目标类型
+      // 获取目标类型 - 支持新英文格式和旧中文格式
       let target = 'single_enemy';
       if (skillData.t) {
-        if (skillData.t.includes('自身')) target = 'self';
-        else if (skillData.t.includes('己方单体')) target = 'ally';
-        else if (skillData.t.includes('己方全体')) target = 'all_ally';
-        else if (skillData.t.includes('敌方全体') || skillData.t.includes('全体敌人')) target = 'all_enemy';
+        const targetStr = String(skillData.t);
+        // 新英文格式
+        if (targetStr.includes('self')) target = 'self';
+        else if (targetStr.includes('all_ally')) target = 'all_ally';
+        else if (targetStr.includes('ally')) target = 'ally';
+        else if (targetStr.includes('all_enemy')) target = 'all_enemy';
+        // 旧中文格式
+        else if (targetStr.includes('自身')) target = 'self';
+        else if (targetStr.includes('己方全体')) target = 'all_ally';
+        else if (targetStr.includes('己方单体')) target = 'ally';
+        else if (targetStr.includes('敌方全体') || targetStr.includes('全体敌人')) target = 'all_enemy';
+        // 兼容 all 格式
+        else if (targetStr.includes('all')) target = 'all_enemy';
         else target = 'single_enemy';
       }
 
@@ -400,25 +1064,19 @@
         if (skillData.damageType === '物理') type = 'physical';
         else if (skillData.damageType === '特攻') type = 'special';
       }
-      if (skillData.eff && (skillData.eff.includes('护盾') || skillData.eff.includes('减伤'))) {
-        type = 'shield';
-      }
-      if (skillData.eff && (skillData.eff.includes('治疗') || skillData.eff.includes('回复'))) {
-        type = 'heal';
-      }
 
       // 获取威力
       let power = 0;
       let comboHits = 1;
       let comboPower = 0;
-      let basePower = 0;  // 基础威力（用于动态威力技能）
-      let powerPerStack = 0;  // 每层增加威力
+      let basePower = 0;
+      let powerPerStack = 0;
       if (skillData.p !== undefined) {
         if (typeof skillData.p === 'number') {
           power = skillData.p;
           basePower = skillData.p;
         } else if (typeof skillData.p === 'string') {
-          // 处理多段攻击格式 "25×3" → comboPower=25, comboHits=3, power=75
+          // 处理多段攻击格式 "25×3"
           const comboMatch = skillData.p.match(/(\d+)\s*[×x×]\s*(\d+)/);
           if (comboMatch) {
             comboPower = parseInt(comboMatch[1]);
@@ -426,14 +1084,13 @@
             power = comboPower * comboHits;
             basePower = comboPower;
           } else {
-            // 处理动态威力格式 "100+60×层" → 基础威力100，每层增加60威力
+            // 处理动态威力格式 "100+60×层"
             const dynamicMatch = skillData.p.match(/(\d+)\+(\d+)\s*[×x×]\s*层/);
             if (dynamicMatch) {
               basePower = parseInt(dynamicMatch[1]);
               powerPerStack = parseInt(dynamicMatch[2]);
-              power = basePower; // 初始威力为基础威力（无层数时）
+              power = basePower;
             } else {
-              // 普通格式，取第一个数字
               const match = skillData.p.match(/(\d+)/);
               if (match) power = parseInt(match[1]);
               basePower = power;
@@ -442,7 +1099,7 @@
         }
       }
 
-      // 解析属性变化
+      // 初始化所有效果变量
       let attackBoost = 0;
       let spAtkBoost = 0;
       let speedBoost = 0;
@@ -451,36 +1108,102 @@
       let grassDamageBoost = 0;
       let clearBuff = false;
       let addFirePower = 0;
-      let lightGather = 0;  // 光能汇聚层数
-      let wither = false;   // 枯萎效果
-      let witherPower = 0;  // 枯萎每层伤害威力
-      let guaranteedCrit = false;  // 必定暴击
-      let reflectDamage = 0;  // 反弹伤害百分比
-      let parasiticSeed = false;  // 寄生种子
-      let parasiticSeedDrain = 0;  // 寄生种子吸血百分比
-      let parasiticSeedTurns = 0;  // 寄生种子持续回合
-      let energyRestore = 0;  // 回复能量
-      let healPercent = 0;  // 治疗百分比
-      // ==================== 水系效果变量 ====================
-      let waterSoakEffect = false;  // 浸透效果
-      let waterSoakPower = 0;  // 浸透每层特防降低威力
-      let waterSoakDuration = 2;  // 浸透持续回合
-      let waterSoakMaxStacks = 6;  // 浸透最大层数
-      let drowningEffect = false;  // 溺水效果
-      let drowningDuration = 3;  // 溺水持续回合
-      let weaknessEffect = false;  // 虚弱效果
-      let weaknessDuration = 2;  // 虚弱持续回合
-      let muddyEffect = false;  // 浑浊效果
-      let muddyMaxStacks = 3;  // 浑浊最大层数
-      let flowEffect = false;  // 流水效果（速度+1级）
-      let clearSpringEffect = false;  // 清泉护盾效果
-      let clearSpringDuration = 3;  // 清泉持续回合
-      let rainyDayEffect = false;  // 雨天效果
-      let rainyDayDuration = 3;  // 雨天持续回合
-      let rainyDayPowerBoost = 0.5;  // 雨天威力加成（50%）
-      let steamBurnChance = 0;  // 蒸汽灼伤概率
+      let lightGather = 0;
+      let wither = false;
+      let witherPower = 0;
+      let guaranteedCrit = false;
+      let reflectDamage = 0;
+      let parasiticSeed = false;
+      let parasiticSeedDrain = 0;
+      let parasiticSeedTurns = 0;
+      let energyRestore = 0;
+      let healPercent = 0;
+      let waterSoakEffect = false;
+      let waterSoakPower = 0;
+      let waterSoakDuration = 2;
+      let waterSoakMaxStacks = 6;
+      let drowningEffect = false;
+      let drowningDuration = 3;
+      let weaknessEffect = false;
+      let weaknessDuration = 2;
+      let muddyEffect = false;
+      let muddyMaxStacks = 3;
+      let flowEffect = false;
+      let clearSpringEffect = false;
+      let clearSpringDuration = 3;
+      let rainyDayEffect = false;
+      let rainyDayDuration = 3;
+      let rainyDayPowerBoost = 0.5;
+      let steamBurnChance = 0;
+      let effect = null;
+      let burnStacks = null;
+      let burnChance = null;
+      let burnMarkPower = null;
+      let damageReduction = skillData.damageReduction || 0;
 
-      if (skillData.eff) {
+      // ========== 优先从 effects 数组解析（新格式） ==========
+      if (skillData.effects && Array.isArray(skillData.effects)) {
+        for (const effectItem of skillData.effects) {
+          const parsed = parseSingleEffect(effectItem);
+          Object.assign(
+            { attackBoost, spAtkBoost, speedBoost, defenseBoost, fireDamageBoost, grassDamageBoost,
+              clearBuff, addFirePower, lightGather, wither, witherPower, guaranteedCrit,
+              reflectDamage, parasiticSeed, parasiticSeedDrain, parasiticSeedTurns, energyRestore,
+              healPercent, waterSoakEffect, waterSoakPower, waterSoakDuration, waterSoakMaxStacks,
+              drowningEffect, drowningDuration, weaknessEffect, weaknessDuration, muddyEffect,
+              muddyMaxStacks, flowEffect, clearSpringEffect, clearSpringDuration, rainyDayEffect,
+              rainyDayDuration, rainyDayPowerBoost, steamBurnChance, effect, burnStacks, burnChance,
+              burnMarkPower, type },
+            parsed
+          );
+          // 逐个赋值以确保变量更新
+          if (parsed.attackBoost !== undefined) attackBoost = parsed.attackBoost;
+          if (parsed.spAtkBoost !== undefined) spAtkBoost = parsed.spAtkBoost;
+          if (parsed.speedBoost !== undefined) speedBoost = parsed.speedBoost;
+          if (parsed.defenseBoost !== undefined) defenseBoost = parsed.defenseBoost;
+          if (parsed.fireDamageBoost !== undefined) fireDamageBoost = parsed.fireDamageBoost;
+          if (parsed.grassDamageBoost !== undefined) grassDamageBoost = parsed.grassDamageBoost;
+          if (parsed.clearBuff !== undefined) clearBuff = parsed.clearBuff;
+          if (parsed.addFirePower !== undefined) addFirePower = parsed.addFirePower;
+          if (parsed.lightGather !== undefined) lightGather = parsed.lightGather;
+          if (parsed.wither !== undefined) wither = parsed.wither;
+          if (parsed.witherPower !== undefined) witherPower = parsed.witherPower;
+          if (parsed.guaranteedCrit !== undefined) guaranteedCrit = parsed.guaranteedCrit;
+          if (parsed.reflectDamage !== undefined) reflectDamage = parsed.reflectDamage;
+          if (parsed.parasiticSeed !== undefined) parasiticSeed = parsed.parasiticSeed;
+          if (parsed.parasiticSeedDrain !== undefined) parasiticSeedDrain = parsed.parasiticSeedDrain;
+          if (parsed.parasiticSeedTurns !== undefined) parasiticSeedTurns = parsed.parasiticSeedTurns;
+          if (parsed.energyRestore !== undefined) energyRestore = parsed.energyRestore;
+          if (parsed.healPercent !== undefined) healPercent = parsed.healPercent;
+          if (parsed.waterSoakEffect !== undefined) waterSoakEffect = parsed.waterSoakEffect;
+          if (parsed.waterSoakPower !== undefined) waterSoakPower = parsed.waterSoakPower;
+          if (parsed.waterSoakDuration !== undefined) waterSoakDuration = parsed.waterSoakDuration;
+          if (parsed.waterSoakMaxStacks !== undefined) waterSoakMaxStacks = parsed.waterSoakMaxStacks;
+          if (parsed.drowningEffect !== undefined) drowningEffect = parsed.drowningEffect;
+          if (parsed.drowningDuration !== undefined) drowningDuration = parsed.drowningDuration;
+          if (parsed.weaknessEffect !== undefined) weaknessEffect = parsed.weaknessEffect;
+          if (parsed.weaknessDuration !== undefined) weaknessDuration = parsed.weaknessDuration;
+          if (parsed.muddyEffect !== undefined) muddyEffect = parsed.muddyEffect;
+          if (parsed.muddyMaxStacks !== undefined) muddyMaxStacks = parsed.muddyMaxStacks;
+          if (parsed.flowEffect !== undefined) flowEffect = parsed.flowEffect;
+          if (parsed.clearSpringEffect !== undefined) clearSpringEffect = parsed.clearSpringEffect;
+          if (parsed.clearSpringDuration !== undefined) clearSpringDuration = parsed.clearSpringDuration;
+          if (parsed.rainyDayEffect !== undefined) rainyDayEffect = parsed.rainyDayEffect;
+          if (parsed.rainyDayDuration !== undefined) rainyDayDuration = parsed.rainyDayDuration;
+          if (parsed.rainyDayPowerBoost !== undefined) rainyDayPowerBoost = parsed.rainyDayPowerBoost;
+          if (parsed.steamBurnChance !== undefined) steamBurnChance = parsed.steamBurnChance;
+          if (parsed.effect !== undefined) effect = parsed.effect;
+          if (parsed.burnStacks !== undefined) burnStacks = parsed.burnStacks;
+          if (parsed.burnChance !== undefined) burnChance = parsed.burnChance;
+          if (parsed.burnMarkPower !== undefined) burnMarkPower = parsed.burnMarkPower;
+          if (parsed.type !== undefined) type = parsed.type;
+          if (parsed.damageReduction !== undefined) damageReduction = parsed.damageReduction;
+          if (parsed.comboHits !== undefined) comboHits = parsed.comboHits;
+          if (parsed.comboPower !== undefined) comboPower = parsed.comboPower;
+          if (parsed.power !== undefined) power = parsed.power;
+        }
+      } else if (skillData.eff) {
+        // ========== 兼容旧格式：使用正则解析 eff 文本 ==========
         // 解析攻击+1级
         if (skillData.eff.includes('攻击+1级') || skillData.eff.includes('攻击+1')) {
           attackBoost = 1;
@@ -522,12 +1245,12 @@
         if (lightGatherMatch) {
           lightGather = parseInt(lightGatherMatch[1]);
         } else if (skillData.eff.includes('光能汇聚')) {
-          lightGather = 1; // 默认1层
+          lightGather = 1;
         }
         // 解析下次草系输出技能+60威力
         const grassPowerMatch = skillData.eff.match(/下次草系输出技能\+(\d+)威力/);
         if (grassPowerMatch) {
-          lightGather = 1; // 标记为有光能汇聚效果
+          lightGather = 1;
         }
         // 解析枯萎效果
         if (skillData.eff.includes('枯萎')) {
@@ -536,7 +1259,7 @@
           if (witherMatch) {
             witherPower = parseInt(witherMatch[1]);
           } else {
-            witherPower = 10; // 默认10点威力
+            witherPower = 10;
           }
         }
         // 解析必定暴击
@@ -562,7 +1285,7 @@
           if (reflectMatch) {
             reflectDamage = parseInt(reflectMatch[1]) / 100;
           } else {
-            reflectDamage = 0.6; // 默认60%
+            reflectDamage = 0.6;
           }
         }
         // 解析寄生种子
@@ -572,13 +1295,13 @@
           if (drainMatch) {
             parasiticSeedDrain = parseInt(drainMatch[1]) / 100;
           } else {
-            parasiticSeedDrain = 0.06; // 默认6%
+            parasiticSeedDrain = 0.06;
           }
           const turnsMatch = skillData.eff.match(/持续(\d+)回合/);
           if (turnsMatch) {
             parasiticSeedTurns = parseInt(turnsMatch[1]);
           } else {
-            parasiticSeedTurns = 4; // 默认4回合
+            parasiticSeedTurns = 4;
           }
         }
         // 解析回复能量
@@ -591,26 +1314,14 @@
         if (healMatch) {
           healPercent = parseInt(healMatch[1]) / 100;
         }
-      }
-
-      // 判断效果类型
-      let effect = null;
-      let burnStacks = null;
-      let burnChance = null;
-      let burnMarkPower = null;
-      // 减伤百分比（直接从数据读取）
-      const damageReduction = skillData.damageReduction || 0;
-
-      if (skillData.eff) {
-        // 灼伤印记优先判断（更具体）
+        // 判断效果类型
         if (skillData.eff.includes('灼伤印记')) {
           effect = 'burnMark';
-          // 解析灼伤印记的威力
           const markMatch = skillData.eff.match(/灼伤印记.*?(\d+)威力/);
           if (markMatch) {
             burnMarkPower = parseInt(markMatch[1]);
           } else {
-            burnMarkPower = 40; // 默认40威力
+            burnMarkPower = 40;
           }
         } else if (skillData.eff.includes('灼烧')) {
           effect = 'burn';
@@ -619,59 +1330,47 @@
         if (skillData.eff.includes('减速')) effect = 'slow';
         if (skillData.eff.includes('麻痹')) effect = 'paralyze';
         if (skillData.eff.includes('多段') || skillData.p?.toString().includes('×')) effect = 'combo';
-
-        // 解析灼烧层数（仅对普通灼烧生效）
+        // 解析灼烧层数
         if (effect === 'burn' && skillData.eff.includes('灼烧')) {
-          // 匹配 "灼烧（5层）" 或 "灼烧（2层×3次）" 等格式
           const burnMatch = skillData.eff.match(/灼烧.*?（(\d+)层）/);
           if (burnMatch) {
             burnStacks = parseInt(burnMatch[1]);
           }
-          // 匹配概率灼烧 "50%概率灼烧"
           const chanceMatch = skillData.eff.match(/(\d+)%概率灼烧/);
           if (chanceMatch) {
             burnChance = parseInt(chanceMatch[1]) / 100;
           }
-          // 必定灼烧：没有概率描述且非概率灼烧 → 100%
           if (!skillData.eff.includes('%概率') && skillData.eff.includes('必定灼烧')) {
             burnChance = 1;
           }
         }
-
-        // ==================== 水系效果解析 ====================
-        // 浸透效果（水流冲击、水之守护）
+        // 浸透效果
         if (skillData.eff.includes('浸透')) {
           waterSoakEffect = true;
-          // 解析浸透威力
           const soakPowerMatch = skillData.eff.match(/浸透（.*?(\d+)威力/);
           if (soakPowerMatch) {
             waterSoakPower = parseInt(soakPowerMatch[1]);
           } else {
-            waterSoakPower = 1; // 默认特防-1级
+            waterSoakPower = 1;
           }
-          // 解析持续回合
           const soakDurationMatch = skillData.eff.match(/浸透.*?持续(\d+)回合/);
           if (soakDurationMatch) {
             waterSoakDuration = parseInt(soakDurationMatch[1]);
           }
-          // 解析最大层数
           const soakMaxMatch = skillData.eff.match(/浸透.*?最多(\d+)层/);
           if (soakMaxMatch) {
             waterSoakMaxStacks = parseInt(soakMaxMatch[1]);
           }
         }
-
-        // 溺水效果（漩涡）
+        // 溺水效果
         if (skillData.eff.includes('溺水')) {
           drowningEffect = true;
-          // 解析持续回合
           const drowningDurationMatch = skillData.eff.match(/溺水.*?持续(\d+)回合/);
           if (drowningDurationMatch) {
             drowningDuration = parseInt(drowningDurationMatch[1]);
           }
         }
-
-        // 虚弱效果（水炮）
+        // 虚弱效果
         if (skillData.eff.includes('虚弱')) {
           weaknessEffect = true;
           const weaknessDurationMatch = skillData.eff.match(/虚弱.*?持续(\d+)回合/);
@@ -679,8 +1378,7 @@
             weaknessDuration = parseInt(weaknessDurationMatch[1]);
           }
         }
-
-        // 浑浊效果（浊流）
+        // 浑浊效果
         if (skillData.eff.includes('浑浊')) {
           muddyEffect = true;
           const muddyMaxMatch = skillData.eff.match(/浑浊.*?最多(\d+)层/);
@@ -688,12 +1386,10 @@
             muddyMaxStacks = parseInt(muddyMaxMatch[1]);
           }
         }
-
-        // 流水效果（水疗之术）
+        // 流水效果
         if (skillData.eff.includes('流水状态')) {
           flowEffect = true;
         }
-
         // 清泉护盾效果
         if (skillData.eff.includes('清泉')) {
           clearSpringEffect = true;
@@ -702,7 +1398,6 @@
             clearSpringDuration = parseInt(clearSpringDurationMatch[1]);
           }
         }
-
         // 雨天效果
         if (skillData.eff.includes('雨天')) {
           rainyDayEffect = true;
@@ -710,37 +1405,45 @@
           if (rainyDurationMatch) {
             rainyDayDuration = parseInt(rainyDurationMatch[1]);
           }
-          // 解析威力加成
           const rainyPowerMatch = skillData.eff.match(/雨天.*?(\d+)%/);
           if (rainyPowerMatch) {
             rainyDayPowerBoost = parseInt(rainyPowerMatch[1]) / 100;
           }
         }
-
-        // 蒸汽灼伤概率（热水）
+        // 蒸汽灼伤概率
         if (skillData.eff.includes('蒸汽灼伤') || skillData.eff.includes('灼烧')) {
           const steamBurnMatch = skillData.eff.match(/(\d+)%概率.*灼伤/);
           if (steamBurnMatch) {
             steamBurnChance = parseInt(steamBurnMatch[1]) / 100;
           } else if (skillData.eff.includes('蒸汽灼伤')) {
-            steamBurnChance = 0.3; // 默认30%
+            steamBurnChance = 0.3;
           }
         }
-
-        // 持续治疗百分比（清泉护盾、治愈波动等）
+        // 持续治疗百分比
         if (skillData.eff.includes('每回合回复')) {
           const healPercentMatch = skillData.eff.match(/每回合回复(\d+)%/);
           if (healPercentMatch) {
             healPercent = parseInt(healPercentMatch[1]) / 100;
           }
         }
-
-        // 持续治疗（治愈波动、水疗之术）
+        // 持续治疗
         if (skillData.eff.includes('最大HP的')) {
           const hpHealMatch = skillData.eff.match(/最大HP的(\d+)%/);
           if (hpHealMatch) {
             healPercent = parseInt(hpHealMatch[1]) / 100;
           }
+        } else if (skillData.eff.includes('恢复') && skillData.eff.includes('%HP')) {
+          const restoreMatch = skillData.eff.match(/恢复(\d+)%HP/);
+          if (restoreMatch) {
+            healPercent = parseInt(restoreMatch[1]) / 100;
+          }
+        }
+        // 根据 eff 判断技能类型
+        if (skillData.eff.includes('护盾') || skillData.eff.includes('减伤')) {
+          type = 'shield';
+        }
+        if (skillData.eff.includes('治疗') || skillData.eff.includes('回复')) {
+          type = 'heal';
         }
       }
 
@@ -780,7 +1483,6 @@
         parasiticSeedTurns: parasiticSeedTurns,
         energyRestore: energyRestore,
         healPercent: healPercent,
-        // 水系效果属性
         waterSoakEffect: waterSoakEffect,
         waterSoakPower: waterSoakPower,
         waterSoakDuration: waterSoakDuration,
@@ -798,8 +1500,190 @@
         rainyDayDuration: rainyDayDuration,
         rainyDayPowerBoost: rainyDayPowerBoost,
         steamBurnChance: steamBurnChance,
-        description: skillData.eff || ''
+        // 优先使用 eff 字段，否则从 effects 生成描述
+        description: skillData.eff || generateSkillDescription(skillData.effects, skillData)
       };
+    }
+
+    // ==================== 统一技能效果执行系统 ====================
+
+    // 添加状态到单位
+    function addStatusToUnit(unit, statusId, stacks, duration) {
+      unit.buffs = unit.buffs || [];
+      const statusDef = STATUS[statusId];
+      if (!statusDef) {
+        console.warn(`未知状态: ${statusId}`);
+        return null;
+      }
+
+      // 查找是否已有该状态
+      let existingBuff = unit.buffs.find(b => b.type === statusId);
+
+      if (existingBuff) {
+        // 可叠加状态
+        if (statusDef.stackable) {
+          existingBuff.stacks = Math.min(existingBuff.stacks + (stacks || 1), statusDef.maxStacks || 99);
+        }
+        existingBuff.remainingDuration = duration || statusDef.duration || 2;
+      } else {
+        // 新增状态
+        const buff = {
+          type: statusId,
+          name: statusDef.name || statusId,
+          remainingDuration: duration || statusDef.duration || 2,
+          stacks: (statusDef.stackable) ? (stacks || 1) : 1
+        };
+
+        // 复制状态属性
+        if (statusDef.stats) {
+          if (statusDef.stats.attack) buff.attackBoost = statusDef.stats.attack;
+          if (statusDef.stats.spAtk) buff.spAtkBoost = statusDef.stats.spAtk;
+          if (statusDef.stats.speed) buff.speedBoost = statusDef.stats.speed;
+          if (statusDef.stats.defense) buff.defenseBoost = statusDef.stats.defense;
+        }
+        if (statusDef.healPercent) buff.healPercent = statusDef.healPercent;
+        if (statusDef.damageReduction) buff.damageReduction = statusDef.damageReduction;
+        if (statusDef.reflectDamage) buff.reflectDamage = statusDef.reflectDamage;
+        if (statusDef.skipTurn) buff.skipTurn = true;
+        if (statusDef.skipTurnChance) buff.skipTurnChance = statusDef.skipTurnChance;
+        if (statusDef.selfAttackChance) buff.selfAttackChance = statusDef.selfAttackChance;
+        if (statusDef.healBlock) buff.healBlock = true;
+
+        unit.buffs.push(buff);
+      }
+
+      return existingBuff || unit.buffs[unit.buffs.length - 1];
+    }
+
+    // 添加属性提升buff
+    function addBuffToUnit(unit, stat, value, duration) {
+      unit.buffs = unit.buffs || [];
+
+      const buff = {
+        type: 'buff',
+        stat: stat,
+        value: value,
+        remainingDuration: duration || 2
+      };
+
+      unit.buffs.push(buff);
+      return buff;
+    }
+
+    // 执行技能效果（基于 effects 数组）
+    function executeSkillEffects(skill, caster, targets) {
+      if (!skill.effects || !Array.isArray(skill.effects)) return;
+
+      const results = [];
+
+      skill.effects.forEach(effect => {
+        switch(effect.type) {
+          case 'add_status':
+            const statusId = effect.statusId;
+            targets.forEach(target => {
+              if (target.currentHp <= 0) return;
+              const duration = effect.duration || STATUS[statusId]?.duration || 2;
+              const stacks = effect.stacks || 1;
+              addStatusToUnit(target, statusId, stacks, duration);
+              addLog(`${target.name} 获得「${STATUS[statusId]?.name || statusId}」状态！`, 'buff');
+            });
+            break;
+
+          case 'buff':
+          case 'buff_all':
+            const buffDuration = skill.duration || 2;
+            targets.forEach(target => {
+              if (target.currentHp <= 0) return;
+              if (effect.stats) {
+                if (effect.stats.attack) addBuffToUnit(target, 'attack', effect.stats.attack, buffDuration);
+                if (effect.stats.spAtk) addBuffToUnit(target, 'spAtk', effect.stats.spAtk, buffDuration);
+                if (effect.stats.speed) addBuffToUnit(target, 'speed', effect.stats.speed, buffDuration);
+                if (effect.stats.defense) addBuffToUnit(target, 'defense', effect.stats.defense, buffDuration);
+              }
+            });
+            // 记录属性伤害加成
+            if (effect.fireDamageBoost) caster.fireDamageBoost = (caster.fireDamageBoost || 0) + effect.fireDamageBoost;
+            if (effect.grassDamageBoost) caster.grassDamageBoost = (caster.grassDamageBoost || 0) + effect.grassDamageBoost;
+            break;
+
+          case 'debuff':
+            targets.forEach(target => {
+              if (target.currentHp <= 0) return;
+              if (effect.stats) {
+                if (effect.stats.attack) addBuffToUnit(target, 'attack', effect.stats.attack, skill.duration || 2);
+                if (effect.stats.speed) addBuffToUnit(target, 'speed', effect.stats.speed, skill.duration || 2);
+                if (effect.stats.accuracy) addBuffToUnit(target, 'accuracy', effect.stats.accuracy, skill.duration || 2);
+              }
+            });
+            break;
+
+          case 'self_debuff':
+            if (effect.statusId === 'weakness') {
+              addStatusToUnit(caster, 'weakness', 1, 1);
+              addLog(`${caster.name} 陷入「虚弱」状态！`, 'debuff');
+            }
+            break;
+
+          case 'energy_gain':
+            targets.forEach(target => {
+              const oldEnergy = target.energy;
+              target.energy = Math.min(target.energy + effect.amount, MAX_ENERGY);
+              const actual = target.energy - oldEnergy;
+              if (actual > 0) {
+                addLog(`${target.name} 回复 ${actual} 点能量`, 'buff');
+              }
+            });
+            break;
+
+          case 'remove_buff':
+            targets.forEach(target => {
+              if (target.buffs && target.buffs.length > 0) {
+                const removed = target.buffs.pop();
+                addLog(`${target.name} 的「${removed.name || removed.type}」被清除！`, 'info');
+              }
+            });
+            break;
+
+          case 'remove_debuff_all':
+            targets.forEach(target => {
+              if (target.debuffs && target.debuffs.length > 0) {
+                target.debuffs = [];
+                addLog(`${target.name} 的所有负面状态被清除！`, 'buff');
+              }
+            });
+            break;
+        }
+      });
+
+      return results;
+    }
+
+    // 获取目标的辅助函数
+    function getTargets(caster, skill, allPlayerUnits, allEnemyUnits) {
+      let targets = [];
+
+      switch(skill.target) {
+        case 'single_enemy':
+          // 需要指定目标
+          return null;
+        case 'ally':
+          targets = allPlayerUnits.filter(u => u.currentHp > 0);
+          if (targets.length > 0) {
+            targets = [targets[Math.floor(Math.random() * targets.length)]];
+          }
+          break;
+        case 'all_ally':
+          targets = allPlayerUnits.filter(u => u.currentHp > 0);
+          break;
+        case 'all_enemy':
+          targets = allEnemyUnits.filter(u => u.currentHp > 0);
+          break;
+        case 'self':
+          targets = [caster];
+          break;
+      }
+
+      return targets;
     }
 
     // 为所有伙伴分配技能
@@ -835,70 +1719,147 @@
       console.log(`${unit.name} (${unit.element}):`, unit.skills.map(s => `${s.name}[${s.energyCost}能量]`).join(', '));
     });
 
-    // 从共享数据源同步技能描述
-function syncSkillDescriptions() {
-  // 遍历所有属性
-  for (const element in SKILLS_DB) {
-    const elementData = SKILLS_DB[element];
-    // 遍历所有技能分类
-    ['attack', 'defense', 'support'].forEach(category => {
-      const skills = elementData[category] || [];
-      skills.forEach(skillData => {
-        // 在玩家单位中查找对应技能并更新描述
-        playerUnits.forEach(unit => {
-          if (unit.element === element) {
-            const skill = unit.skills.find(s => s.id === skillData.id);
-            if (skill && skillData.eff) {
-              skill.description = skillData.eff;
+    // 从 effects 数组生成技能描述
+    function generateSkillDescription(effects, skillData) {
+      if (!effects || effects.length === 0) return '';
+
+      const parts = [];
+
+      effects.forEach(effect => {
+        switch(effect.type) {
+          case 'damage':
+            if (effect.power) parts.push(`威力${effect.power}`);
+            if (effect.physical) parts.push('物理');
+            break;
+          case 'damage_all':
+            parts.push(`全体威力${effect.power || '?'}`);
+            break;
+          case 'multi_hit':
+            parts.push(`${effect.damage || '?'}×${effect.hits || '?'}`);
+            if (effect.burnChance) parts.push(`${Math.round(effect.burnChance * 100)}%灼烧`);
+            break;
+          case 'heal':
+            parts.push(`回复${effect.percent}%HP`);
+            break;
+          case 'shield':
+            parts.push(`减伤${Math.round((1 - (effect.reduction || 0)) * 100)}%`);
+            break;
+          case 'add_status':
+            const statusName = STATUS[effect.statusId]?.name || effect.statusId;
+            if (effect.stacks) parts.push(`+${statusName}(${effect.stacks}层)`);
+            else parts.push(`+${statusName}`);
+            break;
+          case 'buff':
+          case 'buff_all':
+            if (effect.stats) {
+              const boosts = [];
+              if (effect.stats.attack > 0) boosts.push(`攻击+${effect.stats.attack}`);
+              if (effect.stats.spAtk > 0) boosts.push(`特攻+${effect.stats.spAtk}`);
+              if (effect.stats.speed > 0) boosts.push(`速度+${effect.stats.speed}`);
+              if (effect.stats.defense > 0) boosts.push(`防御+${effect.stats.defense}`);
+              if (boosts.length) parts.push(boosts.join(','));
             }
-          }
-        });
+            if (effect.fireDamageBoost) parts.push(`火属性伤害+${Math.round(effect.fireDamageBoost * 100)}%`);
+            if (effect.grassDamageBoost) parts.push(`草属性伤害+${Math.round(effect.grassDamageBoost * 100)}%`);
+            break;
+          case 'debuff':
+            if (effect.stats) {
+              if (effect.stats.accuracy) parts.push(`命中-${effect.stats.accuracy}`);
+              if (effect.stats.speed) parts.push(`速度-${effect.stats.speed}`);
+            }
+            break;
+          case 'self_debuff':
+            parts.push('使用后自身弱化');
+            break;
+          case 'energy_gain':
+            parts.push(`+${effect.amount}能量`);
+            break;
+          case 'clear_buff':
+            parts.push('清除增益');
+            break;
+          case 'clear_debuff':
+            parts.push('清除减益');
+            break;
+          case 'delayed_damage':
+            parts.push(`${effect.turns}回合后${effect.damage}威力伤害`);
+            break;
+        }
       });
-    });
-  }
-}
+
+      // 添加持续时间
+      if (skillData.duration) {
+        parts.push(`持续${skillData.duration}回合`);
+      }
+
+      return parts.join(' | ');
+    }
+
+    // 从共享数据源同步技能描述
+    function syncSkillDescriptions() {
+      // 遍历所有属性
+      for (const element in SKILLS_DB) {
+        const elementData = SKILLS_DB[element];
+        // 遍历所有技能分类
+        ['attack', 'defense', 'support'].forEach(category => {
+          const skills = elementData[category] || [];
+          skills.forEach(skillData => {
+            // 在玩家单位中查找对应技能并更新描述
+            playerUnits.forEach(unit => {
+              if (unit.element === element) {
+                const skill = unit.skills.find(s => s.id === skillData.id);
+                if (skill) {
+                  // 优先使用旧的 eff 字段，否则从 effects 生成
+                  if (skillData.eff) {
+                    skill.description = skillData.eff;
+                  } else if (skillData.effects) {
+                    skill.description = generateSkillDescription(skillData.effects, skillData);
+                  }
+                }
+              }
+            });
+          });
+        });
+      }
+    }
 
 syncSkillDescriptions();
 
-// ==================== 敌人单位数据（怪物）====================
-    const enemyUnits = [
-      {
-        id: 'flame_salamander',
-        name: '焰心蜥',
-        level: 8,
-        maxHp: 200,
-        currentHp: 200,
-        speed: 75,
-        element: 'fire',
-        energy: MAX_ENERGY,
-        intent: { type: 'attack', power: 75, targetId: 'lightning_marten' },
-        debuffs: []
-      },
-      {
-        id: 'deep_fish',
-        name: '深海鱼',
-        level: 7,
-        maxHp: 170,
-        currentHp: 170,
-        speed: 85,
-        element: 'water',
-        energy: MAX_ENERGY,
-        intent: { type: 'attack', power: 65, targetId: 'flame_bear' },
-        debuffs: []
-      },
-      {
-        id: 'rock_armadillo',
-        name: '岩甲兽',
-        level: 8,
-        maxHp: 240,
-        currentHp: 240,
-        speed: 50,
-        element: 'rock',
-        energy: MAX_ENERGY,
-        intent: { type: 'attack', power: 70, targetId: 'torrent_crab' },
-        debuffs: []
-      }
+// ==================== 敌人单位数据====================
+    // 敌人初始配置（用于重置战斗）
+    // 所有生物既可以是伙伴也可以是敌人
+    const ENEMY_INITIAL_CONFIG = [
+      { id: 'flame_salamander', name: '焰心蜥', element: 'fire', level: 60 },
+      { id: 'deep_fish', name: '深海鱼', element: 'water', level: 60 },
+      { id: 'poison_vine', name: '毒藤怪', element: 'grass', level: 60 }
     ];
+
+    // 根据初始配置创建敌人单位
+    function createEnemyUnits() {
+      return ENEMY_INITIAL_CONFIG.map(config => {
+        const stats = getCreatureStats(config.id, config.level);
+        return {
+          id: config.id + '_enemy',
+          templateId: config.id,  // 存储原始模板ID
+          name: config.name,
+          element: config.element,
+          level: config.level,
+          side: 'enemy',  // 阵营标记：敌人
+          maxHp: stats.maxHp,
+          currentHp: stats.maxHp,
+          attack: stats.attack,
+          spAttack: stats.spAttack,
+          defense: stats.defense,
+          spDefense: stats.spDefense,
+          speed: stats.speed,
+          energy: MAX_ENERGY,
+          intent: { type: 'attack', power: 75, targetId: 'flame_bear' },
+          debuffs: [],
+          buffs: []
+        };
+      });
+    }
+
+    let enemyUnits = createEnemyUnits();
 
     // 为所有敌人分配技能
     initializeEnemySkills();
@@ -916,6 +1877,9 @@ syncSkillDescriptions();
     let currentActionIndex = 0;    // 当前行动索引
     let isRoundExecuting = false; // 是否正在执行轮次
     let isBattleStarted = false;   // 战斗是否已开始
+
+    // 模式3异步流程控制
+    let actionResolve = null;  // 用于解决等待中的 Promise
 
     // ==================== 战斗模式系统 ====================
     // 模式1: 经典模式 - 玩家同时下达指令后统一结算（基于battle-simple.html）
@@ -1164,6 +2128,392 @@ syncSkillDescriptions();
       }
     }
 
+    // ==================== 自定义战斗配置系统 ====================
+
+    // 等级范围
+    const MIN_LEVEL = 1;
+    const MAX_LEVEL = 60;
+
+    // 敌人类型配置
+    const ENEMY_TYPE_CONFIG = {
+      normal: { name: '普通', hpMult: 1, atkMult: 1, defMult: 1, spAtkMult: 1, spDefMult: 1, speedMult: 1, cssClass: 'normal' },
+      elite: { name: '精英', hpMult: 2.5, atkMult: 1.3, defMult: 1.3, spAtkMult: 1.3, spDefMult: 1.3, speedMult: 1, cssClass: 'elite' },
+      boss: { name: '首领', hpMult: 8, atkMult: 1.6, defMult: 1.3, spAtkMult: 1.6, spDefMult: 1.3, speedMult: 1, cssClass: 'boss' }
+    };
+
+    // 自定义配置状态
+    let customPlayerConfig = [];
+    let customEnemyConfig = [];
+
+    // 打开自定义战斗编辑器
+    function openCustomBattleEditor() {
+      // 同步当前模式到面板
+      selectCustomMode(currentBattleMode);
+
+      // 初始化配置（基于当前战斗配置）
+      customPlayerConfig = playerUnits.map(p => ({
+        templateId: p.id,
+        name: p.name,
+        element: p.element,
+        level: p.level
+      }));
+
+      customEnemyConfig = enemyUnits.map(e => {
+        // 根据敌人的属性倍率反推敌人类型
+        let enemyType = 'normal';
+        if (e.enemyType) {
+          enemyType = e.enemyType;
+        } else {
+          // 根据HP判断（精英约2.5倍，首领约8倍）
+          const baseStats = CREATURE_BASE_STATS[e.templateId] || { hp: 60 };
+          const baseHp = Math.floor(baseStats.hp * 2 * e.level / 30) + e.level + 10;
+          if (e.maxHp >= baseHp * 6) {
+            enemyType = 'boss';
+          } else if (e.maxHp >= baseHp * 2) {
+            enemyType = 'elite';
+          }
+        }
+        return {
+          templateId: e.templateId,
+          name: e.name,
+          element: e.element,
+          level: e.level,
+          enemyType: enemyType
+        };
+      });
+
+      renderCustomEditor();
+      document.getElementById('customBattleOverlay').classList.add('visible');
+    }
+
+    // 关闭自定义战斗编辑器
+    function closeCustomBattleEditor() {
+      document.getElementById('customBattleOverlay').classList.remove('visible');
+    }
+
+    // 选择自定义战斗模式
+    function selectCustomMode(mode) {
+      currentBattleMode = mode;
+      // 更新面板内按钮状态
+      document.querySelectorAll('.custom-mode-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i + 1 === mode);
+      });
+      // 更新主界面按钮状态
+      document.querySelectorAll('.mode-switch-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i + 1 === mode);
+      });
+      document.getElementById('customBtn').classList.remove('active');
+    }
+
+    // 渲染自定义编辑器
+    function renderCustomEditor() {
+      renderPlayerList();
+      renderEnemyList();
+      updateAddButtons();
+    }
+
+    // 渲染伙伴列表
+    function renderPlayerList() {
+      const container = document.getElementById('playerList');
+      document.getElementById('playerCount').textContent = customPlayerConfig.length + '/5';
+
+      if (customPlayerConfig.length === 0) {
+        container.innerHTML = '<div class="custom-battle-empty">暂无伙伴，请添加</div>';
+        return;
+      }
+
+      container.innerHTML = customPlayerConfig.map((p, index) => {
+        const stats = getCreatureStats(p.templateId, p.level);
+        return `
+        <div class="custom-battle-row">
+          <div class="custom-battle-unit element-${p.element}">
+            <div>
+              <div class="custom-battle-unit-name">Lv.${p.level} ${p.name}</div>
+              <div class="custom-battle-unit-stats">${getElementName(p.element)} | HP ${stats.maxHp} | 攻 ${stats.attack} | 防 ${stats.defense} | 速 ${stats.speed}</div>
+            </div>
+          </div>
+          <select class="custom-battle-type-select" onchange="changePlayerTemplate(${index}, this.value)">
+            ${CREATURE_TEMPLATES.map(t => `<option value="${t.id}" ${p.templateId === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+          </select>
+          <select class="custom-battle-level-select" onchange="changePlayerLevel(${index}, this.value)">
+            ${Array.from({length: MAX_LEVEL}, (_, i) => i + 1).map(l => `<option value="${l}" ${p.level === l ? 'selected' : ''}>Lv.${l}</option>`).join('')}
+          </select>
+          <button class="custom-battle-remove-btn" onclick="removeCustomPlayer(${index})">&times;</button>
+        </div>
+      `}).join('');
+    }
+
+    // 渲染敌人列表
+    function renderEnemyList() {
+      const container = document.getElementById('enemyList');
+      document.getElementById('enemyCount').textContent = customEnemyConfig.length + '/5';
+
+      if (customEnemyConfig.length === 0) {
+        container.innerHTML = '<div class="custom-battle-empty">暂无敌人，请添加</div>';
+        return;
+      }
+
+      container.innerHTML = customEnemyConfig.map((e, index) => {
+        const typeConfig = ENEMY_TYPE_CONFIG[e.enemyType || 'normal'];
+        // 计算属性（考虑敌人类型加成）
+        const baseStats = getCreatureStats(e.templateId, e.level);
+        const typeMult = {
+          hp: typeConfig.hpMult,
+          attack: typeConfig.atkMult,
+          defense: typeConfig.defMult,
+          spAttack: typeConfig.spAtkMult,
+          spDefense: typeConfig.spDefMult
+        };
+        const stats = {
+          maxHp: Math.floor(baseStats.maxHp * typeMult.hp),
+          attack: Math.floor(baseStats.attack * typeMult.attack),
+          defense: Math.floor(baseStats.defense * typeMult.defense),
+          spAttack: Math.floor(baseStats.spAttack * typeMult.spAttack),
+          spDefense: Math.floor(baseStats.spDefense * typeMult.spDefense)
+        };
+        return `
+        <div class="custom-battle-row">
+          <div class="custom-battle-unit element-${e.element}">
+            <div>
+              <div class="custom-battle-unit-name">Lv.${e.level} ${e.name} <span class="custom-battle-type-badge ${typeConfig.cssClass}" style="margin-left:4px">${typeConfig.name}</span></div>
+              <div class="custom-battle-unit-stats">${getElementName(e.element)} | HP ${stats.maxHp}(×${typeConfig.hpMult}) | 攻 ${stats.attack}(×${typeConfig.atkMult}) | 防 ${stats.defense}(×${typeConfig.defMult})</div>
+            </div>
+          </div>
+          <select class="custom-battle-type-select" onchange="changeEnemyTemplate(${index}, this.value)">
+            ${CREATURE_TEMPLATES.map(t => `<option value="${t.id}" ${e.templateId === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+          </select>
+          <select class="custom-battle-level-select" onchange="changeEnemyLevel(${index}, this.value)">
+            ${Array.from({length: MAX_LEVEL}, (_, i) => i + 1).map(l => `<option value="${l}" ${e.level === l ? 'selected' : ''}>Lv.${l}</option>`).join('')}
+          </select>
+          <select class="custom-battle-type-select" onchange="changeEnemyType(${index}, this.value)">
+            <option value="normal" ${e.enemyType === 'normal' ? 'selected' : ''}>普通</option>
+            <option value="elite" ${e.enemyType === 'elite' ? 'selected' : ''}>精英</option>
+            <option value="boss" ${e.enemyType === 'boss' ? 'selected' : ''}>首领</option>
+          </select>
+          <button class="custom-battle-remove-btn" onclick="removeCustomEnemy(${index})">&times;</button>
+        </div>
+      `}).join('');
+    }
+
+    // 更新添加按钮状态
+    function updateAddButtons() {
+      document.getElementById('addPlayerBtn').disabled = customPlayerConfig.length >= 5;
+      document.getElementById('addEnemyBtn').disabled = customEnemyConfig.length >= 5;
+      document.getElementById('addPlayerBtn').style.display = customPlayerConfig.length >= 5 ? 'none' : 'inline-block';
+      document.getElementById('addEnemyBtn').style.display = customEnemyConfig.length >= 5 ? 'none' : 'inline-block';
+    }
+
+    // 添加伙伴
+    function addCustomPlayer() {
+      if (customPlayerConfig.length >= 5) return;
+      const availableTemplates = CREATURE_TEMPLATES.filter(t => !customPlayerConfig.some(p => p.templateId === t.id));
+      if (availableTemplates.length === 0) return;
+
+      const template = availableTemplates[0];
+      customPlayerConfig.push({
+        templateId: template.id,
+        name: template.name,
+        element: template.element,
+        level: 60
+      });
+      renderCustomEditor();
+    }
+
+    // 添加敌人
+    function addCustomEnemy() {
+      if (customEnemyConfig.length >= 5) return;
+      const availableTemplates = CREATURE_TEMPLATES.filter(t => !customEnemyConfig.some(e => e.templateId === t.id));
+      if (availableTemplates.length === 0) {
+        // 如果所有模板都用过了，从全部模板中随机选一个
+        const template = CREATURE_TEMPLATES[Math.floor(Math.random() * CREATURE_TEMPLATES.length)];
+        customEnemyConfig.push({
+          templateId: template.id,
+          name: template.name,
+          element: template.element,
+          level: 60,
+          enemyType: 'normal'
+        });
+      } else {
+        const template = availableTemplates[0];
+        customEnemyConfig.push({
+          templateId: template.id,
+          name: template.name,
+          element: template.element,
+          level: 60,
+          enemyType: 'normal'
+        });
+      }
+      renderCustomEditor();
+    }
+
+    // 移除伙伴
+    function removeCustomPlayer(index) {
+      customPlayerConfig.splice(index, 1);
+      renderCustomEditor();
+    }
+
+    // 移除敌人
+    function removeCustomEnemy(index) {
+      customEnemyConfig.splice(index, 1);
+      renderCustomEditor();
+    }
+
+    // 改变伙伴模板
+    function changePlayerTemplate(index, templateId) {
+      const template = CREATURE_TEMPLATES.find(t => t.id === templateId);
+      if (template) {
+        customPlayerConfig[index] = {
+          ...customPlayerConfig[index],
+          templateId: template.id,
+          name: template.name,
+          element: template.element
+        };
+        renderCustomEditor();
+      }
+    }
+
+    // 改变伙伴等级
+    function changePlayerLevel(index, level) {
+      customPlayerConfig[index] = {
+        ...customPlayerConfig[index],
+        level: parseInt(level)
+      };
+      renderCustomEditor();
+    }
+
+    // 改变敌人模板
+    function changeEnemyTemplate(index, templateId) {
+      const template = CREATURE_TEMPLATES.find(t => t.id === templateId);
+      if (template) {
+        customEnemyConfig[index] = {
+          ...customEnemyConfig[index],
+          templateId: template.id,
+          name: template.name,
+          element: template.element
+        };
+        renderCustomEditor();
+      }
+    }
+
+    // 改变敌人等级
+    function changeEnemyLevel(index, level) {
+      customEnemyConfig[index] = {
+        ...customEnemyConfig[index],
+        level: parseInt(level)
+      };
+      renderCustomEditor();
+    }
+
+    // 改变敌人类型
+    function changeEnemyType(index, enemyType) {
+      customEnemyConfig[index] = {
+        ...customEnemyConfig[index],
+        enemyType: enemyType
+      };
+      renderCustomEditor();
+    }
+
+    // 获取属性名称
+    function getElementName(element) {
+      const names = {
+        fire: '火',
+        water: '水',
+        grass: '草',
+        electric: '电',
+        ice: '冰',
+        rock: '岩',
+        psychic: '超能',
+        dragon: '龙'
+      };
+      return names[element] || element;
+    }
+
+    // 应用自定义战斗配置
+    function applyCustomBattle() {
+      if (customPlayerConfig.length === 0) {
+        alert('请至少添加一个伙伴');
+        return;
+      }
+      if (customEnemyConfig.length === 0) {
+        alert('请至少添加一个敌人');
+        return;
+      }
+
+      // 关闭编辑界面
+      closeCustomBattleEditor();
+
+      // 更新玩家单位
+      playerUnits.length = 0;
+      customPlayerConfig.forEach((config, index) => {
+        const stats = getCreatureStats(config.templateId, config.level);
+        const unit = {
+          id: config.templateId + '_custom_' + index,
+          name: config.name,
+          level: config.level,
+          side: 'player',  // 阵营标记：伙伴
+          maxHp: stats.maxHp,
+          currentHp: stats.maxHp,
+          attack: stats.attack,
+          spAttack: stats.spAttack,
+          defense: stats.defense,
+          spDefense: stats.spDefense,
+          speed: stats.speed,
+          element: config.element,
+          energy: MAX_ENERGY,
+          debuffs: [],
+          buffs: []
+        };
+        playerUnits.push(unit);
+      });
+
+      // 更新敌人单位
+      enemyUnits.length = 0;
+      customEnemyConfig.forEach((config, index) => {
+        const typeConfig = ENEMY_TYPE_CONFIG[config.enemyType || 'normal'];
+        const baseStats = getCreatureStats(config.templateId, config.level);
+        const unit = {
+          id: config.templateId + '_enemy_' + index,
+          templateId: config.templateId,  // 存储原始模板ID
+          name: config.name,
+          level: config.level,
+          side: 'enemy',  // 阵营标记：敌人
+          maxHp: Math.floor(baseStats.maxHp * typeConfig.hpMult),
+          currentHp: Math.floor(baseStats.maxHp * typeConfig.hpMult),
+          attack: Math.floor(baseStats.attack * typeConfig.atkMult),
+          spAttack: Math.floor(baseStats.spAttack * typeConfig.spAtkMult),
+          defense: Math.floor(baseStats.defense * typeConfig.defMult),
+          spDefense: Math.floor(baseStats.spDefense * typeConfig.spDefMult),
+          speed: baseStats.speed,
+          element: config.element,
+          energy: MAX_ENERGY,
+          intent: { type: 'attack', power: 50, targetId: playerUnits[0]?.id },
+          debuffs: [],
+          buffs: [],
+          enemyType: config.enemyType || 'normal'
+        };
+        enemyUnits.push(unit);
+      });
+
+      // 重新分配技能
+      initializeCompanionSkills();
+      initializeEnemySkills();
+
+      // 保存初始配置
+      INITIAL_PLAYER_CONFIG = playerUnits.map(u => JSON.parse(JSON.stringify(u)));
+      INITIAL_ENEMY_CONFIG = enemyUnits.map(u => {
+        const config = JSON.parse(JSON.stringify(u));
+        delete config.skills;
+        return config;
+      });
+
+      // 重置战斗状态
+      restartBattleForModeSwitch();
+
+      addLog('=== 自定义战斗开始 ===');
+      renderPlayerUnits();
+      renderEnemyUnits();
+    }
+
     // 获取模式名称
     function getModeName(mode) {
       const names = { 1: '经典模式', 2: '宝可梦模式', 3: '以太术士模式' };
@@ -1300,6 +2650,96 @@ syncSkillDescriptions();
           statusIcons += `<div class="status-icon reduction-icon" title="减伤: ${Math.round(unit.damageReduction * 100)}%">减${Math.round(unit.damageReduction * 100)}%</div>`;
         }
 
+        // Buff/Debuff状态标签
+        let debuffTags = '';
+        let buffTags = '';
+
+        // Debuff标签
+        if (unit.debuffs) {
+          unit.debuffs.forEach(d => {
+            if (d.type === 'burn' && d.stacks > 0) {
+              debuffTags += `<div class="debuff-tag burn" title="灼烧：每层2%最大HP/回合，层数减半">灼烧${d.stacks}层</div>`;
+            } else if (d.type === 'freeze') {
+              debuffTags += `<div class="debuff-tag freeze" title="冻结：无法行动">冻结${d.remainingDuration}回合</div>`;
+            } else if (d.type === 'paralyze') {
+              debuffTags += `<div class="debuff-tag paralyze" title="麻痹：速度-1级">麻痹${d.remainingDuration}回合</div>`;
+            } else if (d.type === 'poison' && d.stacks > 0) {
+              debuffTags += `<div class="debuff-tag poison" title="中毒：每层2%最大HP/回合">中毒${d.stacks}层</div>`;
+            } else if (d.type === 'water_soak') {
+              debuffTags += `<div class="debuff-tag water_soak" title="浸透：特防-1级/层">浸透${d.remainingDuration}回合</div>`;
+            } else if (d.type === 'drowning') {
+              debuffTags += `<div class="debuff-tag drowning" title="溺水：每回合流失10%当前HP">溺水${d.remainingDuration}回合</div>`;
+            } else if (d.type === 'combustion') {
+              debuffTags += `<div class="debuff-tag combustion" title="燃尽：${d.remainingDuration}回合后扣除30%当前HP">燃尽${d.remainingDuration}回合</div>`;
+            } else if (d.type === 'burn_mark') {
+              debuffTags += `<div class="debuff-tag burn_mark" title="灼伤印记：每次行动前受到${d.power || 40}威力火属性伤害">灼伤印记</div>`;
+            } else if (d.type === 'wither') {
+              debuffTags += `<div class="debuff-tag wither" title="枯萎：每回合受到自身属性${d.damagePerStack || 10}点威力伤害">枯萎${d.stacks}层</div>`;
+            } else if (d.type === 'muddy') {
+              debuffTags += `<div class="debuff-tag muddy" title="浑浊：命中率-1级/层">浑浊${d.stacks}层</div>`;
+            } else if (d.type === 'parasitic_seed') {
+              debuffTags += `<div class="debuff-tag parasitic" title="寄生种子：每回合流失HP+施法者回复">寄生种子</div>`;
+            } else if (d.type === 'steam_burn') {
+              debuffTags += `<div class="debuff-tag steam" title="蒸汽灼伤：每回合2%最大HP伤害">蒸汽灼伤</div>`;
+            } else if (d.type === 'weakness') {
+              debuffTags += `<div class="debuff-tag weakness" title="虚弱：无法使用技能">虚弱${d.remainingDuration}回合</div>`;
+            }
+          });
+        }
+
+        // Buff标签
+        if (unit.attackBoost && unit.attackBoost > 0) {
+          buffTags += `<div class="buff-tag attack_boost" title="攻击+${unit.attackBoost}级">攻+${unit.attackBoost}</div>`;
+        }
+        if (unit.spAtkBoost && unit.spAtkBoost > 0) {
+          buffTags += `<div class="buff-tag sp_atk_boost" title="特攻+${unit.spAtkBoost}级">特攻+${unit.spAtkBoost}</div>`;
+        }
+        if (unit.speedBoost && unit.speedBoost > 0) {
+          buffTags += `<div class="buff-tag speed_boost" title="速度+${unit.speedBoost}级">速+${unit.speedBoost}</div>`;
+        }
+        if (unit.defenseBoost && unit.defenseBoost > 0) {
+          buffTags += `<div class="buff-tag defense_boost" title="防御+${unit.defenseBoost}级">防+${unit.defenseBoost}</div>`;
+        }
+        if (unit.fireDamageBoost && unit.fireDamageBoost > 0) {
+          buffTags += `<div class="buff-tag fire_damage_boost" title="火属性伤害+${Math.round(unit.fireDamageBoost * 100)}%">火伤+${Math.round(unit.fireDamageBoost * 100)}%</div>`;
+        }
+        if (unit.flameCharge && unit.flameChargeTurns > 0) {
+          buffTags += `<div class="buff-tag flame_charge" title="蓄焰：下次火属性攻击威力+${unit.flameChargePower}">蓄焰${unit.flameChargeTurns}回合</div>`;
+        }
+        if (unit.wallOfFlamesPower > 0) {
+          buffTags += `<div class="buff-tag wall_of_flames" title="烈火护体：下次火属性攻击威力+${unit.wallOfFlamesPower}">烈火${unit.wallOfFlamesPower}</div>`;
+        }
+        if (unit.aquaShield || (unit.buffs && unit.buffs.some(b => b.type === 'aqua_shield'))) {
+          buffTags += `<div class="buff-tag aqua_shield" title="水之守护：受到攻击时反击者获得浸透">水之守护</div>`;
+        }
+        if (unit.counterStance) {
+          buffTags += `<div class="buff-tag counter" title="防反之姿：反弹伤害+先手">防反</div>`;
+        }
+        if (unit.entangleOnHit) {
+          buffTags += `<div class="buff-tag entangle" title="藤蔓护甲：受到攻击时缠绕攻击者">藤蔓</div>`;
+        }
+        if (unit.rootBound) {
+          buffTags += `<div class="buff-tag root" title="扎根之躯：每回合回复8%HP，速度-1级">扎根</div>`;
+        }
+        if (unit.lightGatherStacks && unit.lightGatherStacks > 0) {
+          buffTags += `<div class="buff-tag light_gather" title="光能汇聚：草系技能+${60 * unit.lightGatherStacks}威力">光能×${unit.lightGatherStacks}</div>`;
+        }
+        if (unit.comboCharge) {
+          buffTags += `<div class="buff-tag combo" title="连击充能：下次攻击享受增伤">连击充能</div>`;
+        }
+        if (unit.fragrantBloom) {
+          buffTags += `<div class="buff-tag fragrant" title="芬芳绽放：草系伤害+25%，每回合回复5%HP">芬芳</div>`;
+        }
+        if (unit.buffs) {
+          unit.buffs.forEach(b => {
+            if (b.type === 'clear_spring') {
+              buffTags += `<div class="buff-tag clear_spring" title="清泉护盾：每回合回复10%HP并清除1个负面状态">清泉${b.remainingDuration}回合</div>`;
+            } else if (b.type === 'flow') {
+              buffTags += `<div class="buff-tag flow" title="流水：速度+1级">流水${b.remainingDuration}回合</div>`;
+            }
+          });
+        }
+
         div.innerHTML = `
           <div class="target-indicator"></div>
           <div class="unit-avatar ${isDead ? 'dead' : ''}">
@@ -1309,10 +2749,12 @@ syncSkillDescriptions();
           </div>
           <div class="unit-info">
             <div class="unit-name">${unit.name}${isExecuted ? '<span class="executed-hint">已行动</span>' : ''}</div>
-            <div class="unit-level">Lv.${unit.level} <span style="color: #30d158; margin-left: 4px;">速:${unit.speed}</span></div>
+            <div class="unit-level">速:${unit.speed}</div>
             <div class="hp-bar-container"><div class="hp-bar ${isDead ? 'critical' : ''}" style="width:${isDead ? 0 : (unit.currentHp/unit.maxHp)*100}%"></div></div>
             <div class="hp-text">${isDead ? '倒下' : `${unit.currentHp} / ${unit.maxHp}`}</div>
             <div class="status-icons">${statusIcons}</div>
+            ${debuffTags ? `<div class="debuff-tags">${debuffTags}</div>` : ''}
+            ${buffTags ? `<div class="buff-tags">${buffTags}</div>` : ''}
           </div>
           <div class="energy-bar-container">
             ${Array.from({length: Math.min(unit.energy, 10)}, () => '<div class="energy-orb filled"></div>').join('')}
@@ -1361,6 +2803,96 @@ syncSkillDescriptions();
           statusIcons += `<div class="status-icon reduction-icon" title="减伤: ${Math.round(unit.damageReduction * 100)}%">减${Math.round(unit.damageReduction * 100)}%</div>`;
         }
 
+        // Buff/Debuff状态标签
+        let debuffTags = '';
+        let buffTags = '';
+
+        // Debuff标签
+        if (unit.debuffs) {
+          unit.debuffs.forEach(d => {
+            if (d.type === 'burn' && d.stacks > 0) {
+              debuffTags += `<div class="debuff-tag burn" title="灼烧：每层2%最大HP/回合，层数减半">灼烧${d.stacks}层</div>`;
+            } else if (d.type === 'freeze') {
+              debuffTags += `<div class="debuff-tag freeze" title="冻结：无法行动">冻结${d.remainingDuration}回合</div>`;
+            } else if (d.type === 'paralyze') {
+              debuffTags += `<div class="debuff-tag paralyze" title="麻痹：速度-1级">麻痹${d.remainingDuration}回合</div>`;
+            } else if (d.type === 'poison' && d.stacks > 0) {
+              debuffTags += `<div class="debuff-tag poison" title="中毒：每层2%最大HP/回合">中毒${d.stacks}层</div>`;
+            } else if (d.type === 'water_soak') {
+              debuffTags += `<div class="debuff-tag water_soak" title="浸透：特防-1级/层">浸透${d.remainingDuration}回合</div>`;
+            } else if (d.type === 'drowning') {
+              debuffTags += `<div class="debuff-tag drowning" title="溺水：每回合流失10%当前HP">溺水${d.remainingDuration}回合</div>`;
+            } else if (d.type === 'combustion') {
+              debuffTags += `<div class="debuff-tag combustion" title="燃尽：${d.remainingDuration}回合后扣除30%当前HP">燃尽${d.remainingDuration}回合</div>`;
+            } else if (d.type === 'burn_mark') {
+              debuffTags += `<div class="debuff-tag burn_mark" title="灼伤印记：每次行动前受到${d.power || 40}威力火属性伤害">灼伤印记</div>`;
+            } else if (d.type === 'wither') {
+              debuffTags += `<div class="debuff-tag wither" title="枯萎：每回合受到自身属性${d.damagePerStack || 10}点威力伤害">枯萎${d.stacks}层</div>`;
+            } else if (d.type === 'muddy') {
+              debuffTags += `<div class="debuff-tag muddy" title="浑浊：命中率-1级/层">浑浊${d.stacks}层</div>`;
+            } else if (d.type === 'parasitic_seed') {
+              debuffTags += `<div class="debuff-tag parasitic" title="寄生种子：每回合流失HP+施法者回复">寄生种子</div>`;
+            } else if (d.type === 'steam_burn') {
+              debuffTags += `<div class="debuff-tag steam" title="蒸汽灼伤：每回合2%最大HP伤害">蒸汽灼伤</div>`;
+            } else if (d.type === 'weakness') {
+              debuffTags += `<div class="debuff-tag weakness" title="虚弱：无法使用技能">虚弱${d.remainingDuration}回合</div>`;
+            }
+          });
+        }
+
+        // Buff标签
+        if (unit.attackBoost && unit.attackBoost > 0) {
+          buffTags += `<div class="buff-tag attack_boost" title="攻击+${unit.attackBoost}级">攻+${unit.attackBoost}</div>`;
+        }
+        if (unit.spAtkBoost && unit.spAtkBoost > 0) {
+          buffTags += `<div class="buff-tag sp_atk_boost" title="特攻+${unit.spAtkBoost}级">特攻+${unit.spAtkBoost}</div>`;
+        }
+        if (unit.speedBoost && unit.speedBoost > 0) {
+          buffTags += `<div class="buff-tag speed_boost" title="速度+${unit.speedBoost}级">速+${unit.speedBoost}</div>`;
+        }
+        if (unit.defenseBoost && unit.defenseBoost > 0) {
+          buffTags += `<div class="buff-tag defense_boost" title="防御+${unit.defenseBoost}级">防+${unit.defenseBoost}</div>`;
+        }
+        if (unit.fireDamageBoost && unit.fireDamageBoost > 0) {
+          buffTags += `<div class="buff-tag fire_damage_boost" title="火属性伤害+${Math.round(unit.fireDamageBoost * 100)}%">火伤+${Math.round(unit.fireDamageBoost * 100)}%</div>`;
+        }
+        if (unit.flameCharge && unit.flameChargeTurns > 0) {
+          buffTags += `<div class="buff-tag flame_charge" title="蓄焰：下次火属性攻击威力+${unit.flameChargePower}">蓄焰${unit.flameChargeTurns}回合</div>`;
+        }
+        if (unit.wallOfFlamesPower > 0) {
+          buffTags += `<div class="buff-tag wall_of_flames" title="烈火护体：下次火属性攻击威力+${unit.wallOfFlamesPower}">烈火${unit.wallOfFlamesPower}</div>`;
+        }
+        if (unit.aquaShield || (unit.buffs && unit.buffs.some(b => b.type === 'aqua_shield'))) {
+          buffTags += `<div class="buff-tag aqua_shield" title="水之守护：受到攻击时反击者获得浸透">水之守护</div>`;
+        }
+        if (unit.counterStance) {
+          buffTags += `<div class="buff-tag counter" title="防反之姿：反弹伤害+先手">防反</div>`;
+        }
+        if (unit.entangleOnHit) {
+          buffTags += `<div class="buff-tag entangle" title="藤蔓护甲：受到攻击时缠绕攻击者">藤蔓</div>`;
+        }
+        if (unit.rootBound) {
+          buffTags += `<div class="buff-tag root" title="扎根之躯：每回合回复8%HP，速度-1级">扎根</div>`;
+        }
+        if (unit.lightGatherStacks && unit.lightGatherStacks > 0) {
+          buffTags += `<div class="buff-tag light_gather" title="光能汇聚：草系技能+${60 * unit.lightGatherStacks}威力">光能×${unit.lightGatherStacks}</div>`;
+        }
+        if (unit.comboCharge) {
+          buffTags += `<div class="buff-tag combo" title="连击充能：下次攻击享受增伤">连击充能</div>`;
+        }
+        if (unit.fragrantBloom) {
+          buffTags += `<div class="buff-tag fragrant" title="芬芳绽放：草系伤害+25%，每回合回复5%HP">芬芳</div>`;
+        }
+        if (unit.buffs) {
+          unit.buffs.forEach(b => {
+            if (b.type === 'clear_spring') {
+              buffTags += `<div class="buff-tag clear_spring" title="清泉护盾：每回合回复10%HP并清除1个负面状态">清泉${b.remainingDuration}回合</div>`;
+            } else if (b.type === 'flow') {
+              buffTags += `<div class="buff-tag flow" title="流水：速度+1级">流水${b.remainingDuration}回合</div>`;
+            }
+          });
+        }
+
         div.innerHTML = `
           <div class="target-indicator"></div>
           <div class="intent-display intent-${unit.intent.type}" data-intent='${JSON.stringify(unit.intent)}'>
@@ -1373,10 +2905,12 @@ syncSkillDescriptions();
           </div>
           <div class="unit-info">
             <div class="unit-name">${unit.name}</div>
-            <div class="unit-level">Lv.${unit.level} <span style="color: #ff453a; margin-left: 4px;">速:${unit.speed}</span></div>
+            <div class="unit-level">速:${unit.speed}</div>
             <div class="hp-bar-container"><div class="hp-bar ${isDead ? 'critical' : ''}" style="width:${isDead ? 0 : (unit.currentHp/unit.maxHp)*100}%"></div></div>
             <div class="hp-text">${isDead ? '倒下' : `${unit.currentHp} / ${unit.maxHp}`}</div>
             <div class="status-icons">${statusIcons}</div>
+            ${debuffTags ? `<div class="debuff-tags">${debuffTags}</div>` : ''}
+            ${buffTags ? `<div class="buff-tags">${buffTags}</div>` : ''}
           </div>
           <div class="energy-bar-container">
             ${Array.from({length: Math.min(unit.energy || 0, 10)}, () => '<div class="energy-orb filled"></div>').join('')}
@@ -1698,7 +3232,7 @@ syncSkillDescriptions();
             }
           };
 
-          const upHandler = (e) => {
+          const upHandler = async (e) => {
             document.removeEventListener('mousemove', moveHandler);
             document.removeEventListener('mouseup', upHandler);
             isDragging = false;
@@ -1723,25 +3257,25 @@ syncSkillDescriptions();
               // 自身目标技能：必须在自身身上释放
               targetUnit = findUnitElement('.unit.player');
               if (targetUnit && targetUnit.id === unit.id) {
-                cmdSuccess = addCommand(unit, skill, unit.id);
+                cmdSuccess = await addCommand(unit, skill, unit.id);
               }
             } else if (skill.target === 'all_enemy') {
               // 全体敌人技能：必须在敌人身上释放
               targetUnit = findUnitElement('.unit.enemy');
               if (targetUnit) {
-                cmdSuccess = addCommand(unit, skill, targetUnit.id);
+                cmdSuccess = await addCommand(unit, skill, targetUnit.id);
               }
             } else if (skill.target === 'all_ally') {
               // 全体队友技能：必须在队友身上释放
               targetUnit = findUnitElement('.unit.player');
               if (targetUnit) {
-                cmdSuccess = addCommand(unit, skill, targetUnit.id);
+                cmdSuccess = await addCommand(unit, skill, targetUnit.id);
               }
             } else {
               // 单体技能：必须在有效目标上释放
               targetUnit = findUnitElement('.unit.enemy.targetable') || findUnitElement('.unit.player.targetable');
               if (targetUnit) {
-                cmdSuccess = addCommand(unit, skill, targetUnit.id);
+                cmdSuccess = await addCommand(unit, skill, targetUnit.id);
               }
             }
 
@@ -1975,7 +3509,7 @@ syncSkillDescriptions();
     }
 
     // ==================== 指令系统 ====================
-    function addCommand(caster, skill, targetId) {
+    async function addCommand(caster, skill, targetId) {
       // 检查能量是否足够
       if (caster.energy < skill.energyCost) {
         addLog(`${caster.name} 能量不足，无法使用 ${skill.name}`);
@@ -2015,9 +3549,9 @@ syncSkillDescriptions();
       // 模式3（以太术士模式）：如果选择了该伙伴，立即执行
       if (currentBattleMode === 3) {
         if (phase === 'player_action' && selectedPlayer && selectedPlayer.id === caster.id) {
-          executePlayerActionAndContinueMode3(caster, skill, targetId);
+          await executePlayerActionAndContinueMode3(caster, skill, targetId);
         } else if (phase === 'player_select' && selectedPlayer && selectedPlayer.id === caster.id) {
-          executePlayerActionAndContinueMode3(caster, skill, targetId);
+          await executePlayerActionAndContinueMode3(caster, skill, targetId);
         } else {
           deselectPlayer();
         }
@@ -2203,6 +3737,12 @@ syncSkillDescriptions();
         updateActionOrderDisplay();
         renderPlayerUnits();
         addLog('选择下一个行动的伙伴');
+      }
+
+      // 解决等待中的 Promise（如果有）
+      if (actionResolve) {
+        actionResolve();
+        actionResolve = null;
       }
     }
 
@@ -3263,8 +4803,9 @@ syncSkillDescriptions();
           }
 
         } else {
-          // 普通单次攻击：基础伤害 + 蓄焰/烈火护体增伤
-          let damage = Math.floor((skill.power + powerBonus) * (0.8 + Math.random() * 0.4));
+          // 普通单次攻击：基础伤害 = (玩家攻击/特攻 + 技能威力) * 随机系数
+          const casterAttackStat = caster.spAttack || 75; // 使用施法者的特攻属性
+          let damage = Math.floor((casterAttackStat * 0.5 + skill.power + powerBonus) * (0.8 + Math.random() * 0.4));
 
           // 检查目标的减伤效果
           if (target.damageReduction && target.damageReduction > 0) {
@@ -3543,8 +5084,43 @@ syncSkillDescriptions();
           addLog(`${caster.name} 获得「虚弱」状态！（下一回合无法使用技能，持续${skill.weaknessDuration || 2}回合）`, 'debuff');
         }
 
+        // 更新HP条
         updateHpBar(target);
         if (target.currentHp <= 0) addLog(`${target.name} 倒下了！`);
+
+        // 火盾反伤 + 附加灼烧（玩家攻击敌人时触发）
+        if (target.fireShield && target.reflectDamage > 0 && target.currentHp > 0) {
+          const reflectDmg = Math.floor(target.reflectDamage * (0.8 + Math.random() * 0.4));
+          caster.currentHp = Math.max(0, caster.currentHp - reflectDmg);
+          showDamageNumber(caster.id, reflectDmg, 'damage');
+          updateHpBar(caster);
+          addLog(`${target.name} 的火盾反伤触发，对 ${caster.name} 造成 ${reflectDmg} 火属性伤害！`, 'damage');
+
+          // 火盾附加灼烧：受伤时攻击者获得灼烧
+          const existingBurn = caster.debuffs.find(d => d.type === 'burn');
+          if (existingBurn) {
+            existingBurn.stacks += 1;
+            existingBurn.remainingDuration = 3;
+            addLog(`${caster.name} 受到灼烧（+1层，共${existingBurn.stacks}层）`, 'damage');
+          } else {
+            caster.debuffs.push({
+              type: 'burn',
+              stacks: 1,
+              damagePercentPerStack: 0.02,
+              remainingDuration: 3
+            });
+            addLog(`${caster.name} 陷入灼烧状态！`, 'damage');
+          }
+
+          if (caster.currentHp <= 0) addLog(`${caster.name} 倒下了！`);
+        }
+
+        // 重新渲染单位卡片以显示debuff/buff标签
+        if (enemyUnits.includes(target)) {
+          renderEnemyUnits();
+        } else {
+          renderPlayerUnits();
+        }
 
       } else if (skill.target === 'ally') {
         // 队友目标
@@ -3755,34 +5331,35 @@ syncSkillDescriptions();
           }
         }
         // 炎之意志：攻击+1级、速度+1级、火属性伤害+25%（持续2回合）
-        if (skill.attackBoost || skill.speedBoost || skill.fireDamageBoost) {
-          const allAllies = [...playerUnits];
-          allAllies.forEach(unit => {
-            if (unit.currentHp <= 0) return;
+        // 检查是否有 buff_all 效果类型的属性提升
+        if ((skill.attackBoost || skill.speedBoost || skill.fireDamageBoost) && skill.effects) {
+          const hasBuffAll = skill.effects.some(e => e.type === 'buff_all');
+          if (hasBuffAll) {
+            const allAllies = [...playerUnits];
+            allAllies.forEach(unit => {
+              if (unit.currentHp <= 0) return;
 
-            if (skill.attackBoost) {
-              unit.attackBoost = (unit.attackBoost || 0) + skill.attackBoost;
-              unit.attackBoostTurns = 2;
-            }
-            if (skill.spAtkBoost) {
-              unit.spAtkBoost = (unit.spAtkBoost || 0) + skill.spAtkBoost;
-              unit.spAtkBoostTurns = 2;
-            }
-            if (skill.speedBoost) {
-              unit.speedBoost = (unit.speedBoost || 0) + skill.speedBoost;
-              unit.speedBoostTurns = 2;
-            }
-            if (skill.fireDamageBoost) {
-              unit.fireDamageBoost = (unit.fireDamageBoost || 0) + skill.fireDamageBoost;
-              unit.fireDamageBoostTurns = 2;
-            }
-          });
+              if (skill.attackBoost) {
+                unit.attackBoost = (unit.attackBoost || 0) + skill.attackBoost;
+                unit.attackBoostTurns = skill.duration || 2;
+              }
+              if (skill.spAtkBoost) {
+                unit.spAtkBoost = (unit.spAtkBoost || 0) + skill.spAtkBoost;
+                unit.spAtkBoostTurns = skill.duration || 2;
+              }
+              if (skill.speedBoost) {
+                unit.speedBoost = (unit.speedBoost || 0) + skill.speedBoost;
+                unit.speedBoostTurns = skill.duration || 2;
+              }
+              if (skill.fireDamageBoost) {
+                unit.fireDamageBoost = (unit.fireDamageBoost || 0) + skill.fireDamageBoost;
+                unit.fireDamageBoostTurns = skill.duration || 2;
+              }
+              addLog(`${unit.name} 获得增益：${skill.attackBoost ? `攻击+${skill.attackBoost}级 ` : ''}${skill.speedBoost ? `速度+${skill.speedBoost}级 ` : ''}${skill.fireDamageBoost ? `火属性伤害+${Math.round(skill.fireDamageBoost * 100)}%` : ''}`, 'buff');
+            });
 
-          let boostMsg = `${caster.name} 使用 ${skill.name}，为全体施加炎之意志（持续2回合）：`;
-          if (skill.attackBoost) boostMsg += ` 攻击+${skill.attackBoost}级`;
-          if (skill.speedBoost) boostMsg += ` 速度+${skill.speedBoost}级`;
-          if (skill.fireDamageBoost) boostMsg += ` 火属性伤害+${Math.round(skill.fireDamageBoost * 100)}%`;
-          addLog(boostMsg, 'buff');
+            addLog(`${caster.name} 使用 ${skill.name}，为全体施加增益效果（持续${skill.duration || 2}回合）`, 'buff');
+          }
         }
 
         // 芬芳绽放：召唤芬芳环境（持续4回合），己方草系技能伤害+25%，每回合回复5%HP
@@ -3824,6 +5401,10 @@ syncSkillDescriptions();
           }
         }
       }
+
+      // 重新渲染单位卡片以显示debuff/buff标签
+      renderPlayerUnits();
+      renderEnemyUnits();
 
       // ==================== 水系天气效果 ====================
       // 雨天效果（雨天：所有生物水属性技能威力+50%）
@@ -3944,9 +5525,10 @@ syncSkillDescriptions();
         if (skill.effect === 'combo') {
           const hits = skill.comboHits || 3;
           const powerPerHit = skill.comboPower || Math.floor(skill.power / hits);
+          const enemyAttackStat = enemy.spAttack || 70;
 
           for (let i = 0; i < hits; i++) {
-            let hitDamage = Math.floor((powerPerHit + powerBonus) * (0.8 + Math.random() * 0.4));
+            let hitDamage = Math.floor((enemyAttackStat * 0.5 + powerPerHit + powerBonus) * (0.8 + Math.random() * 0.4));
 
             if (target.damageReduction && target.damageReduction > 0) {
               hitDamage = Math.floor(hitDamage * (1 - target.damageReduction));
@@ -3991,8 +5573,9 @@ syncSkillDescriptions();
             addLog(`${target.name} 陷入灼烧状态！（${existingBurn ? existingBurn.stacks : skill.burnStacks}层，每层2%最大HP/回合，层数减半）`, 'damage');
           }
         } else {
-          // 普通单次攻击：基础伤害 + 蓄焰/烈火护体增伤
-          let damage = Math.floor((skill.power + powerBonus) * (0.8 + Math.random() * 0.4));
+          // 普通单次攻击：基础伤害 = (敌人攻击/特攻 + 技能威力) * 随机系数
+          const enemyAttackStat = enemy.spAttack || 70; // 使用敌人的特攻属性
+          let damage = Math.floor((enemyAttackStat * 0.5 + skill.power + powerBonus) * (0.8 + Math.random() * 0.4));
 
           if (target.damageReduction && target.damageReduction > 0) {
             damage = Math.floor(damage * (1 - target.damageReduction));
@@ -4044,6 +5627,33 @@ syncSkillDescriptions();
         updateHpBar(target);
         if (target.currentHp <= 0) addLog(`${target.name} 倒下了！`);
 
+        // 火盾反伤 + 附加灼烧（敌人攻击玩家时触发）
+        if (target.fireShield && target.reflectDamage > 0 && target.currentHp > 0) {
+          const reflectDmg = Math.floor(target.reflectDamage * (0.8 + Math.random() * 0.4));
+          enemy.currentHp = Math.max(0, enemy.currentHp - reflectDmg);
+          showDamageNumber(enemy.id, reflectDmg, 'damage');
+          updateHpBar(enemy);
+          addLog(`${target.name} 的火盾反伤触发，对 ${enemy.name} 造成 ${reflectDmg} 火属性伤害！`, 'damage');
+
+          // 火盾附加灼烧：受伤时攻击者获得灼烧
+          const existingBurn = enemy.debuffs.find(d => d.type === 'burn');
+          if (existingBurn) {
+            existingBurn.stacks += 1;
+            existingBurn.remainingDuration = 3;
+            addLog(`${enemy.name} 受到灼烧（+1层，共${existingBurn.stacks}层）`, 'damage');
+          } else {
+            enemy.debuffs.push({
+              type: 'burn',
+              stacks: 1,
+              damagePercentPerStack: 0.02,
+              remainingDuration: 3
+            });
+            addLog(`${enemy.name} 陷入灼烧状态！`, 'damage');
+          }
+
+          if (enemy.currentHp <= 0) addLog(`${enemy.name} 倒下了！`);
+        }
+
       } else if (skill.target === 'self') {
         // 自身目标技能
         if (skill.type === 'shield') {
@@ -4069,7 +5679,16 @@ syncSkillDescriptions();
             addLog(`${enemy.name} 使用 ${skill.name}，为 ${allyTarget.name} 恢复 ${heal} HP`, 'heal');
           } else if (skill.type === 'shield') {
             allyTarget.shield = (allyTarget.shield || 0) + skill.power;
-            addLog(`${enemy.name} 使用 ${skill.name}，为 ${allyTarget.name} 施加 ${skill.power} 点护盾`);
+
+            // 火盾：反伤效果
+            if (skill.effect === 'reflect' || skill.reflectDamage > 0) {
+              allyTarget.fireShield = true;
+              allyTarget.reflectDamage = skill.reflectDamage || 30;
+              allyTarget.reflectElement = enemy.element;
+              addLog(`${enemy.name} 使用 ${skill.name}，为 ${allyTarget.name} 施加 ${skill.power} 点护盾（含反伤效果）`);
+            } else {
+              addLog(`${enemy.name} 使用 ${skill.name}，为 ${allyTarget.name} 施加 ${skill.power} 点护盾`);
+            }
           }
         }
       }
@@ -4195,7 +5814,8 @@ syncSkillDescriptions();
         queue.push({
           type: 'enemy',
           caster: enemy,
-          intent: enemy.intent
+          intent: enemy.intent,
+          speed: enemy.speed
         });
       }
       return queue;

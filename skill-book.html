@@ -782,7 +782,7 @@ function render() {
       let powerHtml = '';
       if (s.p) powerHtml = `<div style="color:#ff453a;font-size:14px;font-weight:600;margin-bottom:8px">威力 ${s.p}</div>`;
       else if (s.s) powerHtml = `<div style="color:#0a84ff;font-size:14px;font-weight:600;margin-bottom:8px">护盾 ${s.s}</div>`;
-      let tagsHtml = s.tags.map(t => `<span class="skill-tag">${t}</span>`).join('');
+      let tagsHtml = (s.tags || []).map(t => `<span class="skill-tag">${t}</span>`).join('');
       let priorityHtml = s.priority ? `<div style="color:#ffd60a;font-size:12px;margin-bottom:6px">⚡ 先手+${s.priority}</div>` : '';
       let dmgTypeHtml = s.damageType ? `<span class="skill-badge badge-attack">${s.damageType}</span>` : '';
       html += `
