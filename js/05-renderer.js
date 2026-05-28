@@ -59,7 +59,8 @@ function renderPlayerUnits() {
         } else if (d.type === 'combustion') {
           debuffTags += `<div class="debuff-tag combustion" title="燃尽：${d.remainingDuration}回合后扣除30%当前HP">燃尽${d.remainingDuration}回合</div>`;
         } else if (d.type === 'burn_mark') {
-          debuffTags += `<div class="debuff-tag burn_mark" title="灼伤印记：每次行动前受到${d.power || 40}威力火属性伤害">灼伤印记</div>`;
+          const damageTypeText = d.damageType === 'physical' ? '物理' : '特殊';
+          debuffTags += `<div class="debuff-tag burn_mark" title="灼伤印记：每次行动前受到自身${d.power || 40}威力${damageTypeText}伤害">灼伤印记</div>`;
         } else if (d.type === 'wither') {
           debuffTags += `<div class="debuff-tag wither" title="枯萎：每回合受到自身属性${d.damagePerStack || 10}点威力伤害">枯萎${d.stacks}层</div>`;
         } else if (d.type === 'muddy') {
@@ -212,7 +213,8 @@ function renderEnemyUnits() {
         } else if (d.type === 'combustion') {
           debuffTags += `<div class="debuff-tag combustion" title="燃尽：${d.remainingDuration}回合后扣除30%当前HP">燃尽${d.remainingDuration}回合</div>`;
         } else if (d.type === 'burn_mark') {
-          debuffTags += `<div class="debuff-tag burn_mark" title="灼伤印记：每次行动前受到${d.power || 40}威力火属性伤害">灼伤印记</div>`;
+          const damageTypeText = d.damageType === 'physical' ? '物理' : '特殊';
+          debuffTags += `<div class="debuff-tag burn_mark" title="灼伤印记：每次行动前受到自身${d.power || 40}威力${damageTypeText}伤害">灼伤印记</div>`;
         } else if (d.type === 'wither') {
           debuffTags += `<div class="debuff-tag wither" title="枯萎：每回合受到自身属性${d.damagePerStack || 10}点威力伤害">枯萎${d.stacks}层</div>`;
         } else if (d.type === 'muddy') {

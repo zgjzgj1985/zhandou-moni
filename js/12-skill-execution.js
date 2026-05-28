@@ -277,19 +277,22 @@ async function executePlayerCommand(caster, skill, targetId) {
       addLog(`${target.name} 被施加「燃尽印记」（${target.combustionTurnsLeft}回合后扣除30%当前HP）`, 'debuff');
     }
 
-    // 灼伤印记：每次行动前受到自身威力计算的火属性伤害
+    // 灼伤印记：每次行动前受到自身威力计算的物理/特殊伤害
     if (skill.effect === 'burnMark') {
       target.burnMark = true;
       target.burnMarkPower = skill.burnMarkPower || 20;
+      target.burnMarkDamageType = skill.damageType || 'special';
+      const damageTypeText = target.burnMarkDamageType === 'physical' ? '物理' : '特殊';
       // 添加debuff用于显示标签
       target.debuffs = target.debuffs || [];
       target.debuffs = target.debuffs.filter(d => d.type !== 'burn_mark');
       target.debuffs.push({
         type: 'burn_mark',
         power: skill.burnMarkPower || 20,
+        damageType: skill.damageType || 'special',
         remainingDuration: 3
       });
-      addLog(`${target.name} 被施加「灼伤印记」（每次行动前受到自身${target.burnMarkPower}威力火属性伤害）`, 'debuff');
+      addLog(`${target.name} 被施加「灼伤印记」（自身${target.burnMarkPower}威力${damageTypeText}伤害）`, 'debuff');
     }
 
     // 灼烧效果（层数系统）

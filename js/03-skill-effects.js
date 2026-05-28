@@ -250,7 +250,9 @@ function convertSkillToBattleFormat(skillData, element) {
 
   let type = 'special';
   if (skillData.damageType) {
-    if (skillData.damageType === '物理') type = 'physical';
+    if (skillData.damageType === 'physical') type = 'physical';
+    else if (skillData.damageType === 'special') type = 'special';
+    else if (skillData.damageType === '物理') type = 'physical';
     else if (skillData.damageType === '特攻') type = 'special';
   }
 

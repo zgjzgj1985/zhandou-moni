@@ -888,10 +888,11 @@ async function executeActionMode3(action, actionIndex, totalActions) {
   if (action.caster.burnMark && action.caster.currentHp > 0) {
     await delay(200);
     const burnMarkDamage = Math.floor(action.caster.burnMarkPower * (0.8 + Math.random() * 0.4));
+    const damageTypeText = action.caster.burnMarkDamageType === 'physical' ? '物理' : '特殊';
     action.caster.currentHp = Math.max(0, action.caster.currentHp - burnMarkDamage);
     showDamageNumber(action.caster.id, burnMarkDamage, 'damage');
     updateHpBar(action.caster);
-    addLog(`${action.caster.name} 的「灼伤印记」触发，受到 ${burnMarkDamage} 火属性伤害！`, 'damage');
+    addLog(`${action.caster.name} 的「灼伤印记」触发，受到 ${burnMarkDamage} ${damageTypeText}伤害！`, 'damage');
   }
 
   await delay(400);
@@ -1044,10 +1045,11 @@ async function executeAction(action) {
   if (action.caster.burnMark && action.caster.currentHp > 0) {
     await delay(200);
     const burnMarkDamage = Math.floor(action.caster.burnMarkPower * (0.8 + Math.random() * 0.4));
+    const damageTypeText = action.caster.burnMarkDamageType === 'physical' ? '物理' : '特殊';
     action.caster.currentHp = Math.max(0, action.caster.currentHp - burnMarkDamage);
     showDamageNumber(action.caster.id, burnMarkDamage, 'damage');
     updateHpBar(action.caster);
-    addLog(`${action.caster.name} 的「灼伤印记」触发，受到 ${burnMarkDamage} 火属性伤害！`, 'damage');
+    addLog(`${action.caster.name} 的「灼伤印记」触发，受到 ${burnMarkDamage} ${damageTypeText}伤害！`, 'damage');
   }
 
   await delay(400);

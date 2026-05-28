@@ -52,9 +52,11 @@ function showSkillTooltip(e, skill, card, target = null) {
       skill.type === 'electric' || skill.type === 'debuff' || skill.type === 'ice') {
     // 雷霆连击：多段攻击显示
     if (skill.effect === 'combo' && skill.comboHits && skill.comboPower) {
-      html += `<div class="skill-tooltip-power">威力: ${skill.comboPower}×${skill.comboHits}（共${skill.comboPower * skill.comboHits}）</div>`;
+      const damageTypeText = skill.type === 'physical' ? '物理' : '特殊';
+      html += `<div class="skill-tooltip-power">威力: ${skill.comboPower}×${skill.comboHits}（共${skill.comboPower * skill.comboHits}）${damageTypeText}伤害</div>`;
     } else if (skill.power && skill.power > 0) {
-      html += `<div class="skill-tooltip-power">威力: ${skill.power}</div>`;
+      const damageTypeText = skill.type === 'physical' ? '物理' : '特殊';
+      html += `<div class="skill-tooltip-power">威力: ${skill.power}（${damageTypeText}伤害）</div>`;
     }
   } else if (skill.type === 'shield') {
     // 护盾技能 - 显示护盾值
@@ -86,6 +88,13 @@ function showSkillTooltip(e, skill, card, target = null) {
 
   // 能量消耗
   html += `<div class="skill-tooltip-energy">消耗: ${getEnergyCostText(skill.energyCost)}</div>`;
+
+  // 灼伤印记特殊描述
+  if (skill.effect === 'burnMark') {
+    const damageTypeText = skill.damageType === 'physical' ? '物理' : '特殊';
+    const power = skill.burnMarkPower || 40;
+    html += `<div class="skill-tooltip-effect">灼伤印记：每次行动前受到自身${power}威力${damageTypeText}伤害</div>`;
+  }
 
   // 特殊效果描述（仅对非burnMark类型显示）
   if (skill.effect && skill.effect !== 'burnMark') {

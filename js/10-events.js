@@ -129,6 +129,11 @@ function onEnemyClick(unit) {
 }
 
 function deselectPlayer() {
+  // 模式3中，伙伴行动后需要重新自动选择，不清除选择状态
+  // 只有玩家手动点击其他地方时才清除
+  if (currentBattleMode === 3 && selectedPlayer) {
+    return;
+  }
   selectedPlayer = null;
   draggedSkill = null;
   document.querySelectorAll('.unit').forEach(el => el.classList.remove('targetable', 'selected', 'matchup-super', 'matchup-weak'));
