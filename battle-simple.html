@@ -13,6 +13,8 @@
     .turn-info { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); text-align: center; }
     .turn-number { font-size: 18px; font-weight: 600; }
     .phase-text { font-size: 12px; color: #8e8e93; margin-top: 4px; }
+    .phase-text.player-turn { color: #30d158; }
+    .phase-text.enemy-turn { color: #ff453a; }
 
     .battlefield { display: flex; padding: 100px 40px; height: 100vh; }
     .player-side { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 40px; }
@@ -57,6 +59,7 @@
     .energy-bar-container { display: flex; flex-direction: column; gap: 1px; align-items: center; padding-top: 8px; }
     .energy-orb { width: 6px; height: 6px; border-radius: 50%; background: rgba(48, 209, 88, 0.2); border: 1px solid rgba(48, 209, 88, 0.5); }
     .energy-orb.filled { background: #30d158; border-color: #30d158; }
+    .unit-name .executed-hint { font-size: 10px; color: #8e8e93; margin-left: 6px; vertical-align: middle; }
 
     .skill-panel { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; padding: 14px 20px; background: rgba(30, 30, 30, 0.95); border-radius: 14px; opacity: 0; visibility: hidden; z-index: 100; }
     .skill-panel.visible { opacity: 1; visibility: visible; }
@@ -97,6 +100,7 @@
     .action-hint { font-size: 11px; color: #8e8e93; text-align: center; }
 
     .command-list { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); background: rgba(30, 30, 30, 0.95); border-radius: 12px; padding: 12px 16px; min-width: 280px; max-width: 320px; z-index: 50; max-height: 60vh; overflow-y: auto; }
+    .command-list.mode3-only { display: none; } /* 模式1/2隐藏 */
     .command-title { font-size: 11px; font-weight: 600; color: #8e8e93; margin-bottom: 8px; text-align: center; }
     .command-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #3a3a3c; }
     .command-item:last-child { border-bottom: none; }
@@ -110,7 +114,7 @@
     .command-cancel { margin-left: auto; background: none; border: none; color: #ff453a; cursor: pointer; font-size: 11px; padding: 2px 6px; border-radius: 4px; }
     .command-cancel:hover { background: rgba(255, 69, 58, 0.2); }
 
-    .action-order-display { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); background: rgba(30, 30, 30, 0.95); border-radius: 10px; padding: 10px 16px; z-index: 50; display: none; }
+    .action-order-display { position: absolute; top: 100px; left: 50%; transform: translateX(-50%); background: rgba(30, 30, 30, 0.95); border-radius: 10px; padding: 10px 16px; z-index: 50; display: none; }
     .action-order-display.visible { display: block; }
     .action-order-title { font-size: 10px; color: #8e8e93; margin-bottom: 6px; text-align: center; }
     .action-order-list { display: flex; flex-direction: column; gap: 4px; }
@@ -119,6 +123,7 @@
     .action-order-item.executed { opacity: 0.5; text-decoration: line-through; }
     .action-order-item.skipped { opacity: 0.3; color: #8e8e93; }
     .action-order-speed { color: #8e8e93; font-size: 10px; }
+    .action-order-executed { color: #8e8e93; font-size: 9px; margin-left: auto; }
     .action-order-icon { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; }
     .action-order-icon.player { background: #0a84ff; }
     .action-order-icon.enemy { background: #ff453a; }
@@ -168,15 +173,33 @@
 
     .skill-book-btn { position: absolute; top: 40px; right: 16px; background: rgba(30, 30, 30, 0.95); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; z-index: 50; }
     .skill-book-btn:hover { background: rgba(50, 50, 50, 0.95); }
+
+    /* 模式切换按钮样式 */
+    .mode-switch-container { position: absolute; top: 40px; left: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 50; }
+    .mode-switch-btn { background: rgba(30, 30, 30, 0.95); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+    .mode-switch-btn:hover { background: rgba(50, 50, 50, 0.95); }
+    .mode-switch-btn.active { border-color: #30d158; box-shadow: 0 0 8px rgba(48, 209, 88, 0.4); }
+    .mode-switch-btn.mode-1 { border-left: 3px solid #0a84ff; }
+    .mode-switch-btn.mode-2 { border-left: 3px solid #ff9f0a; }
+    .mode-switch-btn.mode-3 { border-left: 3px solid #bf5af2; }
+    .mode-title { font-size: 10px; color: #8e8e93; margin-bottom: 2px; }
   </style>
 </head>
 <body>
   <div class="battle-container">
     <button class="skill-book-btn" onclick="window.location.href='skill-book.html'">图鉴</button>
 
+    <!-- 模式切换按钮 -->
+    <div class="mode-switch-container">
+      <div class="mode-title">战斗模式</div>
+      <button class="mode-switch-btn mode-1 active" id="mode1Btn" onclick="switchBattleMode(1)">经典模式</button>
+      <button class="mode-switch-btn mode-2" id="mode2Btn" onclick="switchBattleMode(2)">宝可梦模式</button>
+      <button class="mode-switch-btn mode-3" id="mode3Btn" onclick="switchBattleMode(3)">以太术士模式</button>
+    </div>
+
     <div class="turn-info">
-      <div class="turn-number" id="turnNumber">第 1 回合</div>
-      <div class="phase-text" id="phaseText">准备阶段 (0/3)</div>
+      <div class="turn-number" id="turnNumber">第 1 轮</div>
+      <div class="phase-text" id="phaseText">己方回合</div>
     </div>
 
     <div class="action-order-display" id="actionOrderDisplay">
@@ -199,7 +222,7 @@
     </div>
 
     <div class="command-list" id="commandList">
-      <div class="command-title">指令列表</div>
+      <div class="command-title">指令列表（随时下达）</div>
       <div id="commandItems"></div>
     </div>
 
@@ -386,13 +409,187 @@
 
       // 获取威力
       let power = 0;
+      let comboHits = 1;
+      let comboPower = 0;
+      let basePower = 0;  // 基础威力（用于动态威力技能）
+      let powerPerStack = 0;  // 每层增加威力
       if (skillData.p !== undefined) {
         if (typeof skillData.p === 'number') {
           power = skillData.p;
+          basePower = skillData.p;
         } else if (typeof skillData.p === 'string') {
-          // 处理 "25×3" 这样的格式，取第一段数值
-          const match = skillData.p.match(/(\d+)/);
-          if (match) power = parseInt(match[1]);
+          // 处理多段攻击格式 "25×3" → comboPower=25, comboHits=3, power=75
+          const comboMatch = skillData.p.match(/(\d+)\s*[×x×]\s*(\d+)/);
+          if (comboMatch) {
+            comboPower = parseInt(comboMatch[1]);
+            comboHits = parseInt(comboMatch[2]);
+            power = comboPower * comboHits;
+            basePower = comboPower;
+          } else {
+            // 处理动态威力格式 "100+60×层" → 基础威力100，每层增加60威力
+            const dynamicMatch = skillData.p.match(/(\d+)\+(\d+)\s*[×x×]\s*层/);
+            if (dynamicMatch) {
+              basePower = parseInt(dynamicMatch[1]);
+              powerPerStack = parseInt(dynamicMatch[2]);
+              power = basePower; // 初始威力为基础威力（无层数时）
+            } else {
+              // 普通格式，取第一个数字
+              const match = skillData.p.match(/(\d+)/);
+              if (match) power = parseInt(match[1]);
+              basePower = power;
+            }
+          }
+        }
+      }
+
+      // 解析属性变化
+      let attackBoost = 0;
+      let spAtkBoost = 0;
+      let speedBoost = 0;
+      let defenseBoost = 0;
+      let fireDamageBoost = 0;
+      let grassDamageBoost = 0;
+      let clearBuff = false;
+      let addFirePower = 0;
+      let lightGather = 0;  // 光能汇聚层数
+      let wither = false;   // 枯萎效果
+      let witherPower = 0;  // 枯萎每层伤害威力
+      let guaranteedCrit = false;  // 必定暴击
+      let reflectDamage = 0;  // 反弹伤害百分比
+      let parasiticSeed = false;  // 寄生种子
+      let parasiticSeedDrain = 0;  // 寄生种子吸血百分比
+      let parasiticSeedTurns = 0;  // 寄生种子持续回合
+      let energyRestore = 0;  // 回复能量
+      let healPercent = 0;  // 治疗百分比
+      // ==================== 水系效果变量 ====================
+      let waterSoakEffect = false;  // 浸透效果
+      let waterSoakPower = 0;  // 浸透每层特防降低威力
+      let waterSoakDuration = 2;  // 浸透持续回合
+      let waterSoakMaxStacks = 6;  // 浸透最大层数
+      let drowningEffect = false;  // 溺水效果
+      let drowningDuration = 3;  // 溺水持续回合
+      let weaknessEffect = false;  // 虚弱效果
+      let weaknessDuration = 2;  // 虚弱持续回合
+      let muddyEffect = false;  // 浑浊效果
+      let muddyMaxStacks = 3;  // 浑浊最大层数
+      let flowEffect = false;  // 流水效果（速度+1级）
+      let clearSpringEffect = false;  // 清泉护盾效果
+      let clearSpringDuration = 3;  // 清泉持续回合
+      let rainyDayEffect = false;  // 雨天效果
+      let rainyDayDuration = 3;  // 雨天持续回合
+      let rainyDayPowerBoost = 0.5;  // 雨天威力加成（50%）
+      let steamBurnChance = 0;  // 蒸汽灼伤概率
+
+      if (skillData.eff) {
+        // 解析攻击+1级
+        if (skillData.eff.includes('攻击+1级') || skillData.eff.includes('攻击+1')) {
+          attackBoost = 1;
+        }
+        // 解析特攻+1级
+        if (skillData.eff.includes('特攻+1级') || skillData.eff.includes('特攻-')) {
+          const spMatch = skillData.eff.match(/特攻([+-]\d+)级/);
+          if (spMatch) spAtkBoost = parseInt(spMatch[1]);
+        }
+        // 解析速度+1级
+        if (skillData.eff.includes('速度+1级') || skillData.eff.includes('速度+1')) {
+          speedBoost = 1;
+        }
+        // 解析防御+1级
+        if (skillData.eff.includes('防御+1级') || skillData.eff.includes('防御+1')) {
+          defenseBoost = 1;
+        }
+        // 解析火属性伤害+25%
+        const fireDmgMatch = skillData.eff.match(/火属性伤害\+(\d+)%/);
+        if (fireDmgMatch) {
+          fireDamageBoost = parseInt(fireDmgMatch[1]) / 100;
+        }
+        // 解析草属性伤害+25%
+        const grassDmgMatch = skillData.eff.match(/草系技能伤害\+(\d+)%/);
+        if (grassDmgMatch) {
+          grassDamageBoost = parseInt(grassDmgMatch[1]) / 100;
+        }
+        // 解析清除增益
+        if (skillData.eff.includes('清除') && skillData.eff.includes('增益')) {
+          clearBuff = true;
+        }
+        // 解析火属性攻击威力+N
+        const firePowerMatch = skillData.eff.match(/火属性攻击威力\+(\d+)/);
+        if (firePowerMatch) {
+          addFirePower = parseInt(firePowerMatch[1]);
+        }
+        // 解析光能汇聚层数
+        const lightGatherMatch = skillData.eff.match(/光能汇聚（(\d+)层）/);
+        if (lightGatherMatch) {
+          lightGather = parseInt(lightGatherMatch[1]);
+        } else if (skillData.eff.includes('光能汇聚')) {
+          lightGather = 1; // 默认1层
+        }
+        // 解析下次草系输出技能+60威力
+        const grassPowerMatch = skillData.eff.match(/下次草系输出技能\+(\d+)威力/);
+        if (grassPowerMatch) {
+          lightGather = 1; // 标记为有光能汇聚效果
+        }
+        // 解析枯萎效果
+        if (skillData.eff.includes('枯萎')) {
+          wither = true;
+          const witherMatch = skillData.eff.match(/枯萎（.*?自身属性(\d+)点威力/);
+          if (witherMatch) {
+            witherPower = parseInt(witherMatch[1]);
+          } else {
+            witherPower = 10; // 默认10点威力
+          }
+        }
+        // 解析必定暴击
+        if (skillData.eff.includes('必定暴击')) {
+          guaranteedCrit = true;
+        }
+        // 解析芬芳环境
+        if (skillData.eff.includes('芬芳环境')) {
+          effect = 'fragrantEnvironment';
+        }
+        // 解析扎根状态
+        if (skillData.eff.includes('扎根状态')) {
+          effect = 'rootBound';
+        }
+        // 解析缠绕效果
+        if (skillData.eff.includes('缠绕')) {
+          effect = 'entangle';
+        }
+        // 解析防反状态
+        if (skillData.eff.includes('防反状态') || skillData.eff.includes('反弹')) {
+          effect = 'counterStance';
+          const reflectMatch = skillData.eff.match(/反弹(\d+)%伤害/);
+          if (reflectMatch) {
+            reflectDamage = parseInt(reflectMatch[1]) / 100;
+          } else {
+            reflectDamage = 0.6; // 默认60%
+          }
+        }
+        // 解析寄生种子
+        if (skillData.eff.includes('寄生种子') || skillData.eff.includes('寄生之种')) {
+          parasiticSeed = true;
+          const drainMatch = skillData.eff.match(/HP的(\d+)%/);
+          if (drainMatch) {
+            parasiticSeedDrain = parseInt(drainMatch[1]) / 100;
+          } else {
+            parasiticSeedDrain = 0.06; // 默认6%
+          }
+          const turnsMatch = skillData.eff.match(/持续(\d+)回合/);
+          if (turnsMatch) {
+            parasiticSeedTurns = parseInt(turnsMatch[1]);
+          } else {
+            parasiticSeedTurns = 4; // 默认4回合
+          }
+        }
+        // 解析回复能量
+        const energyMatch = skillData.eff.match(/获得(\d+)点能量/);
+        if (energyMatch) {
+          energyRestore = parseInt(energyMatch[1]);
+        }
+        // 解析治疗百分比
+        const healMatch = skillData.eff.match(/回复最大HP的(\d+)%/);
+        if (healMatch) {
+          healPercent = parseInt(healMatch[1]) / 100;
         }
       }
 
@@ -435,6 +632,115 @@
           if (chanceMatch) {
             burnChance = parseInt(chanceMatch[1]) / 100;
           }
+          // 必定灼烧：没有概率描述且非概率灼烧 → 100%
+          if (!skillData.eff.includes('%概率') && skillData.eff.includes('必定灼烧')) {
+            burnChance = 1;
+          }
+        }
+
+        // ==================== 水系效果解析 ====================
+        // 浸透效果（水流冲击、水之守护）
+        if (skillData.eff.includes('浸透')) {
+          waterSoakEffect = true;
+          // 解析浸透威力
+          const soakPowerMatch = skillData.eff.match(/浸透（.*?(\d+)威力/);
+          if (soakPowerMatch) {
+            waterSoakPower = parseInt(soakPowerMatch[1]);
+          } else {
+            waterSoakPower = 1; // 默认特防-1级
+          }
+          // 解析持续回合
+          const soakDurationMatch = skillData.eff.match(/浸透.*?持续(\d+)回合/);
+          if (soakDurationMatch) {
+            waterSoakDuration = parseInt(soakDurationMatch[1]);
+          }
+          // 解析最大层数
+          const soakMaxMatch = skillData.eff.match(/浸透.*?最多(\d+)层/);
+          if (soakMaxMatch) {
+            waterSoakMaxStacks = parseInt(soakMaxMatch[1]);
+          }
+        }
+
+        // 溺水效果（漩涡）
+        if (skillData.eff.includes('溺水')) {
+          drowningEffect = true;
+          // 解析持续回合
+          const drowningDurationMatch = skillData.eff.match(/溺水.*?持续(\d+)回合/);
+          if (drowningDurationMatch) {
+            drowningDuration = parseInt(drowningDurationMatch[1]);
+          }
+        }
+
+        // 虚弱效果（水炮）
+        if (skillData.eff.includes('虚弱')) {
+          weaknessEffect = true;
+          const weaknessDurationMatch = skillData.eff.match(/虚弱.*?持续(\d+)回合/);
+          if (weaknessDurationMatch) {
+            weaknessDuration = parseInt(weaknessDurationMatch[1]);
+          }
+        }
+
+        // 浑浊效果（浊流）
+        if (skillData.eff.includes('浑浊')) {
+          muddyEffect = true;
+          const muddyMaxMatch = skillData.eff.match(/浑浊.*?最多(\d+)层/);
+          if (muddyMaxMatch) {
+            muddyMaxStacks = parseInt(muddyMaxMatch[1]);
+          }
+        }
+
+        // 流水效果（水疗之术）
+        if (skillData.eff.includes('流水状态')) {
+          flowEffect = true;
+        }
+
+        // 清泉护盾效果
+        if (skillData.eff.includes('清泉')) {
+          clearSpringEffect = true;
+          const clearSpringDurationMatch = skillData.eff.match(/清泉.*?持续(\d+)回合/);
+          if (clearSpringDurationMatch) {
+            clearSpringDuration = parseInt(clearSpringDurationMatch[1]);
+          }
+        }
+
+        // 雨天效果
+        if (skillData.eff.includes('雨天')) {
+          rainyDayEffect = true;
+          const rainyDurationMatch = skillData.eff.match(/雨天.*?持续(\d+)回合/);
+          if (rainyDurationMatch) {
+            rainyDayDuration = parseInt(rainyDurationMatch[1]);
+          }
+          // 解析威力加成
+          const rainyPowerMatch = skillData.eff.match(/雨天.*?(\d+)%/);
+          if (rainyPowerMatch) {
+            rainyDayPowerBoost = parseInt(rainyPowerMatch[1]) / 100;
+          }
+        }
+
+        // 蒸汽灼伤概率（热水）
+        if (skillData.eff.includes('蒸汽灼伤') || skillData.eff.includes('灼烧')) {
+          const steamBurnMatch = skillData.eff.match(/(\d+)%概率.*灼伤/);
+          if (steamBurnMatch) {
+            steamBurnChance = parseInt(steamBurnMatch[1]) / 100;
+          } else if (skillData.eff.includes('蒸汽灼伤')) {
+            steamBurnChance = 0.3; // 默认30%
+          }
+        }
+
+        // 持续治疗百分比（清泉护盾、治愈波动等）
+        if (skillData.eff.includes('每回合回复')) {
+          const healPercentMatch = skillData.eff.match(/每回合回复(\d+)%/);
+          if (healPercentMatch) {
+            healPercent = parseInt(healPercentMatch[1]) / 100;
+          }
+        }
+
+        // 持续治疗（治愈波动、水疗之术）
+        if (skillData.eff.includes('最大HP的')) {
+          const hpHealMatch = skillData.eff.match(/最大HP的(\d+)%/);
+          if (hpHealMatch) {
+            healPercent = parseInt(hpHealMatch[1]) / 100;
+          }
         }
       }
 
@@ -445,13 +751,53 @@
         energyCost: energyCost,
         target: target,
         power: power,
+        basePower: basePower,
+        powerPerStack: powerPerStack,
+        comboHits: comboHits > 1 ? comboHits : undefined,
+        comboPower: comboPower > 0 ? comboPower : undefined,
         element: element,
         strategy: 'counter_first',
         effect: effect,
         burnStacks: burnStacks,
         burnChance: burnChance,
         burnMarkPower: burnMarkPower,
-        damageReduction: damageReduction, // 减伤百分比
+        damageReduction: damageReduction,
+        attackBoost: attackBoost,
+        spAtkBoost: spAtkBoost,
+        speedBoost: speedBoost,
+        defenseBoost: defenseBoost,
+        fireDamageBoost: fireDamageBoost,
+        grassDamageBoost: grassDamageBoost,
+        clearBuff: clearBuff,
+        addFirePower: addFirePower,
+        lightGather: lightGather,
+        wither: wither,
+        witherPower: witherPower,
+        guaranteedCrit: guaranteedCrit,
+        reflectDamage: reflectDamage,
+        parasiticSeed: parasiticSeed,
+        parasiticSeedDrain: parasiticSeedDrain,
+        parasiticSeedTurns: parasiticSeedTurns,
+        energyRestore: energyRestore,
+        healPercent: healPercent,
+        // 水系效果属性
+        waterSoakEffect: waterSoakEffect,
+        waterSoakPower: waterSoakPower,
+        waterSoakDuration: waterSoakDuration,
+        waterSoakMaxStacks: waterSoakMaxStacks,
+        drowningEffect: drowningEffect,
+        drowningDuration: drowningDuration,
+        weaknessEffect: weaknessEffect,
+        weaknessDuration: weaknessDuration,
+        muddyEffect: muddyEffect,
+        muddyMaxStacks: muddyMaxStacks,
+        flowEffect: flowEffect,
+        clearSpringEffect: clearSpringEffect,
+        clearSpringDuration: clearSpringDuration,
+        rainyDayEffect: rainyDayEffect,
+        rainyDayDuration: rainyDayDuration,
+        rainyDayPowerBoost: rainyDayPowerBoost,
+        steamBurnChance: steamBurnChance,
         description: skillData.eff || ''
       };
     }
@@ -524,6 +870,7 @@ syncSkillDescriptions();
         currentHp: 200,
         speed: 75,
         element: 'fire',
+        energy: MAX_ENERGY,
         intent: { type: 'attack', power: 75, targetId: 'lightning_marten' },
         debuffs: []
       },
@@ -535,6 +882,7 @@ syncSkillDescriptions();
         currentHp: 170,
         speed: 85,
         element: 'water',
+        energy: MAX_ENERGY,
         intent: { type: 'attack', power: 65, targetId: 'flame_bear' },
         debuffs: []
       },
@@ -546,6 +894,7 @@ syncSkillDescriptions();
         currentHp: 240,
         speed: 50,
         element: 'rock',
+        energy: MAX_ENERGY,
         intent: { type: 'attack', power: 70, targetId: 'torrent_crab' },
         debuffs: []
       }
@@ -557,15 +906,36 @@ syncSkillDescriptions();
     // ==================== 状态变量 ====================
     let selectedPlayer = null;
     let selectedUnitId = null;
-    let currentTurn = 1;
-    let isPlayerTurn = true;
+    let currentRound = 1;           // 当前轮次
     let isDragging = false;
     let draggedSkill = null;
     let wasDragReleased = false;  // 标记拖拽释放（未命中目标）
     let battleEnded = false;
-    let playerCommands = [];  // 玩家指令列表
-    let isPreparing = true;  // 是否处于准备阶段
-    let isExecuting = false; // 是否正在执行战斗结算
+    let playerCommands = [];       // 玩家指令列表
+    let actionQueue = [];          // 行动队列
+    let currentActionIndex = 0;    // 当前行动索引
+    let isRoundExecuting = false; // 是否正在执行轮次
+    let isBattleStarted = false;   // 战斗是否已开始
+
+    // ==================== 战斗模式系统 ====================
+    // 模式1: 经典模式 - 玩家同时下达指令后统一结算（基于battle-simple.html）
+    // 模式2: 宝可梦模式 - 玩家选择伙伴后该伙伴立即行动（基于battle-simple-3.html）
+    // 模式3: 以太术士模式 - 准备阶段下达指令，然后按速度顺序执行（基于battle-simple-2.html）
+    let currentBattleMode = 1;  // 默认经典模式
+    let isPreparing = false;    // 模式3准备阶段
+    let isExecuting = false;   // 模式3执行阶段
+    let executedPlayerIds = new Set(); // 已执行过的玩家ID
+    let playerActionQueue = [];  // 玩家行动队列
+    let enemyActionQueue = [];  // 敌人行动队列
+    let currentAction = null;   // 当前正在执行的行动
+    let phase = 'idle';         // 当前阶段：idle/player_select/player_action/enemy_action
+    let battleEnvironment = null;  // 战场环境：fragrant（芬芳）等
+    let battleEnvironmentTurns = 0;  // 战场环境持续回合
+    let globalWeather = null;  // 全局天气效果：rainy（雨天）等
+
+    // 初始配置（用于重置）- 在初始化后填充
+    let INITIAL_PLAYER_CONFIG = [];
+    let INITIAL_ENEMY_CONFIG = [];
 
     // ==================== 工具函数 ====================
 
@@ -638,7 +1008,24 @@ syncSkillDescriptions();
 
     // 渲染指令列表
     function renderCommandList() {
+      const commandList = document.getElementById('commandList');
       const container = document.getElementById('commandItems');
+
+      // 经典模式（模式1）不显示指令列表
+      if (currentBattleMode === 1) {
+        commandList.style.display = 'none';
+        return;
+      }
+
+      // 模式3（以太术士模式）不显示指令列表
+      if (currentBattleMode === 3) {
+        commandList.style.display = 'none';
+        return;
+      }
+
+      // 模式2显示指令列表
+      commandList.style.display = 'block';
+
       const alivePlayers = playerUnits.filter(u => u.currentHp > 0);
 
       if (alivePlayers.length === 0) {
@@ -676,9 +1063,6 @@ syncSkillDescriptions();
           `;
         }
       }).join('');
-
-      // 检查是否所有存活伙伴都已下达指令
-      checkAllReady();
     }
 
     // 取消指令
@@ -695,20 +1079,6 @@ syncSkillDescriptions();
       renderPlayerUnits();
       renderCommandList();
       updateTurnDisplay();
-    }
-
-    // 检查是否所有存活伙伴都已下达指令
-    function checkAllReady() {
-      const alivePlayers = playerUnits.filter(u => u.currentHp > 0);
-      const readyCount = playerCommands.filter(c => {
-        const unit = playerUnits.find(p => p.id === c.casterId);
-        return unit && unit.currentHp > 0;
-      }).length;
-
-      if (alivePlayers.length > 0 && readyCount === alivePlayers.length) {
-        // 所有存活伙伴都已下达指令，自动开始战斗结算
-        setTimeout(() => startCombatPhase(), 500);
-      }
     }
 
     function getIntentText(type) {
@@ -738,19 +1108,157 @@ syncSkillDescriptions();
       else if (percent <= 50) bar.classList.add('low');
     }
 
-    function updateTurnDisplay() {
-      document.getElementById('turnNumber').textContent = '第 ' + currentTurn + ' 回合';
-      if (isExecuting) {
-        document.getElementById('phaseText').textContent = '战斗结算';
-      } else if (isPreparing) {
-        const alivePlayers = playerUnits.filter(u => u.currentHp > 0);
-        const readyCount = playerCommands.filter(c => {
-          const unit = playerUnits.find(p => p.id === c.casterId);
-          return unit && unit.currentHp > 0;
-        }).length;
-        document.getElementById('phaseText').textContent = `准备阶段 (${readyCount}/${alivePlayers.length})`;
-      } else {
-        document.getElementById('phaseText').textContent = '敌人回合';
+    // ==================== 战斗模式切换系统 ====================
+
+    // 切换战斗模式
+    function switchBattleMode(mode) {
+      if (isRoundExecuting || isExecuting) {
+        addLog('战斗进行中，无法切换模式');
+        return;
+      }
+
+      // 更新按钮状态
+      document.querySelectorAll('.mode-switch-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('mode' + mode + 'Btn').classList.add('active');
+
+      // 重置战斗状态
+      restartBattleForModeSwitch();
+
+      currentBattleMode = mode;
+      addLog('切换至' + getModeName(mode));
+
+      // 根据模式更新UI
+      updateTurnDisplay();
+      renderPlayerUnits();
+      renderEnemyUnits();
+      renderCommandList();
+
+      // 模式2需要进入准备阶段，模式3在点击时初始化
+      if (mode === 2) {
+        isPreparing = true;
+      }
+
+      // 模式2和模式3需要显示行动顺序面板
+      if (mode === 2 || mode === 3) {
+        document.getElementById('actionOrderDisplay').classList.add('visible');
+
+        // 模式3：预先生成行动顺序内容
+        if (mode === 3) {
+          const playerQueue = playerUnits.filter(p => p.currentHp > 0).map(player => ({
+            id: player.id,
+            type: 'player',
+            caster: player,
+            speed: player.speed
+          }));
+          const enemyQueue = enemyUnits.filter(e => e.currentHp > 0).map(enemy => ({
+            id: enemy.id,
+            type: 'enemy',
+            caster: enemy,
+            speed: enemy.speed
+          }));
+          const allActions = [...playerQueue, ...enemyQueue].sort((a, b) => b.speed - a.speed);
+          if (allActions.length > 0) {
+            showActionOrder(allActions);
+          }
+        }
+      }
+    }
+
+    // 获取模式名称
+    function getModeName(mode) {
+      const names = { 1: '经典模式', 2: '宝可梦模式', 3: '以太术士模式' };
+      return names[mode] || '未知模式';
+    }
+
+    // 重置战斗状态（用于切换模式）
+    function restartBattleForModeSwitch() {
+      // 重置玩家单位
+      playerUnits.forEach((unit, index) => {
+        const config = INITIAL_PLAYER_CONFIG[index];
+        Object.assign(unit, JSON.parse(JSON.stringify(config)));
+      });
+
+      // 重置敌人单位
+      enemyUnits.forEach((unit, index) => {
+        const config = INITIAL_ENEMY_CONFIG[index];
+        Object.assign(unit, JSON.parse(JSON.stringify(config)));
+        // 重新初始化敌人技能
+        unit.skills = assignSkillsByElement(unit.element, unit.id);
+      });
+
+      currentRound = 1;
+      battleEnded = false;
+      selectedPlayer = null;
+      playerCommands = [];
+      actionQueue = [];
+      currentActionIndex = 0;
+      isRoundExecuting = false;
+      isBattleStarted = false;
+      isPreparing = false;
+      isExecuting = false;
+      executedPlayerIds.clear();
+      playerActionQueue = [];
+      enemyActionQueue = [];
+
+      document.getElementById('battleEndOverlay').classList.remove('visible');
+      document.getElementById('commandList').style.display = 'block';
+      document.getElementById('logContent').innerHTML = '';
+      document.getElementById('actionOrderDisplay').classList.remove('visible');
+      hideActionOrder();
+    }
+
+    // 更新回合显示（支持三种模式）
+    function updateTurnDisplay(currentAction = null) {
+      document.getElementById('turnNumber').textContent = '第 ' + currentRound + ' 轮';
+      const phaseText = document.getElementById('phaseText');
+
+      switch (currentBattleMode) {
+        case 1: // 经典模式
+          if (isRoundExecuting && currentAction) {
+            const isPlayer = currentAction.type === 'player';
+            phaseText.textContent = isPlayer ? '己方回合' : '敌人回合';
+            phaseText.className = 'phase-text ' + (isPlayer ? 'player-turn' : 'enemy-turn');
+          } else if (!isBattleStarted) {
+            phaseText.textContent = '等待开始';
+            phaseText.className = 'phase-text';
+          } else {
+            phaseText.textContent = '己方回合';
+            phaseText.className = 'phase-text player-turn';
+          }
+          break;
+
+        case 2: // 宝可梦模式
+          if (isRoundExecuting && currentAction) {
+            const isPlayer = currentAction.type === 'player';
+            phaseText.textContent = isPlayer ? '己方回合 - ' + currentAction.caster.name : '敌人回合';
+            phaseText.className = 'phase-text ' + (isPlayer ? 'player-turn' : 'enemy-turn');
+          } else if (!isBattleStarted) {
+            phaseText.textContent = '等待开始';
+            phaseText.className = 'phase-text';
+          } else if (isRoundExecuting) {
+            phaseText.textContent = '己方回合 - 等待选择';
+            phaseText.className = 'phase-text player-turn';
+          } else {
+            phaseText.textContent = '己方回合';
+            phaseText.className = 'phase-text player-turn';
+          }
+          break;
+
+        case 3: // 以太术士模式
+          if (phase === 'enemy_action') {
+            phaseText.textContent = '敌人回合';
+            phaseText.className = 'phase-text enemy-turn';
+          } else if (phase === 'player_action') {
+            phaseText.textContent = '己方回合 - ' + (selectedPlayer ? selectedPlayer.name + ' 行动中' : '等待');
+            phaseText.className = 'phase-text player-turn';
+          } else if (!isBattleStarted) {
+            phaseText.textContent = '选择行动的伙伴';
+            phaseText.className = 'phase-text';
+          } else {
+            phaseText.textContent = '选择行动的伙伴';
+            phaseText.className = 'phase-text';
+          }
+          break;
       }
     }
 
@@ -781,6 +1289,7 @@ syncSkillDescriptions();
         if (hasCommand) div.classList.add('has-command');
 
         const isDead = unit.currentHp <= 0;
+        const isExecuted = currentBattleMode === 3 && executedPlayerIds.has(unit.id);
 
         // 状态图标
         let statusIcons = '';
@@ -799,7 +1308,7 @@ syncSkillDescriptions();
             </div>
           </div>
           <div class="unit-info">
-            <div class="unit-name">${unit.name}</div>
+            <div class="unit-name">${unit.name}${isExecuted ? '<span class="executed-hint">已行动</span>' : ''}</div>
             <div class="unit-level">Lv.${unit.level} <span style="color: #30d158; margin-left: 4px;">速:${unit.speed}</span></div>
             <div class="hp-bar-container"><div class="hp-bar ${isDead ? 'critical' : ''}" style="width:${isDead ? 0 : (unit.currentHp/unit.maxHp)*100}%"></div></div>
             <div class="hp-text">${isDead ? '倒下' : `${unit.currentHp} / ${unit.maxHp}`}</div>
@@ -868,6 +1377,10 @@ syncSkillDescriptions();
             <div class="hp-bar-container"><div class="hp-bar ${isDead ? 'critical' : ''}" style="width:${isDead ? 0 : (unit.currentHp/unit.maxHp)*100}%"></div></div>
             <div class="hp-text">${isDead ? '倒下' : `${unit.currentHp} / ${unit.maxHp}`}</div>
             <div class="status-icons">${statusIcons}</div>
+          </div>
+          <div class="energy-bar-container">
+            ${Array.from({length: Math.min(unit.energy || 0, 10)}, () => '<div class="energy-orb filled"></div>').join('')}
+            ${Array.from({length: Math.max(0, MAX_ENERGY - (unit.energy || 0))}, () => '<div class="energy-orb"></div>').join('')}
           </div>
         `;
         if (!isDead) {
@@ -1054,12 +1567,42 @@ syncSkillDescriptions();
             combo: '多段攻击',
             priority: '先手+1',
             static_body: '蓄电护体：减伤+蓄电',
-            chain_damage: '连锁效果：扩散伤害'
+            chain_damage: '连锁效果：扩散伤害',
+            // 水系效果
+            water_soak: '目标获得浸透（特防-1级/层）',
+            drowning: '目标溺水（下次能量消耗>3的技能伤害-30%）',
+            weakness: '自身虚弱（下一回合无法使用技能）'
           };
           effectText = effectNames[skill.effect] || skill.effect;
         }
         if (effectText) {
           html += `<div class="skill-tooltip-effect">效果: ${effectText}</div>`;
+        }
+
+        // 水系效果补充描述
+        if (skill.waterSoakEffect) {
+          html += `<div class="skill-tooltip-effect">附加「浸透」（特防-1级/层，最多${skill.waterSoakMaxStacks || 6}层，持续${skill.waterSoakDuration || 2}回合）</div>`;
+        }
+        if (skill.drowningEffect) {
+          html += `<div class="skill-tooltip-effect">附加「溺水」（下一次能量消耗>3的技能伤害-30%，持续${skill.drowningDuration || 3}回合）</div>`;
+        }
+        if (skill.muddyEffect) {
+          html += `<div class="skill-tooltip-effect">30%概率使目标获得「浑浊」（命中率-1级/层，最多${skill.muddyMaxStacks || 3}层）</div>`;
+        }
+        if (skill.steamBurnChance > 0) {
+          html += `<div class="skill-tooltip-effect">${Math.round(skill.steamBurnChance * 100)}%概率使目标陷入「蒸汽灼伤」（每回合损失2%最大HP）</div>`;
+        }
+        if (skill.weaknessEffect) {
+          html += `<div class="skill-tooltip-effect">使用后自身获得「虚弱」（下一回合无法使用技能）</div>`;
+        }
+        if (skill.clearSpringEffect) {
+          html += `<div class="skill-tooltip-effect">每回合回复10%HP并清除1个负面状态（持续${skill.clearSpringDuration || 3}回合）</div>`;
+        }
+        if (skill.flowEffect) {
+          html += `<div class="skill-tooltip-effect">附加「流水」（速度+1级，持续2回合）</div>`;
+        }
+        if (skill.rainyDayEffect) {
+          html += `<div class="skill-tooltip-effect">创造雨天环境（持续${skill.rainyDayDuration || 3}回合），水属性技能威力+${Math.round((skill.rainyDayPowerBoost || 0.5) * 100)}%</div>`;
         }
       }
 
@@ -1282,15 +1825,125 @@ syncSkillDescriptions();
 
     // ==================== 事件处理 ====================
     function onPlayerClick(unit) {
-      if (battleEnded || isExecuting) return;
-      // 如果该伙伴已有指令，允许查看技能状态（显示但不打开技能面板）
+      // 模式2（宝可梦模式）有单独的点击逻辑
+      if (currentBattleMode === 2) {
+        if (battleEnded || isExecuting) return;
+        // 如果该伙伴已有指令，允许查看技能状态
+        if (playerCommands.find(c => c.casterId === unit.id && c.status === 'pending')) {
+          selectedPlayer = unit;
+          document.querySelectorAll('.unit').forEach(el => el.classList.remove('selected'));
+          document.getElementById(unit.id)?.classList.add('selected');
+          return;
+        }
+        if (selectedPlayer && selectedPlayer.id === unit.id) {
+          selectedPlayer = null;
+          renderSkillPanel(null);
+        } else {
+          selectedPlayer = unit;
+          renderSkillPanel(unit);
+        }
+        renderPlayerUnits();
+        return;
+      }
+
+      // 模式3（以太术士模式）
+      if (currentBattleMode === 3) {
+        onPlayerClickMode3(unit);
+        return;
+      }
+
+      // 模式1（经典模式）
+      onPlayerClickClassic(unit);
+    }
+
+    // 模式3：以太术士模式 - 玩家逐个选择伙伴行动
+    function onPlayerClickMode3(unit) {
+      if (battleEnded) return;
+
+      // 检查伙伴是否存活
+      if (unit.currentHp <= 0) return;
+
+      // 检查伙伴是否已经行动过
+      if (executedPlayerIds.has(unit.id)) {
+        addLog(`${unit.name} 已经行动过了`);
+        return;
+      }
+
+      // 如果战斗还没开始或处于idle阶段，点击伙伴时开始战斗并初始化轮次
+      if (phase === 'idle' || !isBattleStarted) {
+        startRoundMode3();
+        // 立即显示行动顺序面板
+        document.getElementById('actionOrderDisplay').classList.add('visible');
+        // 初始化完成后选中该伙伴
+        selectedPlayer = unit;
+        renderSkillPanel(unit);
+        renderPlayerUnits();
+        return;
+      }
+
+      // 检查是否正在执行行动中（玩家行动阶段不允许选择其他伙伴）
+      if (phase === 'player_action') {
+        // 如果是当前正在等待的伙伴，可以选择
+        if (selectedPlayer && selectedPlayer.id === unit.id) {
+          selectedPlayer = unit;
+          renderSkillPanel(unit);
+          renderPlayerUnits();
+        } else {
+          addLog(`请等待当前伙伴完成行动`);
+        }
+        return;
+      }
+
+      // 玩家选择阶段：选择伙伴
+      if (phase === 'player_select') {
+        selectedPlayer = unit;
+        renderSkillPanel(unit);
+        renderPlayerUnits();
+        return;
+      }
+
+      // 其他阶段不响应
+    }
+
+    // 模式1（经典模式）
+    function onPlayerClickClassic(unit) {
+      if (battleEnded) return;
+
+      // 如果战斗还没开始，点击玩家时开始战斗并选中该玩家
+      if (!isBattleStarted) {
+        isBattleStarted = true;
+        isRoundExecuting = true;
+        document.getElementById('actionOrderDisplay').classList.add('visible');
+        addLog('===== 战斗开始 =====');
+        addLog('选择技能开始行动！');
+
+        // 选中点击的伙伴并显示技能面板
+        selectedPlayer = unit;
+        renderSkillPanel(unit);
+        renderPlayerUnits();
+        updateTurnDisplay();
+        return;
+      }
+
+      // 检查是否是当前应该行动的伙伴
+      const action = getCurrentAction();
+      if (action && action.type === 'player' && action.caster.id === unit.id) {
+        // 该伙伴是当前应该行动的单位，选中它显示技能
+        selectedPlayer = unit;
+        renderSkillPanel(unit);
+        renderPlayerUnits();
+        return;
+      }
+
+      // 如果该伙伴已有指令，允许查看
       if (playerCommands.find(c => c.casterId === unit.id && c.status === 'pending')) {
-        // 只高亮显示，不打开技能面板
         selectedPlayer = unit;
         document.querySelectorAll('.unit').forEach(el => el.classList.remove('selected'));
         document.getElementById(unit.id)?.classList.add('selected');
         return;
       }
+
+      // 其他情况：选中显示技能面板
       if (selectedPlayer && selectedPlayer.id === unit.id) {
         selectedPlayer = null;
         renderSkillPanel(null);
@@ -1328,14 +1981,14 @@ syncSkillDescriptions();
         addLog(`${caster.name} 能量不足，无法使用 ${skill.name}`);
         return false;
       }
-      
+
       const energyBefore = caster.energy;
-      
+
       // 消耗能量
       caster.energy -= skill.energyCost;
-      
+
       // 添加指令
-      playerCommands.push({
+      const cmd = {
         casterId: caster.id,
         skillId: skill.id,
         targetId: targetId,
@@ -1343,20 +1996,856 @@ syncSkillDescriptions();
         energySpent: skill.energyCost,
         energyBefore: energyBefore,
         energyAfter: caster.energy
-      });
+      };
+      playerCommands.push(cmd);
 
       addLog(`${caster.name} 下达指令：${skill.name}（消耗${skill.energyCost}能量 ${energyBefore}→${caster.energy}）`);
       renderCommandList();
       renderSkillPanel(caster);
-      renderPlayerUnits();  // 更新能量显示
+      renderPlayerUnits();
       updateTurnDisplay();
+
+      // 模式2（宝可梦模式）：检查是否所有存活伙伴都已下达指令
+      if (currentBattleMode === 2) {
+        checkAllReady();
+        deselectPlayer();
+        return true;
+      }
+
+      // 模式3（以太术士模式）：如果选择了该伙伴，立即执行
+      if (currentBattleMode === 3) {
+        if (phase === 'player_action' && selectedPlayer && selectedPlayer.id === caster.id) {
+          executePlayerActionAndContinueMode3(caster, skill, targetId);
+        } else if (phase === 'player_select' && selectedPlayer && selectedPlayer.id === caster.id) {
+          executePlayerActionAndContinueMode3(caster, skill, targetId);
+        } else {
+          deselectPlayer();
+        }
+        return true;
+      }
+
       return true;
     }
 
-    // ==================== 战斗结算阶段 ====================
+    // 检查是否所有存活伙伴都已下达指令（模式2）
+    function checkAllReady() {
+      const alivePlayers = playerUnits.filter(u => u.currentHp > 0);
+      const readyCount = playerCommands.filter(c => {
+        const unit = playerUnits.find(p => p.id === c.casterId);
+        return unit && unit.currentHp > 0;
+      }).length;
 
-    // 获取所有行动单位的行动队列
-    function buildActionQueue() {
+      if (alivePlayers.length > 0 && readyCount === alivePlayers.length) {
+        // 所有存活伙伴都已下达指令，自动开始战斗结算
+        setTimeout(() => startCombatPhase(), 500);
+      }
+    }
+
+    // ==================== 模式3（以太术士模式）系统 ====================
+
+    // 模式3：初始化轮次
+    function startRoundMode3() {
+      if (battleEnded) return;
+
+      isBattleStarted = true;
+      isRoundExecuting = true;
+      isExecuting = true;
+
+      document.getElementById('skillPanel').classList.remove('visible');
+      document.getElementById('commandList').style.display = 'none';
+
+      addLog(`===== 第 ${currentRound} 轮开始 =====`);
+
+      // 初始化敌人意图
+      for (const enemy of enemyUnits) {
+        if (enemy.currentHp > 0) {
+          updateEnemyIntent(enemy);
+        }
+      }
+      renderEnemyUnits();
+
+      // 重置玩家行动状态
+      executedPlayerIds.clear();
+      selectedPlayer = null;
+
+      // 构建行动队列
+      playerActionQueue = buildPlayerActionQueueMode3();
+      enemyActionQueue = buildEnemyActionQueue();
+
+      // 显示行动顺序
+      const allActions = [...playerActionQueue.map(a => ({...a, queueType: 'player'})), ...enemyActionQueue.map(a => ({...a, queueType: 'enemy'}))];
+      showActionOrder(allActions);
+
+      // 进入玩家选择阶段
+      phase = 'player_select';
+      updateTurnDisplay();
+      renderPlayerUnits();
+      addLog('选择行动的伙伴');
+    }
+
+    // 模式3：构建玩家行动队列
+    function buildPlayerActionQueueMode3() {
+      const actions = [];
+      const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
+
+      for (const player of alivePlayers) {
+        // 跳过已执行过的玩家
+        if (executedPlayerIds.has(player.id)) continue;
+
+        // 找到该玩家的指令
+        const cmd = playerCommands.find(c => c.casterId === player.id && c.status === 'pending');
+        let skill = null;
+        if (cmd) {
+          skill = player.skills.find(s => s.id === cmd.skillId);
+        }
+
+        actions.push({
+          id: player.id,
+          type: 'player',
+          caster: player,
+          skill: skill,
+          targetId: cmd ? cmd.targetId : null,
+          speed: player.speed,
+          hasCommand: !!cmd,
+          command: cmd
+        });
+      }
+
+      return actions;
+    }
+
+    // 模式3：执行选中的玩家行动
+    async function executeSelectedPlayerActionMode3() {
+      if (!selectedPlayer || battleEnded) return;
+
+      const caster = selectedPlayer;
+
+      // 检查是否有预设指令
+      const cmd = playerCommands.find(c => c.casterId === caster.id && c.status === 'pending');
+
+      if (cmd) {
+        // 有预设指令，直接执行
+        const skill = caster.skills.find(s => s.id === cmd.skillId);
+        if (skill) {
+          await executePlayerActionAndContinueMode3(caster, skill, cmd.targetId, cmd);
+        }
+      } else {
+        // 没有预设指令，等待选择技能
+        renderSkillPanel(caster);
+      }
+    }
+
+    // 模式3：执行玩家行动并继续
+    async function executePlayerActionAndContinueMode3(caster, skill, targetId, cmd) {
+      if (battleEnded) return;
+
+      // 标记进入玩家行动阶段
+      phase = 'player_action';
+
+      // 查找或创建指令
+      let playerCmd = cmd || playerCommands.find(c => c.casterId === caster.id && c.status === 'pending');
+      if (!playerCmd) {
+        playerCmd = {
+          casterId: caster.id,
+          skillId: skill.id,
+          targetId: targetId,
+          status: 'pending'
+        };
+        playerCommands.push(playerCmd);
+      }
+
+      // 更新行动顺序显示
+      updateActionOrderDisplay();
+      const el = document.getElementById(caster.id);
+      if (el) el.classList.add('selected');
+
+      // 执行行动
+      await delay(200);
+      await executePlayerCommand(caster, skill, targetId);
+
+      // 标记指令为已执行
+      playerCmd.status = 'executed';
+
+      // 标记该玩家已执行
+      executedPlayerIds.add(caster.id);
+
+      // 清除高亮
+      if (el) el.classList.remove('selected');
+
+      await delay(200);
+
+      // 检查战斗结束
+      if (checkBattleEnd()) {
+        phase = 'idle';
+        isRoundExecuting = false;
+        return;
+      }
+
+      // 从玩家行动队列中移除已执行的玩家
+      playerActionQueue = playerActionQueue.filter(a => a.caster.id !== caster.id);
+
+      // 重新构建行动队列并更新显示（模式3需要实时更新已执行状态）
+      playerActionQueue = buildPlayerActionQueueMode3();
+      enemyActionQueue = buildEnemyActionQueue();
+      const allActions = [...playerActionQueue.map(a => ({...a, queueType: 'player', type: 'player'})), ...enemyActionQueue.map(a => ({...a, queueType: 'enemy', type: 'enemy'}))];
+      showActionOrder(allActions);
+
+      // 检查是否所有玩家都已行动
+      const remainingPlayers = playerUnits.filter(p => p.currentHp > 0 && !executedPlayerIds.has(p.id));
+      if (remainingPlayers.length === 0) {
+        // 所有玩家行动完毕，进入敌人行动阶段
+        await startEnemyPhaseMode3();
+      } else {
+        // 还有玩家未行动，返回玩家选择阶段
+        phase = 'player_select';
+        selectedPlayer = null;
+        updateTurnDisplay();
+        updateActionOrderDisplay();
+        renderPlayerUnits();
+        addLog('选择下一个行动的伙伴');
+      }
+    }
+
+    // 模式3：更新行动顺序显示（玩家行动后）
+    function updateActionOrderAfterPlayerAction() {
+      const items = document.querySelectorAll('.action-order-item');
+      items.forEach(item => {
+        const icon = item.querySelector('.action-order-icon');
+        if (icon && icon.classList.contains('player')) {
+          const playerIndex = Array.from(items).indexOf(item);
+          const playerId = playerActionQueue[playerIndex]?.caster?.id;
+          if (playerId && executedPlayerIds.has(playerId)) {
+            item.classList.add('executed');
+          }
+        }
+      });
+    }
+
+    // 模式3：检查是否所有玩家都已行动
+    function checkAllPlayersExecutedMode3() {
+      const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
+      return alivePlayers.every(p => executedPlayerIds.has(p.id));
+    }
+
+    // 模式3：开始敌人回合
+    async function startEnemyPhaseMode3() {
+      isExecuting = true;
+      updateTurnDisplay();
+
+      addLog('===== 敌人回合开始 =====');
+      await delay(300);
+
+      // 执行所有敌人行动
+      await executeEnemyTurnMode3();
+    }
+
+    // 模式3：执行敌人回合
+    async function executeEnemyTurnMode3() {
+      for (const action of enemyActionQueue) {
+        if (battleEnded) break;
+        if (action.caster.currentHp <= 0) continue;
+
+        updateTurnDisplay(action);
+        await delay(400);
+        await executeEnemyAction(action.caster);
+        await delay(200);
+
+        if (checkBattleEnd()) break;
+      }
+
+      // 敌人回合结束，进入下一轮
+      await finishRoundMode3();
+    }
+
+    // 模式3：轮次结束处理
+    async function finishRoundMode3() {
+      // 标记所有指令为已执行
+      playerCommands.forEach(cmd => {
+        if (cmd.status === 'pending') cmd.status = 'executed';
+      });
+
+      hideActionOrder();
+      currentActionIndex = 0;
+
+      // 回合结束 - 处理状态效果
+      await delay(300);
+
+      // 处理灼烧效果
+      for (const unit of [...playerUnits, ...enemyUnits]) {
+        if (unit.currentHp <= 0) continue;
+
+        const burnDebuff = unit.debuffs.find(d => d.type === 'burn');
+        if (burnDebuff && burnDebuff.stacks > 0) {
+          const burnDamage = Math.floor(unit.maxHp * burnDebuff.damagePercentPerStack * burnDebuff.stacks);
+          unit.currentHp = Math.max(0, unit.currentHp - burnDamage);
+          showDamageNumber(unit.id, burnDamage, 'damage');
+          updateHpBar(unit);
+          addLog(`${unit.name} 受到灼烧伤害 ${burnDamage} HP（${burnDebuff.stacks}层）`, 'damage');
+
+          burnDebuff.stacks = Math.max(1, Math.floor(burnDebuff.stacks / 2));
+          burnDebuff.remainingDuration--;
+
+          if (burnDebuff.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'burn');
+            addLog(`${unit.name} 的灼烧状态消失了`);
+          }
+        }
+
+        // 处理燃尽印记
+        if (unit.combustionStacks > 0 && unit.currentHp > 0) {
+          unit.combustionTurnsLeft--;
+          if (unit.combustionTurnsLeft <= 0) {
+            const combustionDamage = Math.floor(unit.currentHp * 0.3);
+            unit.currentHp = Math.max(0, unit.currentHp - combustionDamage);
+            showDamageNumber(unit.id, combustionDamage, 'damage');
+            updateHpBar(unit);
+            addLog(`${unit.name} 的「燃尽印记」触发，受到 ${combustionDamage} 真实伤害！`, 'damage');
+            unit.combustionStacks = 0;
+          } else {
+            addLog(`${unit.name} 的「燃尽印记」剩余 ${unit.combustionTurnsLeft} 回合`);
+          }
+        }
+
+        // 处理减速状态
+        if (unit.slowed && unit.currentHp > 0) {
+          unit.slowTurns--;
+          if (unit.slowTurns <= 0) {
+            unit.slowed = false;
+            addLog(`${unit.name} 的减速状态消失了`);
+          }
+        }
+
+        // 处理属性抗性倒计时
+        if (unit.resistanceTurns && unit.currentHp > 0) {
+          for (const el in unit.resistanceTurns) {
+            unit.resistanceTurns[el]--;
+            if (unit.resistanceTurns[el] <= 0) {
+              unit.resistances[el] = 0;
+              delete unit.resistanceTurns[el];
+              addLog(`${unit.name} 的 ${el} 属性抗性消失了`);
+            }
+          }
+        }
+
+        // ==================== 水系状态效果回合处理（模式1）====================
+        // 处理浸透状态（特防-1级/层）
+        const waterSoakDebuff1 = unit.debuffs.find(d => d.type === 'water_soak');
+        if (waterSoakDebuff1 && waterSoakDebuff1.remainingDuration > 0) {
+          waterSoakDebuff1.remainingDuration--;
+          if (waterSoakDebuff1.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'water_soak');
+            addLog(`${unit.name} 的「浸透」状态消失了`);
+          }
+        }
+
+        // 处理溺水状态
+        const drowningDebuff1 = unit.debuffs.find(d => d.type === 'drowning');
+        if (drowningDebuff1 && drowningDebuff1.remainingDuration > 0) {
+          drowningDebuff1.remainingDuration--;
+          if (drowningDebuff1.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'drowning');
+            addLog(`${unit.name} 的「溺水」状态消失了`);
+          }
+        }
+
+        // 处理浑浊状态（命中率-1级/层）
+        const muddyDebuff1 = unit.debuffs.find(d => d.type === 'muddy');
+        if (muddyDebuff1 && muddyDebuff1.remainingDuration > 0) {
+          muddyDebuff1.remainingDuration--;
+          if (muddyDebuff1.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'muddy');
+            addLog(`${unit.name} 的「浑浊」状态消失了`);
+          }
+        }
+
+        // 处理蒸汽灼伤状态
+        const steamBurnDebuff1 = unit.debuffs.find(d => d.type === 'steam_burn');
+        if (steamBurnDebuff1 && steamBurnDebuff1.remainingDuration > 0) {
+          const steamBurnDamage1 = Math.floor(unit.maxHp * steamBurnDebuff1.damagePercentPerStack * steamBurnDebuff1.stacks);
+          unit.currentHp = Math.max(0, unit.currentHp - steamBurnDamage1);
+          showDamageNumber(unit.id, steamBurnDamage1, 'damage');
+          updateHpBar(unit);
+          addLog(`${unit.name} 受到蒸汽灼伤 ${steamBurnDamage1} HP`, 'damage');
+
+          steamBurnDebuff1.remainingDuration--;
+          if (steamBurnDebuff1.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'steam_burn');
+            addLog(`${unit.name} 的「蒸汽灼伤」状态消失了`);
+          }
+        }
+
+        // 处理虚弱状态
+        const weaknessDebuff1 = unit.debuffs.find(d => d.type === 'weakness');
+        if (weaknessDebuff1 && weaknessDebuff1.remainingDuration > 0) {
+          weaknessDebuff1.remainingDuration--;
+          if (weaknessDebuff1.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'weakness');
+            addLog(`${unit.name} 的「虚弱」状态消失了`);
+          }
+        }
+
+        // 处理清泉护盾状态（每回合回复10%HP并清除1个debuff）
+        const clearSpringBuff1 = unit.buffs?.find(b => b.type === 'clear_spring');
+        if (clearSpringBuff1 && clearSpringBuff1.remainingDuration > 0) {
+          const clearSpringHeal1 = Math.floor(unit.maxHp * clearSpringBuff1.healPercent);
+          unit.currentHp = Math.min(unit.maxHp, unit.currentHp + clearSpringHeal1);
+          showDamageNumber(unit.id, clearSpringHeal1, 'heal');
+          updateHpBar(unit);
+          addLog(`${unit.name} 的「清泉护盾」回复 ${clearSpringHeal1} HP`, 'heal');
+
+          if (unit.debuffs && unit.debuffs.length > 0) {
+            const removedDebuff1 = unit.debuffs.shift();
+            addLog(`${unit.name} 的「${removedDebuff1.type}」状态被清泉护盾清除`);
+          }
+
+          clearSpringBuff1.remainingDuration--;
+          if (clearSpringBuff1.remainingDuration <= 0) {
+            unit.buffs = unit.buffs.filter(b => b.type !== 'clear_spring');
+            addLog(`${unit.name} 的「清泉护盾」状态消失了`);
+          }
+        }
+
+        // 处理流水状态（速度+1级）
+        const flowBuff1 = unit.buffs?.find(b => b.type === 'flow');
+        if (flowBuff1 && flowBuff1.remainingDuration > 0) {
+          flowBuff1.remainingDuration--;
+          if (flowBuff1.remainingDuration <= 0) {
+            unit.buffs = unit.buffs.filter(b => b.type !== 'flow');
+            addLog(`${unit.name} 的「流水」状态消失了`);
+          }
+        }
+
+        // 处理雨天天气
+        if (globalWeather && globalWeather.type === 'rainy' && globalWeather.duration > 0) {
+          globalWeather.duration--;
+          if (globalWeather.duration <= 0) {
+            globalWeather = null;
+            addLog(`雨天天气结束了`);
+          }
+        }
+      }
+
+      await delay(500);
+
+      // 检查战斗是否结束
+      if (checkBattleEnd()) {
+        isExecuting = false;
+        return;
+      }
+
+      // 更新敌人意图
+      for (const enemy of enemyUnits) {
+        if (enemy.currentHp > 0) {
+          updateEnemyIntent(enemy);
+        }
+      }
+
+      // 清空指令和行动状态
+      playerCommands = [];
+      executedPlayerIds.clear();
+      playerActionQueue = [];
+      enemyActionQueue = [];
+
+      // 更新所有单位的buff/debuff回合数
+      updateBuffTurns();
+
+      // 重置能量（每轮回复能量）
+      playerUnits.forEach(u => {
+        if (u.currentHp > 0) {
+          u.energy = MAX_ENERGY;
+        }
+      });
+      enemyUnits.forEach(u => {
+        if (u.currentHp > 0) {
+          u.energy = Math.min(u.energy + 3, u.maxEnergy);
+        }
+      });
+
+      // 进入下一轮
+      currentRound++;
+      phase = 'idle';
+      isExecuting = false;
+      isRoundExecuting = false;
+
+      renderEnemyUnits();
+      renderPlayerUnits();
+      updateTurnDisplay();
+
+      addLog(`===== 第 ${currentRound} 轮等待开始 =====`);
+      addLog('点击伙伴开始行动');
+    }
+
+    // 执行玩家行动并继续下一个
+    async function executePlayerActionAndContinue(caster, skill, targetId) {
+      if (battleEnded) return;
+
+      // 模式2（宝可梦模式）：使用模式2特定的逻辑
+      if (currentBattleMode === 2) {
+        await executePlayerActionMode2(caster, skill, targetId);
+        return;
+      }
+
+      // 模式1和模式3的逻辑
+      // 查找或创建指令
+      let cmd = playerCommands.find(c => c.casterId === caster.id && c.status === 'pending');
+      if (!cmd) {
+        cmd = {
+          casterId: caster.id,
+          skillId: skill.id,
+          targetId: targetId,
+          status: 'pending'
+        };
+        playerCommands.push(cmd);
+      }
+
+      // 更新行动顺序显示
+      updateActionOrderDisplay(currentActionIndex, 'current');
+      const el = document.getElementById(caster.id);
+      if (el) el.classList.add('selected');
+
+      // 执行行动
+      await delay(200);
+      await executePlayerCommand(caster, skill, targetId);
+
+      // 标记指令为已执行
+      cmd.status = 'executed';
+
+      // 清除高亮
+      if (el) el.classList.remove('selected');
+
+      await delay(200);
+
+      // 移动到下一个行动
+      currentActionIndex++;
+
+      // 继续执行下一个行动
+      await executeNextAction();
+    }
+
+    // 模式2（宝可梦模式）：执行玩家行动
+    async function executePlayerActionMode2(caster, skill, targetId) {
+      if (battleEnded) return;
+
+      // 查找或创建指令
+      let cmd = playerCommands.find(c => c.casterId === caster.id && c.status === 'pending');
+      if (!cmd) {
+        cmd = {
+          casterId: caster.id,
+          skillId: skill.id,
+          targetId: targetId,
+          status: 'pending'
+        };
+        playerCommands.push(cmd);
+      }
+
+      // 高亮当前行动单位
+      const el = document.getElementById(caster.id);
+      if (el) el.classList.add('selected');
+
+      // 执行行动
+      await delay(200);
+      await executePlayerCommand(caster, skill, targetId);
+
+      // 标记指令为已执行
+      cmd.status = 'executed';
+
+      // 标记该玩家已执行
+      executedPlayerIds.add(caster.id);
+
+      // 清除高亮
+      if (el) el.classList.remove('selected');
+
+      await delay(200);
+
+      // 检查战斗结束
+      if (checkBattleEnd()) {
+        isRoundExecuting = false;
+        return;
+      }
+
+      // 从玩家行动队列中移除已执行的玩家
+      playerActionQueue = playerActionQueue.filter(a => a.caster.id !== caster.id);
+
+      // 检查是否所有玩家都已行动
+      const remainingPlayers = playerUnits.filter(p => p.currentHp > 0 && !executedPlayerIds.has(p.id));
+      if (remainingPlayers.length === 0) {
+        // 所有玩家行动完毕，进入敌人行动阶段
+        await startEnemyPhaseMode2();
+      } else {
+        // 还有玩家未行动，返回玩家选择阶段
+        selectedPlayer = null;
+        updateTurnDisplay();
+        renderPlayerUnits();
+        renderCommandList();
+        addLog('选择下一个行动的伙伴');
+        // 继续选择下一个行动
+        await executeNextActionMode2();
+      }
+    }
+
+    // 模式2：开始敌人行动阶段
+    async function startEnemyPhaseMode2() {
+      currentActionIndex = 0;
+      addLog('===== 敌人回合开始 =====');
+      await delay(300);
+      await executeEnemyTurnMode2();
+    }
+
+    // 模式2：执行敌人回合
+    async function executeEnemyTurnMode2() {
+      while (enemyActionQueue.length > 0) {
+        if (battleEnded) break;
+
+        const action = enemyActionQueue[0];
+
+        // 检查敌人是否仍然存活
+        if (action.caster.currentHp <= 0) {
+          enemyActionQueue.shift();
+          continue;
+        }
+
+        // 更新UI
+        updateTurnDisplay(action);
+        updateActionOrderDisplay();
+
+        // 执行行动
+        await executeAction(action);
+        enemyActionQueue.shift();
+        updateEnemyIntent(action.caster);
+        renderEnemyUnits();
+
+        await delay(200);
+
+        if (checkBattleEnd()) {
+          return;
+        }
+      }
+
+      // 敌人回合结束，进入下一轮
+      await finishRound();
+    }
+
+    // 模式3（以太术士模式）：开始战斗结算阶段
+    async function startCombatPhase() {
+      isPreparing = false;
+      isExecuting = true;
+      updateTurnDisplay();
+
+      // 隐藏技能面板和指令列表
+      document.getElementById('skillPanel').classList.remove('visible');
+      document.getElementById('commandList').style.display = 'none';
+
+      addLog('===== 战斗结算开始 =====');
+
+      // 构建行动队列（按速度排序）
+      const actionQueue = buildActionQueueMode3();
+      showActionOrder(actionQueue);
+
+      await delay(800);
+
+      // 依次执行每个行动
+      for (let i = 0; i < actionQueue.length; i++) {
+        if (checkBattleEnd()) break;
+        await executeActionMode3(actionQueue[i], i, actionQueue.length);
+        await delay(200);
+      }
+
+      // 标记所有指令为已执行
+      playerCommands.forEach(cmd => {
+        if (cmd.status === 'pending') cmd.status = 'executed';
+      });
+
+      hideActionOrder();
+
+      // 回合结束 - 处理状态效果
+      await delay(300);
+
+      // 处理灼烧效果
+      for (const unit of [...playerUnits, ...enemyUnits]) {
+        if (unit.currentHp <= 0) continue;
+
+        const burnDebuff = unit.debuffs.find(d => d.type === 'burn');
+        if (burnDebuff && burnDebuff.stacks > 0) {
+          const burnDamage = Math.floor(unit.maxHp * burnDebuff.damagePercentPerStack * burnDebuff.stacks);
+          unit.currentHp = Math.max(0, unit.currentHp - burnDamage);
+          showDamageNumber(unit.id, burnDamage, 'damage');
+          updateHpBar(unit);
+          addLog(`${unit.name} 受到灼烧伤害 ${burnDamage} HP（${burnDebuff.stacks}层）`, 'damage');
+
+          burnDebuff.stacks = Math.max(1, Math.floor(burnDebuff.stacks / 2));
+          burnDebuff.remainingDuration--;
+
+          if (burnDebuff.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'burn');
+            addLog(`${unit.name} 的灼烧状态消失了`);
+          }
+        }
+
+        // 处理燃尽印记
+        if (unit.combustionStacks > 0 && unit.currentHp > 0) {
+          unit.combustionTurnsLeft--;
+          if (unit.combustionTurnsLeft <= 0) {
+            const combustionDamage = Math.floor(unit.currentHp * 0.3);
+            unit.currentHp = Math.max(0, unit.currentHp - combustionDamage);
+            showDamageNumber(unit.id, combustionDamage, 'damage');
+            updateHpBar(unit);
+            addLog(`${unit.name} 的「燃尽印记」触发，受到 ${combustionDamage} 真实伤害！`, 'damage');
+            unit.combustionStacks = 0;
+          } else {
+            addLog(`${unit.name} 的「燃尽印记」剩余 ${unit.combustionTurnsLeft} 回合`);
+          }
+        }
+
+        // 处理减速状态
+        if (unit.slowed && unit.currentHp > 0) {
+          unit.slowTurns--;
+          if (unit.slowTurns <= 0) {
+            unit.slowed = false;
+            addLog(`${unit.name} 的减速状态消失了`);
+          }
+        }
+
+        // 处理属性抗性倒计时
+        if (unit.resistanceTurns && unit.currentHp > 0) {
+          for (const el in unit.resistanceTurns) {
+            unit.resistanceTurns[el]--;
+            if (unit.resistanceTurns[el] <= 0) {
+              unit.resistances[el] = 0;
+              delete unit.resistanceTurns[el];
+              addLog(`${unit.name} 的 ${el} 属性抗性消失了`);
+            }
+          }
+        }
+
+        // ==================== 水系状态效果回合处理 ====================
+        // 处理浸透状态（特防-1级/层）
+        const waterSoakDebuff = unit.debuffs.find(d => d.type === 'water_soak');
+        if (waterSoakDebuff && waterSoakDebuff.remainingDuration > 0) {
+          waterSoakDebuff.remainingDuration--;
+          if (waterSoakDebuff.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'water_soak');
+            addLog(`${unit.name} 的「浸透」状态消失了`);
+          }
+        }
+
+        // 处理溺水状态
+        const drowningDebuff = unit.debuffs.find(d => d.type === 'drowning');
+        if (drowningDebuff && drowningDebuff.remainingDuration > 0) {
+          drowningDebuff.remainingDuration--;
+          if (drowningDebuff.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'drowning');
+            addLog(`${unit.name} 的「溺水」状态消失了`);
+          }
+        }
+
+        // 处理浑浊状态（命中率-1级/层）
+        const muddyDebuff = unit.debuffs.find(d => d.type === 'muddy');
+        if (muddyDebuff && muddyDebuff.remainingDuration > 0) {
+          muddyDebuff.remainingDuration--;
+          if (muddyDebuff.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'muddy');
+            addLog(`${unit.name} 的「浑浊」状态消失了`);
+          }
+        }
+
+        // 处理蒸汽灼伤状态
+        const steamBurnDebuff = unit.debuffs.find(d => d.type === 'steam_burn');
+        if (steamBurnDebuff && steamBurnDebuff.remainingDuration > 0) {
+          const steamBurnDamage = Math.floor(unit.maxHp * steamBurnDebuff.damagePercentPerStack * steamBurnDebuff.stacks);
+          unit.currentHp = Math.max(0, unit.currentHp - steamBurnDamage);
+          showDamageNumber(unit.id, steamBurnDamage, 'damage');
+          updateHpBar(unit);
+          addLog(`${unit.name} 受到蒸汽灼伤 ${steamBurnDamage} HP（每回合损失2%最大HP）`, 'damage');
+
+          steamBurnDebuff.remainingDuration--;
+          if (steamBurnDebuff.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'steam_burn');
+            addLog(`${unit.name} 的「蒸汽灼伤」状态消失了`);
+          }
+        }
+
+        // 处理虚弱状态（下一回合无法使用技能）
+        const weaknessDebuff = unit.debuffs.find(d => d.type === 'weakness');
+        if (weaknessDebuff && weaknessDebuff.remainingDuration > 0) {
+          weaknessDebuff.remainingDuration--;
+          if (weaknessDebuff.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'weakness');
+            addLog(`${unit.name} 的「虚弱」状态消失了`);
+          }
+        }
+
+        // 处理清泉护盾状态（每回合回复10%HP并清除1个debuff）
+        const clearSpringBuff = unit.buffs?.find(b => b.type === 'clear_spring');
+        if (clearSpringBuff && clearSpringBuff.remainingDuration > 0) {
+          const clearSpringHeal = Math.floor(unit.maxHp * clearSpringBuff.healPercent);
+          unit.currentHp = Math.min(unit.maxHp, unit.currentHp + clearSpringHeal);
+          showDamageNumber(unit.id, clearSpringHeal, 'heal');
+          updateHpBar(unit);
+          addLog(`${unit.name} 的「清泉护盾」回复 ${clearSpringHeal} HP（每回合回复10%HP）`, 'heal');
+
+          if (unit.debuffs && unit.debuffs.length > 0) {
+            const removedDebuff = unit.debuffs.shift();
+            addLog(`${unit.name} 的「${removedDebuff.type}」状态被清泉护盾清除`);
+          }
+
+          clearSpringBuff.remainingDuration--;
+          if (clearSpringBuff.remainingDuration <= 0) {
+            unit.buffs = unit.buffs.filter(b => b.type !== 'clear_spring');
+            addLog(`${unit.name} 的「清泉护盾」状态消失了`);
+          }
+        }
+
+        // 处理流水状态（速度+1级）
+        const flowBuff = unit.buffs?.find(b => b.type === 'flow');
+        if (flowBuff && flowBuff.remainingDuration > 0) {
+          flowBuff.remainingDuration--;
+          if (flowBuff.remainingDuration <= 0) {
+            unit.buffs = unit.buffs.filter(b => b.type !== 'flow');
+            addLog(`${unit.name} 的「流水」状态消失了`);
+          }
+        }
+
+        // 处理雨天天气
+        if (globalWeather && globalWeather.type === 'rainy' && globalWeather.duration > 0) {
+          globalWeather.duration--;
+          if (globalWeather.duration <= 0) {
+            globalWeather = null;
+            addLog(`雨天天气结束了`);
+          }
+        }
+      }
+
+      await delay(500);
+
+      if (!checkBattleEnd()) {
+        // 更新敌人意图
+        for (const enemy of enemyUnits) {
+          if (enemy.currentHp > 0) {
+            updateEnemyIntent(enemy);
+          }
+        }
+
+        // 进入下一回合
+        currentRound++;
+
+        // 更新所有单位的buff/debuff回合数
+        updateBuffTurns();
+
+        playerCommands = []; // 清空指令
+        isPreparing = true;
+        isExecuting = false;
+
+        renderEnemyUnits();
+        renderPlayerUnits();
+        document.getElementById('commandList').style.display = 'block';
+        renderCommandList();
+        updateTurnDisplay();
+        addLog(`===== 第 ${currentRound} 轮开始 =====`);
+      }
+    }
+
+    // 模式3：构建行动队列
+    function buildActionQueueMode3() {
       const actions = [];
 
       // 添加玩家指令
@@ -1400,21 +2889,125 @@ syncSkillDescriptions();
       return actions;
     }
 
+    // 模式3：执行单个行动
+    async function executeActionMode3(action, actionIndex, totalActions) {
+      // 高亮当前行动单位
+      updateActionOrderDisplay(actionIndex, 'current');
+      const el = document.getElementById(action.id);
+      if (el) el.classList.add('selected');
+
+      // 处理灼伤印记：行动前受到伤害
+      if (action.caster.burnMark && action.caster.currentHp > 0) {
+        await delay(200);
+        const burnMarkDamage = Math.floor(action.caster.burnMarkPower * (0.8 + Math.random() * 0.4));
+        action.caster.currentHp = Math.max(0, action.caster.currentHp - burnMarkDamage);
+        showDamageNumber(action.caster.id, burnMarkDamage, 'damage');
+        updateHpBar(action.caster);
+        addLog(`${action.caster.name} 的「灼伤印记」触发，受到 ${burnMarkDamage} 火属性伤害！`, 'damage');
+      }
+
+      await delay(400);
+
+      if (action.type === 'player') {
+        // 玩家指令执行
+        const targetId = action.targetId;
+        const target = [...enemyUnits, ...playerUnits].find(u => u.id === targetId);
+
+        // 检查目标是否有效
+        if (!target || target.currentHp <= 0) {
+          addLog(`${action.caster.name} 的行动目标无效，跳过`);
+          action.command.status = 'skipped';
+        }
+
+        if (action.command.status !== 'skipped') {
+          await executePlayerCommand(action.caster, action.skill, action.targetId);
+        }
+      } else {
+        // 敌人行动执行
+        await executeEnemyAction(action.caster);
+      }
+
+      // 清除高亮
+      if (el) el.classList.remove('selected');
+    }
+
+    // ==================== 战斗流程 ====================
+
+    // 获取当前应该行动的单位
+    function getCurrentAction() {
+      if (actionQueue.length === 0) return null;
+      return actionQueue[currentActionIndex];
+    }
+
+    // 获取所有行动单位的行动队列
+    function buildActionQueue() {
+      const actions = [];
+
+      // 添加所有存活的玩家（无论是否有指令）
+      for (const player of playerUnits) {
+        if (player.currentHp <= 0) continue;
+
+        // 找到该玩家的指令
+        const cmd = playerCommands.find(c => c.casterId === player.id && c.status === 'pending');
+        let skill = null;
+        if (cmd) {
+          skill = player.skills.find(s => s.id === cmd.skillId);
+        }
+
+        actions.push({
+          id: player.id,
+          type: 'player',
+          caster: player,
+          skill: skill,
+          targetId: cmd ? cmd.targetId : null,
+          speed: player.speed,
+          hasCommand: !!cmd,
+          command: cmd
+        });
+      }
+
+      // 添加所有存活的敌人
+      for (const enemy of enemyUnits) {
+        if (enemy.currentHp <= 0) continue;
+        actions.push({
+          id: enemy.id,
+          type: 'enemy',
+          caster: enemy,
+          speed: enemy.speed,
+          intent: enemy.intent
+        });
+      }
+
+      // 按速度排序，同速随机
+      actions.sort((a, b) => {
+        if (a.speed !== b.speed) return b.speed - a.speed;
+        return Math.random() - 0.5;
+      });
+
+      return actions;
+    }
+
     // 显示行动顺序预览
     function showActionOrder(queue) {
       const display = document.getElementById('actionOrderDisplay');
       const list = document.getElementById('actionOrderList');
 
+      if (!queue || queue.length === 0) return;
+
       list.innerHTML = queue.map((action, index) => {
         const isPlayer = action.type === 'player';
-        const name = action.caster.name;
+        const name = action.caster ? action.caster.name : 'unknown';
         const iconClass = isPlayer ? 'player' : 'enemy';
         const icon = isPlayer ? 'P' : 'E';
+        const isExecuted = isPlayer && executedPlayerIds.has(action.caster.id);
+        const isMode3 = currentBattleMode === 3;
+
         return `
-          <div class="action-order-item" data-index="${index}">
+          <div class="action-order-item ${isExecuted ? 'executed' : ''}" data-index="${index}">
             <span class="action-order-icon ${iconClass}">${icon}</span>
             <span>${name}</span>
             <span class="action-order-speed">(${action.speed})</span>
+            ${isMode3 && isExecuted ? '<span class="action-order-executed">已行动</span>' : ''}
           </div>
         `;
       }).join('');
@@ -1452,10 +3045,10 @@ syncSkillDescriptions();
       return resolveTarget(action.skill, validTargets);
     }
 
-    // 执行单个行动
-    async function executeAction(action, actionIndex, totalActions) {
+    // 执行单个行动（主要用于敌人）
+    async function executeAction(action) {
       // 高亮当前行动单位
-      updateActionOrderDisplay(actionIndex, 'current');
+      updateActionOrderDisplay(currentActionIndex, 'current');
       const el = document.getElementById(action.id);
       if (el) el.classList.add('selected');
 
@@ -1471,30 +3064,8 @@ syncSkillDescriptions();
 
       await delay(400);
 
-      if (action.type === 'player') {
-        // 玩家指令执行
-        const targetId = action.targetId;
-        const target = [...enemyUnits, ...playerUnits].find(u => u.id === targetId);
-
-        // 检查目标是否有效
-        if (!target || target.currentHp <= 0) {
-          // 目标死亡，重新解析
-          const newTargetId = resolveActionTarget(action);
-          if (!newTargetId) {
-            addLog(`${action.caster.name} 的行动目标无效，跳过`);
-            action.command.status = 'skipped';
-          } else {
-            action.targetId = newTargetId;
-          }
-        }
-
-        if (action.command.status !== 'skipped') {
-          await executePlayerCommand(action.caster, action.skill, action.targetId);
-        }
-      } else {
-        // 敌人行动执行
-        await executeEnemyAction(action.caster);
-      }
+      // 敌人行动执行
+      await executeEnemyAction(action.caster);
 
       // 清除高亮
       if (el) el.classList.remove('selected');
@@ -1519,12 +3090,43 @@ syncSkillDescriptions();
         // 攻击技能
         let totalDamage = 0;
 
-        // 检查蓄焰增伤buff
-        let powerMultiplier = 1;
-        if (caster.flameCharge && skill.element === 'fire') {
-          powerMultiplier = 1.5;
-          caster.flameCharge = false;
-          addLog(`${caster.name} 的蓄焰效果生效，伤害提升50%！`, 'buff');
+        // 检查蓄焰增伤buff（蓄焰是给队友的buff，所以检查target）
+        let powerBonus = 0;
+        if (target.flameCharge && target.flameChargeTurns > 0 && skill.element === 'fire') {
+          powerBonus = target.flameChargePower || (target.energy * 10);
+          addLog(`${target.name} 的蓄焰效果生效，火属性攻击威力+${powerBonus}！`, 'buff');
+          target.flameCharge = false;
+          target.flameChargeTurns = 0;
+        }
+
+        // 检查烈火护体下次火攻增伤
+        if (target.wallOfFlamesPower > 0 && skill.element === 'fire') {
+          powerBonus += target.wallOfFlamesPower;
+          addLog(`${target.name} 的烈火护体效果生效，火属性攻击威力+${target.wallOfFlamesPower}！`, 'buff');
+          target.wallOfFlamesPower = 0;
+        }
+
+        // 检查光能汇聚增伤（草系技能）
+        let lightGatherBonus = 0;
+        if (caster.lightGatherStacks && caster.lightGatherStacks > 0 && skill.element === 'grass') {
+          // 光能爆轰：消耗所有光能汇聚层数
+          if (skill.powerPerStack && skill.powerPerStack > 0) {
+            lightGatherBonus = caster.lightGatherStacks * skill.powerPerStack;
+            addLog(`${caster.name} 消耗 ${caster.lightGatherStacks} 层光能汇聚，草系攻击威力+${lightGatherBonus}！`, 'buff');
+            caster.lightGatherStacks = 0;
+          } else {
+            // 其他草系技能：每次消耗1层光能汇聚
+            lightGatherBonus = 60; // 每次草系输出技能+60威力
+            addLog(`${caster.name} 的光能汇聚效果生效，草系攻击威力+${lightGatherBonus}！`, 'buff');
+            caster.lightGatherStacks -= 1;
+          }
+        }
+        powerBonus += lightGatherBonus;
+
+        // 检查芬芳环境增伤（草系技能）
+        if (battleEnvironment === 'fragrant' && skill.element === 'grass') {
+          powerBonus += Math.floor(skill.power * 0.25);
+          addLog(`芬芳环境影响，草系技能威力+25%！`, 'buff');
         }
 
         // 雷霆连击：多段攻击
@@ -1534,7 +3136,8 @@ syncSkillDescriptions();
           let comboCount = caster.comboCount || 0;
 
           for (let i = 0; i < hits; i++) {
-            let hitDamage = Math.floor(powerPerHit * (0.8 + Math.random() * 0.4) * powerMultiplier);
+            // 每次攻击的基础伤害 + 蓄焰/烈火护体增伤
+            let hitDamage = Math.floor((powerPerHit + powerBonus) * (0.8 + Math.random() * 0.4));
 
             // 检查目标的减伤效果
             if (target.damageReduction && target.damageReduction > 0) {
@@ -1555,13 +3158,78 @@ syncSkillDescriptions();
             totalDamage += hitDamage;
             target.currentHp = Math.max(0, target.currentHp - hitDamage);
             showDamageNumber(target.id, hitDamage, 'damage');
+
+            // 水之守护：受到伤害时，攻击者获得1层浸透（多段攻击）
+            if (target.buffs?.some(b => b.type === 'aqua_shield')) {
+              const aquaShieldBuff = target.buffs.find(b => b.type === 'aqua_shield');
+              if (aquaShieldBuff && hitDamage > 0) {
+                const existingSoak = caster.debuffs.find(d => d.type === 'water_soak');
+                if (existingSoak) {
+                  if (existingSoak.stacks < 6) {
+                    existingSoak.stacks += 1;
+                    existingSoak.remainingDuration = 2;
+                  }
+                } else {
+                  caster.debuffs.push({
+                    type: 'water_soak',
+                    stacks: 1,
+                    power: 1,
+                    remainingDuration: 2,
+                    maxStacks: 6
+                  });
+                }
+                addLog(`${target.name} 受到「水之守护」反击，${caster.name} 获得1层「浸透」！`, 'debuff');
+              }
+            }
+
+            // 多段攻击灼烧判定：每次命中独立判定概率灼烧
+            if (skill.burnChance && skill.burnChance < 1) {
+              // 概率灼烧（如烈焰拳50%概率）
+              if (Math.random() < skill.burnChance) {
+                const existingBurn = target.debuffs.find(d => d.type === 'burn');
+                const burnStacks = skill.burnStacks || 1;
+                if (existingBurn) {
+                  existingBurn.stacks += burnStacks;
+                  existingBurn.remainingDuration = 3;
+                } else {
+                  target.debuffs.push({
+                    type: 'burn',
+                    stacks: burnStacks,
+                    damagePercentPerStack: 0.02,
+                    remainingDuration: 3
+                  });
+                }
+                addLog(`第${i + 1}段攻击命中，${target.name} 陷入灼烧状态！`, 'damage');
+              }
+            } else if (skill.burnStacks && !skill.burnChance) {
+              // 必定灼烧：每段攻击必定附加灼烧层数（如爆炸烈焰每次1层）
+              const existingBurn = target.debuffs.find(d => d.type === 'burn');
+              if (existingBurn) {
+                existingBurn.stacks += skill.burnStacks;
+                existingBurn.remainingDuration = 3;
+              } else {
+                target.debuffs.push({
+                  type: 'burn',
+                  stacks: skill.burnStacks,
+                  damagePercentPerStack: 0.02,
+                  remainingDuration: 3
+                });
+              }
+            }
+
             addLog(`${caster.name} 使用 ${skill.name}，第${i + 1}段攻击造成 ${hitDamage} 伤害`, 'damage');
             await delay(200);
           }
 
+          // 多段攻击结束后的必定灼烧日志（爆炸烈焰等）
+          if (skill.burnStacks && !skill.burnChance) {
+            const existingBurn = target.debuffs.find(d => d.type === 'burn');
+            addLog(`${target.name} 陷入灼烧状态！（${existingBurn ? existingBurn.stacks : skill.burnStacks}层，每层2%最大HP/回合，层数减半）`, 'damage');
+          }
+
           // 25%概率追加额外攻击
           if (Math.random() < (skill.comboChance || 0.25)) {
-            let extraDamage = Math.floor(powerPerHit * (0.8 + Math.random() * 0.4) * powerMultiplier);
+            let extraDamage = Math.floor((powerPerHit + powerBonus) * (0.8 + Math.random() * 0.4));
 
             // 检查目标的减伤和护盾
             if (target.damageReduction && target.damageReduction > 0) {
@@ -1588,9 +3256,15 @@ syncSkillDescriptions();
           caster.comboCount = comboCount;
           addLog(`${caster.name} 积累 ${hits} 层连击（总共 ${comboCount} 层）`);
 
+          // 多段攻击总威力统计
+          if (skill.comboHits && skill.comboPower) {
+            const totalPower = skill.comboHits * skill.comboPower;
+            addLog(`${skill.name} 总威力 ${skill.comboPower}×${skill.comboHits} = ${totalPower}，命中率${(skill.burnChance ? skill.burnChance * 100 : 100).toFixed(0)}%`, 'info');
+          }
+
         } else {
-          // 普通单次攻击
-          let damage = Math.floor(skill.power * (0.8 + Math.random() * 0.4) * powerMultiplier);
+          // 普通单次攻击：基础伤害 + 蓄焰/烈火护体增伤
+          let damage = Math.floor((skill.power + powerBonus) * (0.8 + Math.random() * 0.4));
 
           // 检查目标的减伤效果
           if (target.damageReduction && target.damageReduction > 0) {
@@ -1615,7 +3289,54 @@ syncSkillDescriptions();
           totalDamage = damage;
           target.currentHp = Math.max(0, target.currentHp - damage);
           showDamageNumber(target.id, damage, 'damage');
+
+          // 水之守护：受到伤害时，攻击者获得1层浸透
+          if (target.buffs?.some(b => b.type === 'aqua_shield')) {
+            const aquaShieldBuff = target.buffs.find(b => b.type === 'aqua_shield');
+            if (aquaShieldBuff && damage > 0) {
+              const existingSoak = caster.debuffs.find(d => d.type === 'water_soak');
+              if (existingSoak) {
+                if (existingSoak.stacks < 6) {
+                  existingSoak.stacks += 1;
+                  existingSoak.remainingDuration = 2;
+                }
+              } else {
+                caster.debuffs.push({
+                  type: 'water_soak',
+                  stacks: 1,
+                  power: 1,
+                  remainingDuration: 2,
+                  maxStacks: 6
+                });
+              }
+              addLog(`${caster.name} 受到「水之守护」反击，获得1层「浸透」！`, 'debuff');
+            }
+          }
+
+          // 绽放之舞：必定暴击效果（×1.5）
+          if (skill.guaranteedCrit) {
+            addLog(`${skill.name} 本回合必定暴击！`);
+          }
+
           addLog(`${caster.name} 使用 ${skill.name}，对 ${target.name} 造成 ${damage} 伤害`, 'damage');
+
+          // 枯萎效果（叶绿光束）
+          if (skill.wither) {
+            const existingWither = target.debuffs.find(d => d.type === 'wither');
+            if (existingWither) {
+              existingWither.stacks += 1;
+              existingWither.remainingDuration = 3;
+            } else {
+              target.debuffs.push({
+                type: 'wither',
+                stacks: 1,
+                damagePerStack: skill.witherPower || 10, // 每层10点威力伤害
+                remainingDuration: 3
+              });
+            }
+            const witherStacks = existingWither ? existingWither.stacks + 1 : 1;
+            addLog(`${target.name} 陷入枯萎状态！（+1层，每层每回合受到自身属性${skill.witherPower || 10}点威力伤害）`, 'debuff');
+          }
         }
 
         // 燃尽：延迟伤害（3回合后扣除30%当前HP）
@@ -1680,6 +3401,148 @@ syncSkillDescriptions();
           addLog(`${target.name} 陷入潮湿状态！（受到电属性攻击额外承受30%伤害）`, 'debuff');
         }
 
+        // ==================== 水系效果触发逻辑 ====================
+        // 浸透效果（水流冲击、水之守护）
+        if (skill.waterSoakEffect) {
+          const existingSoak = target.debuffs.find(d => d.type === 'water_soak');
+          const stacks = 1;
+          if (existingSoak) {
+            if (existingSoak.stacks < (skill.waterSoakMaxStacks || 6)) {
+              existingSoak.stacks += stacks;
+              existingSoak.remainingDuration = skill.waterSoakDuration || 2;
+            }
+            addLog(`${target.name} 的浸透层数+${stacks}（共${existingSoak.stacks}层，最多${skill.waterSoakMaxStacks || 6}层）`, 'debuff');
+          } else {
+            target.debuffs.push({
+              type: 'water_soak',
+              stacks: stacks,
+              power: skill.waterSoakPower || 1, // 每层特防-1级
+              remainingDuration: skill.waterSoakDuration || 2,
+              maxStacks: skill.waterSoakMaxStacks || 6
+            });
+            addLog(`${target.name} 获得「浸透」状态！（特防-1级/层，最多${skill.waterSoakMaxStacks || 6}层，持续${skill.waterSoakDuration || 2}回合）`, 'debuff');
+          }
+        }
+
+        // 溺水效果（漩涡）
+        if (skill.drowningEffect) {
+          target.debuffs = target.debuffs.filter(d => d.type !== 'drowning');
+          target.debuffs.push({
+            type: 'drowning',
+            remainingDuration: skill.drowningDuration || 3,
+            damageReduction: 0.3 // 下一次能量消耗>3的技能伤害-30%
+          });
+          addLog(`${target.name} 陷入「溺水」状态！（下一次能量消耗>3的技能伤害-30%，持续${skill.drowningDuration || 3}回合）`, 'debuff');
+        }
+
+        // 浑浊效果（浊流）
+        if (skill.muddyEffect) {
+          const existingMuddy = target.debuffs.find(d => d.type === 'muddy');
+          if (existingMuddy) {
+            if (existingMuddy.stacks < (skill.muddyMaxStacks || 3)) {
+              existingMuddy.stacks += 1;
+              existingMuddy.remainingDuration = 3;
+            }
+            addLog(`${target.name} 的浑浊层数+1（共${existingMuddy.stacks}层）`, 'debuff');
+          } else {
+            target.debuffs.push({
+              type: 'muddy',
+              stacks: 1,
+              hitReduction: 1, // 命中率-1级/层
+              remainingDuration: 3,
+              maxStacks: skill.muddyMaxStacks || 3
+            });
+            addLog(`${target.name} 获得「浑浊」状态！（命中率-1级/层，最多${skill.muddyMaxStacks || 3}层，持续3回合）`, 'debuff');
+          }
+        }
+
+        // 寄生种子效果（寄生之种）
+        if (skill.parasiticSeed) {
+          target.debuffs = target.debuffs.filter(d => d.type !== 'parasitic_seed');
+          target.debuffs.push({
+            type: 'parasitic_seed',
+            caster: caster,  // 保存施法者引用用于吸血
+            drainPercent: skill.parasiticSeedDrain || 0.06, // 吸取施法者HP的6%
+            remainingDuration: skill.parasiticSeedTurns || 4,
+            stacks: 1
+          });
+          addLog(`${target.name} 被施加「寄生种子」！（每回合受到施法者${Math.round((skill.parasiticSeedDrain || 0.06) * 100)}%HP伤害+施法者回复，持续${skill.parasiticSeedTurns || 4}回合）`, 'debuff');
+        }
+
+        // 蒸汽灼伤概率（热水）
+        if (skill.steamBurnChance > 0) {
+          if (Math.random() < skill.steamBurnChance) {
+            const existingBurn = target.debuffs.find(d => d.type === 'steam_burn');
+            if (existingBurn) {
+              existingBurn.remainingDuration = 3;
+              addLog(`${target.name} 的蒸汽灼烧状态持续（持续3回合）`, 'debuff');
+            } else {
+              target.debuffs.push({
+                type: 'steam_burn',
+                stacks: 1,
+                damagePercentPerStack: 0.02, // 每层2%最大HP
+                remainingDuration: 3
+              });
+              addLog(`${target.name} 陷入「蒸汽灼伤」状态！（每回合损失2%最大HP，持续3回合）`, 'debuff');
+            }
+          }
+        }
+
+        // 寄生种子效果（寄生之种）
+        if (skill.parasiticSeed) {
+          target.debuffs = target.debuffs.filter(d => d.type !== 'parasitic_seed');
+          target.debuffs.push({
+            type: 'parasitic_seed',
+            caster: enemy,  // 保存施法者引用用于吸血
+            drainPercent: skill.parasiticSeedDrain || 0.06, // 吸取施法者HP的6%
+            remainingDuration: skill.parasiticSeedTurns || 4,
+            stacks: 1
+          });
+          addLog(`${target.name} 被施加「寄生种子」！（每回合受到施法者${Math.round((skill.parasiticSeedDrain || 0.06) * 100)}%HP伤害+施法者回复，持续${skill.parasiticSeedTurns || 4}回合）`, 'debuff');
+        }
+
+        // 清除目标增益效果（火焰冲击等对策技）
+        if (skill.clearBuff && target) {
+          let clearedCount = 0;
+          // 清除属性强化
+          if (target.attackBoost && target.attackBoost > 0) {
+            clearedCount += target.attackBoost;
+            target.attackBoost = 0;
+          }
+          if (target.spAtkBoost && target.spAtkBoost > 0) {
+            clearedCount += target.spAtkBoost;
+            target.spAtkBoost = 0;
+          }
+          if (target.speedBoost && target.speedBoost > 0) {
+            clearedCount += target.speedBoost;
+            target.speedBoost = 0;
+          }
+          if (target.defenseBoost && target.defenseBoost > 0) {
+            clearedCount += target.defenseBoost;
+            target.defenseBoost = 0;
+          }
+          if (clearedCount > 0) {
+            addLog(`${target.name} 的 ${clearedCount} 层增益状态被清除！`, 'debuff');
+          }
+        }
+
+        // 过热：使用后自身特攻-2级（持续3回合）
+        if (skill.spAtkBoost && skill.spAtkBoost < 0) {
+          caster.spAtkBoost = (caster.spAtkBoost || 0) + skill.spAtkBoost;
+          caster.spAtkBoostTurns = 3;
+          addLog(`${caster.name} 的特攻下降了 ${Math.abs(skill.spAtkBoost)} 级！（持续${caster.spAtkBoostTurns}回合）`, 'debuff');
+        }
+
+        // 虚弱效果（水炮：自身获得虚弱状态，下一回合无法使用技能）
+        if (skill.weaknessEffect) {
+          caster.debuffs = caster.debuffs.filter(d => d.type !== 'weakness');
+          caster.debuffs.push({
+            type: 'weakness',
+            remainingDuration: skill.weaknessDuration || 2
+          });
+          addLog(`${caster.name} 获得「虚弱」状态！（下一回合无法使用技能，持续${skill.weaknessDuration || 2}回合）`, 'debuff');
+        }
+
         updateHpBar(target);
         if (target.currentHp <= 0) addLog(`${target.name} 倒下了！`);
 
@@ -1718,11 +3581,53 @@ syncSkillDescriptions();
           }
         } else if (skill.type === 'heal') {
           // 治疗技能
-          const heal = Math.floor(skill.power * (0.8 + Math.random() * 0.4));
+          let heal = 0;
+          // 检查是否有治疗百分比
+          if (skill.healPercent && skill.healPercent > 0) {
+            heal = Math.floor(target.maxHp * skill.healPercent);
+          } else {
+            heal = Math.floor(skill.power * (0.8 + Math.random() * 0.4));
+          }
           target.currentHp = Math.min(target.maxHp, target.currentHp + heal);
           showDamageNumber(target.id, heal, 'heal');
           updateHpBar(target);
           addLog(`${caster.name} 使用 ${skill.name}，恢复 ${target.name} ${heal} HP`, 'heal');
+
+          // 流水效果（水疗之术：速度+1级）
+          if (skill.flowEffect) {
+            target.buffs = target.buffs || [];
+            target.buffs.push({
+              type: 'flow',
+              speedBoost: 1,
+              remainingDuration: 2
+            });
+            addLog(`${target.name} 获得「流水」状态！（速度+1级，持续2回合）`, 'buff');
+          }
+        }
+
+        // 蓄焰：为目标施加蓄焰状态（持续3回合），下次火属性攻击威力+（自身能量×10）
+        if (skill.effect === 'flameCharge') {
+          target.flameCharge = true;
+          target.flameChargeTurns = 3;
+          target.flameChargePower = caster.energy * 10;
+          addLog(`${caster.name} 使用 ${skill.name}，为 ${target.name} 施加蓄焰（持续${target.flameChargeTurns}回合），下次火属性攻击威力+${target.flameChargePower}`, 'buff');
+        }
+
+        // 养分汲取：回复HP并增加能量
+        if (skill.healPercent && skill.healPercent > 0) {
+          const healAmount = Math.floor(target.maxHp * skill.healPercent);
+          target.currentHp = Math.min(target.maxHp, target.currentHp + healAmount);
+          showDamageNumber(target.id, healAmount, 'heal');
+          updateHpBar(target);
+          addLog(`${caster.name} 使用 ${skill.name}，为 ${target.name} 回复 ${healAmount} HP（${Math.round(skill.healPercent * 100)}%最大HP）`, 'heal');
+        }
+
+        // 养分汲取：回复能量
+        if (skill.energyRestore && skill.energyRestore > 0) {
+          const oldEnergy = target.energy;
+          target.energy = Math.min(target.energy + skill.energyRestore, MAX_ENERGY);
+          const actualRestore = target.energy - oldEnergy;
+          addLog(`${caster.name} 使用 ${skill.name}，为 ${target.name} 回复 ${actualRestore} 点能量`, 'heal');
         }
 
       } else if (skill.target === 'self') {
@@ -1740,7 +3645,15 @@ syncSkillDescriptions();
               addLog(`${target.name} 获得 ${r.element} 属性抗性 +${Math.round(r.value * 100)}%`, 'buff');
             });
           }
-          addLog(`${caster.name} 使用 ${skill.name}，为自身施加 ${skill.power} 点护盾`);
+
+          // 烈火护体：下次火属性攻击威力+40
+          if (skill.addFirePower > 0) {
+            target.wallOfFlamesPower = skill.addFirePower;
+            target.wallOfFlamesTurns = 1;
+            addLog(`${caster.name} 使用 ${skill.name}，为自身施加 ${skill.power} 点护盾，下次火属性攻击威力+${skill.addFirePower}`, 'buff');
+          } else {
+            addLog(`${caster.name} 使用 ${skill.name}，为自身施加 ${skill.power} 点护盾`);
+          }
         }
         if (skill.type === 'buff') {
           // 充能加速：速度+2级
@@ -1763,6 +3676,60 @@ syncSkillDescriptions();
               addLog(`${target.name} 获得 ${r.element} 属性抗性 +${Math.round(r.value * 100)}%`, 'buff');
             });
           }
+
+          // 扎根之躯：每回合回复最大HP的8%，但速度-1级
+          if (skill.effect === 'rootBound') {
+            target.rootBound = true;
+            target.rootBoundTurns = 3;
+            target.speedBoost = (target.speedBoost || 0) - 1;
+            addLog(`${caster.name} 使用 ${skill.name}，进入扎根状态（持续${target.rootBoundTurns}回合），每回合回复8%HP，但速度-1级`, 'buff');
+          }
+
+          // 藤蔓护甲：减伤+缠绕攻击者
+          if (skill.damageReduction && skill.damageReduction > 0) {
+            target.damageReduction = (target.damageReduction || 0) + skill.damageReduction;
+            target.damageReductionTurns = 1;
+            target.entangleOnHit = true; // 标记受到攻击时缠绕攻击者
+            addLog(`${caster.name} 使用 ${skill.name}，获得 ${Math.round(skill.damageReduction * 100)}% 减伤（本回合），受到攻击时缠绕攻击者（速度-2级）`, 'buff');
+          }
+
+          // 防反之姿：反弹伤害+先手
+          if (skill.effect === 'counterStance' || skill.reflectDamage > 0) {
+            target.counterStance = true;
+            target.counterStanceTurns = 1;
+            target.reflectDamage = skill.reflectDamage || 0.6;
+            target.priorityBoostOnReflect = 1; // 反弹后获得先手+1
+            addLog(`${caster.name} 使用 ${skill.name}，进入防反之姿（持续1回合），反弹 ${Math.round(skill.reflectDamage * 100)}% 伤害，反弹后获得先手+1`, 'buff');
+          }
+
+          // 光能聚集：获得光能汇聚层数
+          if (skill.lightGather && skill.lightGather > 0) {
+            target.lightGatherStacks = (target.lightGatherStacks || 0) + skill.lightGather;
+            addLog(`${caster.name} 使用 ${skill.name}，获得 ${skill.lightGather} 层光能汇聚（下回合草系技能+60威力/层）`, 'buff');
+          }
+        }
+
+        // 清泉护盾效果（每回合回复10%HP并清除1个负面状态）
+        if (skill.clearSpringEffect) {
+          target.buffs = target.buffs || [];
+          target.buffs.push({
+            type: 'clear_spring',
+            healPercent: 0.1, // 每回合10%HP
+            cleanseCount: 1, // 清除1个debuff
+            remainingDuration: skill.clearSpringDuration || 3
+          });
+          addLog(`${caster.name} 获得「清泉护盾」状态！（每回合回复10%HP并清除1个负面状态，持续${skill.clearSpringDuration || 3}回合）`, 'buff');
+        }
+
+        // 流水效果（速度+1级）
+        if (skill.flowEffect) {
+          target.buffs = target.buffs || [];
+          target.buffs.push({
+            type: 'flow',
+            speedBoost: 1,
+            remainingDuration: 2
+          });
+          addLog(`${caster.name} 获得「流水」状态！（速度+1级，持续2回合）`, 'buff');
         }
       } else if (skill.target === 'all_ally') {
         // 全体队友目标
@@ -1787,6 +3754,86 @@ syncSkillDescriptions();
             });
           }
         }
+        // 炎之意志：攻击+1级、速度+1级、火属性伤害+25%（持续2回合）
+        if (skill.attackBoost || skill.speedBoost || skill.fireDamageBoost) {
+          const allAllies = [...playerUnits];
+          allAllies.forEach(unit => {
+            if (unit.currentHp <= 0) return;
+
+            if (skill.attackBoost) {
+              unit.attackBoost = (unit.attackBoost || 0) + skill.attackBoost;
+              unit.attackBoostTurns = 2;
+            }
+            if (skill.spAtkBoost) {
+              unit.spAtkBoost = (unit.spAtkBoost || 0) + skill.spAtkBoost;
+              unit.spAtkBoostTurns = 2;
+            }
+            if (skill.speedBoost) {
+              unit.speedBoost = (unit.speedBoost || 0) + skill.speedBoost;
+              unit.speedBoostTurns = 2;
+            }
+            if (skill.fireDamageBoost) {
+              unit.fireDamageBoost = (unit.fireDamageBoost || 0) + skill.fireDamageBoost;
+              unit.fireDamageBoostTurns = 2;
+            }
+          });
+
+          let boostMsg = `${caster.name} 使用 ${skill.name}，为全体施加炎之意志（持续2回合）：`;
+          if (skill.attackBoost) boostMsg += ` 攻击+${skill.attackBoost}级`;
+          if (skill.speedBoost) boostMsg += ` 速度+${skill.speedBoost}级`;
+          if (skill.fireDamageBoost) boostMsg += ` 火属性伤害+${Math.round(skill.fireDamageBoost * 100)}%`;
+          addLog(boostMsg, 'buff');
+        }
+
+        // 芬芳绽放：召唤芬芳环境（持续4回合），己方草系技能伤害+25%，每回合回复5%HP
+        if (skill.effect === 'fragrantEnvironment' || skill.grassDamageBoost) {
+          battleEnvironment = 'fragrant';
+          battleEnvironmentTurns = 4;
+          playerUnits.forEach(unit => {
+            if (unit.currentHp <= 0) return;
+            unit.fragrantBloom = true;
+            unit.fragrantBloomTurns = 4;
+          });
+          addLog(`${caster.name} 使用 ${skill.name}，召唤芬芳环境！（持续4回合：己方草系技能伤害+25%，每回合回复5%HP）`, 'buff');
+        }
+
+        // ==================== 水系全体队友效果 ====================
+        // 水疗之术：群体治疗+流水状态
+        if (skill.healPercent && skill.healPercent > 0) {
+          playerUnits.forEach(unit => {
+            if (unit.currentHp <= 0) return;
+            const heal = Math.floor(unit.maxHp * skill.healPercent);
+            unit.currentHp = Math.min(unit.maxHp, unit.currentHp + heal);
+            showDamageNumber(unit.id, heal, 'heal');
+            updateHpBar(unit);
+          });
+          addLog(`${caster.name} 使用 ${skill.name}，为全体恢复 ${Math.round(skill.healPercent * 100)}% HP`);
+
+          // 流水效果（速度+1级）
+          if (skill.flowEffect) {
+            playerUnits.forEach(unit => {
+              if (unit.currentHp <= 0) return;
+              unit.buffs = unit.buffs || [];
+              unit.buffs.push({
+                type: 'flow',
+                speedBoost: 1,
+                remainingDuration: 2
+              });
+            });
+            addLog(`全体获得「流水」状态！（速度+1级，持续2回合）`, 'buff');
+          }
+        }
+      }
+
+      // ==================== 水系天气效果 ====================
+      // 雨天效果（雨天：所有生物水属性技能威力+50%）
+      if (skill.rainyDayEffect) {
+        // 设置全局天气效果
+        globalWeather = globalWeather || {};
+        globalWeather.type = 'rainy';
+        globalWeather.duration = skill.rainyDayDuration || 3;
+        globalWeather.powerBoost = skill.rainyDayPowerBoost || 0.5; // 50%加成
+        addLog(`${caster.name} 使用 ${skill.name}，创造雨天环境！（持续${globalWeather.duration}回合，所有水属性技能威力+${Math.round(globalWeather.powerBoost * 100)}%）`, 'buff');
       }
 
       await delay(300);
@@ -1794,12 +3841,22 @@ syncSkillDescriptions();
 
     // 执行敌人行动
     async function executeEnemyAction(enemy) {
-      const target = playerUnits.find(p => p.id === enemy.intent.targetId);
+      // 根据意图找到要使用的技能
+      let skill = null;
+      if (enemy.intent.skillId && enemy.skills) {
+        skill = enemy.skills.find(s => s.id === enemy.intent.skillId);
+      }
+
+      // 检查能量是否足够
+      if (skill && enemy.energy < skill.energyCost) {
+        addLog(`${enemy.name} 能量不足，无法使用 ${skill.name}，跳过`);
+        updateEnemyIntent(enemy);
+        return;
+      }
 
       // 检查目标是否有效
-      let actualTarget = target;
-      if (!target || target.currentHp <= 0) {
-        // 目标无效，重新选择
+      let actualTarget = playerUnits.find(p => p.id === enemy.intent.targetId);
+      if (!actualTarget || actualTarget.currentHp <= 0) {
         const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
         if (alivePlayers.length > 0) {
           actualTarget = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
@@ -1809,88 +3866,475 @@ syncSkillDescriptions();
         }
       }
 
-      if (enemy.intent.type === 'attack') {
-        let damage = Math.floor(enemy.intent.power * (0.8 + Math.random() * 0.4));
+      // 消耗能量
+      if (skill) {
+        const energyBefore = enemy.energy;
+        enemy.energy -= skill.energyCost;
+        addLog(`${enemy.name} 使用 ${skill.name}（消耗${skill.energyCost}能量 ${energyBefore}→${enemy.energy}）`);
 
-        // 减伤效果
-        if (actualTarget.damageReduction && actualTarget.damageReduction > 0) {
-          const originalDamage = damage;
-          damage = Math.floor(damage * (1 - actualTarget.damageReduction));
-          addLog(`${actualTarget.name} 的减伤效果生效，伤害从 ${originalDamage} 降低至 ${damage}`, 'buff');
+        // 使用技能执行逻辑（复用玩家技能执行）
+        await executeEnemySkill(enemy, skill, actualTarget);
+      } else {
+        // 兼容旧代码：没有技能时使用原始的攻击逻辑
+        if (enemy.intent.type === 'attack') {
+          await executeEnemyBasicAttack(enemy, actualTarget);
+        }
+      }
+
+      // 更新敌人意图
+      updateEnemyIntent(enemy);
+    }
+
+    // 执行敌人技能（复用玩家技能执行逻辑）
+    async function executeEnemySkill(enemy, skill, target) {
+      // 处理休息技能（回复能量）
+      if (skill.effect === 'energy_restore') {
+        const energyRestore = skill.power || 5;
+        const oldEnergy = enemy.energy;
+        enemy.energy = Math.min(enemy.energy + energyRestore, MAX_ENERGY);
+        const actualRestore = enemy.energy - oldEnergy;
+        addLog(`${enemy.name} 使用 ${skill.name}，回复 ${actualRestore} 点能量（${oldEnergy}→${enemy.energy}）`, 'heal');
+        return;
+      }
+
+      if (skill.target === 'single_enemy' || skill.target === 'all_enemy') {
+        // 攻击技能
+        let totalDamage = 0;
+
+        // 检查蓄焰增伤buff
+        let powerBonus = 0;
+        if (enemy.flameCharge && enemy.flameChargeTurns > 0 && skill.element === 'fire') {
+          powerBonus = enemy.flameChargePower || (enemy.energy * 10);
+          addLog(`${enemy.name} 的蓄焰效果生效，火属性攻击威力+${powerBonus}！`, 'buff');
+          enemy.flameCharge = false;
+          enemy.flameChargeTurns = 0;
         }
 
-        // 属性抗性
-        if (enemy.intent.element && actualTarget.resistances) {
-          const resist = actualTarget.resistances[enemy.intent.element] || 0;
-          if (resist > 0) {
-            damage = Math.floor(damage * (1 - resist));
-            addLog(`${actualTarget.name} 的抗性生效，伤害降低至 ${damage}`, 'buff');
-          }
+        // 检查烈火护体下次火攻增伤
+        if (enemy.wallOfFlamesPower > 0 && skill.element === 'fire') {
+          powerBonus += enemy.wallOfFlamesPower;
+          addLog(`${enemy.name} 的烈火护体效果生效，火属性攻击威力+${enemy.wallOfFlamesPower}！`, 'buff');
+          enemy.wallOfFlamesPower = 0;
         }
 
-        // 护盾吸收伤害
-        if (actualTarget.shield && actualTarget.shield > 0) {
-          if (damage > actualTarget.shield) {
-            damage -= actualTarget.shield;
-            addLog(`${actualTarget.name} 的护盾吸收了 ${actualTarget.shield} 点伤害`);
-            actualTarget.shield = 0;
+        // 检查光能汇聚增伤（草系技能）
+        let lightGatherBonus = 0;
+        if (enemy.lightGatherStacks && enemy.lightGatherStacks > 0 && skill.element === 'grass') {
+          // 光能爆轰：消耗所有光能汇聚层数
+          if (skill.powerPerStack && skill.powerPerStack > 0) {
+            lightGatherBonus = enemy.lightGatherStacks * skill.powerPerStack;
+            addLog(`${enemy.name} 消耗 ${enemy.lightGatherStacks} 层光能汇聚，草系攻击威力+${lightGatherBonus}！`, 'buff');
+            enemy.lightGatherStacks = 0;
           } else {
-            actualTarget.shield -= damage;
-            addLog(`${actualTarget.name} 的护盾完全吸收了 ${damage} 点伤害`);
-            damage = 0;
+            // 其他草系技能：每次消耗1层光能汇聚
+            lightGatherBonus = 60; // 每次草系输出技能+60威力
+            addLog(`${enemy.name} 的光能汇聚效果生效，草系攻击威力+${lightGatherBonus}！`, 'buff');
+            enemy.lightGatherStacks -= 1;
+          }
+        }
+        powerBonus += lightGatherBonus;
+
+        // 检查芬芳环境增伤（草系技能）
+        if (battleEnvironment === 'fragrant' && skill.element === 'grass') {
+          powerBonus += Math.floor(skill.power * 0.25);
+          addLog(`芬芳环境影响，草系技能威力+25%！`, 'buff');
+        }
+
+        // 雷霆连击：多段攻击
+        if (skill.effect === 'combo') {
+          const hits = skill.comboHits || 3;
+          const powerPerHit = skill.comboPower || Math.floor(skill.power / hits);
+
+          for (let i = 0; i < hits; i++) {
+            let hitDamage = Math.floor((powerPerHit + powerBonus) * (0.8 + Math.random() * 0.4));
+
+            if (target.damageReduction && target.damageReduction > 0) {
+              hitDamage = Math.floor(hitDamage * (1 - target.damageReduction));
+            }
+            if (target.shield && target.shield > 0) {
+              if (hitDamage > target.shield) {
+                hitDamage -= target.shield;
+                target.shield = 0;
+              } else {
+                target.shield -= hitDamage;
+                hitDamage = 0;
+              }
+            }
+
+            totalDamage += hitDamage;
+            target.currentHp = Math.max(0, target.currentHp - hitDamage);
+            showDamageNumber(target.id, hitDamage, 'damage');
+
+            // 必定灼烧：每段攻击必定附加灼烧层数
+            if (skill.burnStacks && !skill.burnChance) {
+              const existingBurn = target.debuffs.find(d => d.type === 'burn');
+              if (existingBurn) {
+                existingBurn.stacks += skill.burnStacks;
+                existingBurn.remainingDuration = 3;
+              } else {
+                target.debuffs.push({
+                  type: 'burn',
+                  stacks: skill.burnStacks,
+                  damagePercentPerStack: 0.02,
+                  remainingDuration: 3
+                });
+              }
+            }
+
+            addLog(`${enemy.name} 使用 ${skill.name}，第${i + 1}段攻击造成 ${hitDamage} 伤害`, 'damage');
+            await delay(200);
+          }
+
+          // 多段攻击结束后的必定灼烧日志
+          if (skill.burnStacks && !skill.burnChance) {
+            const existingBurn = target.debuffs.find(d => d.type === 'burn');
+            addLog(`${target.name} 陷入灼烧状态！（${existingBurn ? existingBurn.stacks : skill.burnStacks}层，每层2%最大HP/回合，层数减半）`, 'damage');
+          }
+        } else {
+          // 普通单次攻击：基础伤害 + 蓄焰/烈火护体增伤
+          let damage = Math.floor((skill.power + powerBonus) * (0.8 + Math.random() * 0.4));
+
+          if (target.damageReduction && target.damageReduction > 0) {
+            damage = Math.floor(damage * (1 - target.damageReduction));
+          }
+          if (target.shield && target.shield > 0) {
+            if (damage > target.shield) {
+              damage -= target.shield;
+              target.shield = 0;
+            } else {
+              target.shield -= damage;
+              damage = 0;
+            }
+          }
+
+          totalDamage = damage;
+          target.currentHp = Math.max(0, target.currentHp - damage);
+          showDamageNumber(target.id, damage, 'damage');
+          addLog(`${enemy.name} 使用 ${skill.name}，对 ${target.name} 造成 ${damage} 伤害`, 'damage');
+        }
+
+        // 灼伤印记
+        if (skill.effect === 'burnMark') {
+          target.burnMark = true;
+          target.burnMarkPower = skill.burnMarkPower || 20;
+          addLog(`${target.name} 被施加「灼伤印记」`, 'debuff');
+        }
+
+        // 灼烧效果
+        if (skill.effect === 'burn' || skill.burnStacks) {
+          const burnChance = skill.burnChance ?? 1;
+          if (Math.random() < burnChance) {
+            const stacks = skill.burnStacks || 1;
+            const existingBurn = target.debuffs.find(d => d.type === 'burn');
+            if (existingBurn) {
+              existingBurn.stacks += stacks;
+              existingBurn.remainingDuration = 3;
+            } else {
+              target.debuffs.push({
+                type: 'burn',
+                stacks: stacks,
+                damagePercentPerStack: 0.02,
+                remainingDuration: 3
+              });
+            }
+            addLog(`${target.name} 陷入灼烧状态！`, 'damage');
           }
         }
 
-        actualTarget.currentHp = Math.max(0, actualTarget.currentHp - damage);
-        showDamageNumber(actualTarget.id, damage, 'damage');
-        updateHpBar(actualTarget);
-        addLog(`${enemy.name} 攻击 ${actualTarget.name}，造成 ${damage} 伤害`, 'damage');
+        updateHpBar(target);
+        if (target.currentHp <= 0) addLog(`${target.name} 倒下了！`);
 
-        // 火盾反伤：基于施法者威力的火属性伤害
-        if (actualTarget.fireShield && actualTarget.reflectDamage > 0 && actualTarget.currentHp > 0) {
-          const reflectDmg = Math.floor(actualTarget.reflectDamage * (0.8 + Math.random() * 0.4));
-          enemy.currentHp = Math.max(0, enemy.currentHp - reflectDmg);
-          showDamageNumber(enemy.id, reflectDmg, 'damage');
-          updateHpBar(enemy);
-          addLog(`${actualTarget.name} 的火盾反伤触发，对 ${enemy.name} 造成 ${reflectDmg} 火属性伤害！`, 'damage');
-          if (enemy.currentHp <= 0) addLog(`${enemy.name} 倒下了！`);
+      } else if (skill.target === 'self') {
+        // 自身目标技能
+        if (skill.type === 'shield') {
+          enemy.shield = (enemy.shield || 0) + skill.power;
+          addLog(`${enemy.name} 使用 ${skill.name}，为自身施加 ${skill.power} 点护盾`);
+        }
+        if (skill.type === 'buff') {
+          if (skill.speedBoost) {
+            enemy.speedBoost = (enemy.speedBoost || 0) + skill.speedBoost;
+            addLog(`${enemy.name} 使用 ${skill.name}，速度提升 ${skill.speedBoost} 级！`, 'buff');
+          }
+        }
+      } else if (skill.target === 'ally') {
+        // 治疗/护盾队友
+        const allies = enemyUnits.filter(e => e.id !== enemy.id && e.currentHp > 0);
+        if (allies.length > 0) {
+          const allyTarget = allies[Math.floor(Math.random() * allies.length)];
+          if (skill.type === 'heal') {
+            const heal = Math.floor(skill.power * (0.8 + Math.random() * 0.4));
+            allyTarget.currentHp = Math.min(allyTarget.maxHp, allyTarget.currentHp + heal);
+            showDamageNumber(allyTarget.id, heal, 'heal');
+            updateHpBar(allyTarget);
+            addLog(`${enemy.name} 使用 ${skill.name}，为 ${allyTarget.name} 恢复 ${heal} HP`, 'heal');
+          } else if (skill.type === 'shield') {
+            allyTarget.shield = (allyTarget.shield || 0) + skill.power;
+            addLog(`${enemy.name} 使用 ${skill.name}，为 ${allyTarget.name} 施加 ${skill.power} 点护盾`);
+          }
+        }
+      }
+
+      await delay(300);
+    }
+
+    // 执行敌人基础攻击（兼容旧代码）
+    async function executeEnemyBasicAttack(enemy, target) {
+      let damage = Math.floor(enemy.intent.power * (0.8 + Math.random() * 0.4));
+
+      if (target.damageReduction && target.damageReduction > 0) {
+        damage = Math.floor(damage * (1 - target.damageReduction));
+      }
+      if (target.shield && target.shield > 0) {
+        if (damage > target.shield) {
+          damage -= target.shield;
+          target.shield = 0;
+        } else {
+          target.shield -= damage;
+          damage = 0;
+        }
+      }
+
+      target.currentHp = Math.max(0, target.currentHp - damage);
+      showDamageNumber(target.id, damage, 'damage');
+      updateHpBar(target);
+      addLog(`${enemy.name} 攻击 ${target.name}，造成 ${damage} 伤害`, 'damage');
+
+      // 火盾反伤 + 附加灼烧
+      if (target.fireShield && target.reflectDamage > 0 && target.currentHp > 0) {
+        const reflectDmg = Math.floor(target.reflectDamage * (0.8 + Math.random() * 0.4));
+        enemy.currentHp = Math.max(0, enemy.currentHp - reflectDmg);
+        showDamageNumber(enemy.id, reflectDmg, 'damage');
+        updateHpBar(enemy);
+        addLog(`${target.name} 的火盾反伤触发，对 ${enemy.name} 造成 ${reflectDmg} 火属性伤害！`, 'damage');
+
+        // 火盾附加灼烧：受伤时攻击者获得灼烧
+        const existingBurn = enemy.debuffs.find(d => d.type === 'burn');
+        if (existingBurn) {
+          existingBurn.stacks += 1;
+          existingBurn.remainingDuration = 3;
+          addLog(`${enemy.name} 受到灼烧（+1层，共${existingBurn.stacks}层）`, 'damage');
+        } else {
+          enemy.debuffs.push({
+            type: 'burn',
+            stacks: 1,
+            damagePercentPerStack: 0.02,
+            remainingDuration: 3
+          });
+          addLog(`${enemy.name} 陷入灼烧状态！`, 'damage');
         }
 
-        updateEnemyIntent(enemy);
+        if (enemy.currentHp <= 0) addLog(`${enemy.name} 倒下了！`);
       }
     }
 
-    // 开始战斗结算阶段
-    async function startCombatPhase() {
-      isPreparing = false;
-      isExecuting = true;
-      updateTurnDisplay();
+    // 开始新的一轮
+    function startRound() {
+      if (battleEnded) return;
 
-      // 隐藏技能面板和指令列表
+      // 模式3（以太术士模式）：不执行经典模式的startRound
+      if (currentBattleMode === 3) {
+        return;
+      }
+
+      isRoundExecuting = true;
+      isBattleStarted = true;
       document.getElementById('skillPanel').classList.remove('visible');
       document.getElementById('commandList').style.display = 'none';
 
-      addLog('===== 战斗结算开始 =====');
+      addLog(`===== 第 ${currentRound} 轮开始 =====`);
 
-      // 构建行动队列
-      const actionQueue = buildActionQueue();
-      showActionOrder(actionQueue);
+      // 初始化敌人意图
+      for (const enemy of enemyUnits) {
+        if (enemy.currentHp > 0) {
+          updateEnemyIntent(enemy);
+        }
+      }
+      renderEnemyUnits();
 
-      await delay(800);
-
-      // 依次执行每个行动
-      for (let i = 0; i < actionQueue.length; i++) {
-        if (checkBattleEnd()) break;
-        await executeAction(actionQueue[i], i, actionQueue.length);
-        await delay(200);
+      // 模式2（宝可梦模式）：初始化行动队列
+      if (currentBattleMode === 2) {
+        executedPlayerIds.clear();
+        playerActionQueue = buildPlayerActionQueue();
+        enemyActionQueue = buildEnemyActionQueue();
+        // 显示行动顺序
+        const allActions = [...playerActionQueue.map(a => ({...a, queueType: 'player'})), ...enemyActionQueue.map(a => ({...a, queueType: 'enemy'}))];
+        allActions.sort((a, b) => b.caster.speed - a.caster.speed);
+        showActionOrder(allActions);
+        updateTurnDisplay();
       }
 
+      // 开始执行第一个行动
+      executeNextAction();
+    }
+
+    // 构建玩家行动队列（模式2）
+    function buildPlayerActionQueue() {
+      const queue = [];
+      for (const cmd of playerCommands) {
+        if (cmd.status !== 'pending') continue;
+        const caster = playerUnits.find(p => p.id === cmd.casterId);
+        if (!caster || caster.currentHp <= 0) continue;
+        const skill = caster.skills.find(s => s.id === cmd.skillId);
+        if (!skill) continue;
+        queue.push({
+          type: 'player',
+          caster: caster,
+          skill: skill,
+          targetId: cmd.targetId,
+          command: cmd
+        });
+      }
+      return queue;
+    }
+
+    // 构建敌人行动队列（模式2）
+    function buildEnemyActionQueue() {
+      const queue = [];
+      for (const enemy of enemyUnits) {
+        if (enemy.currentHp <= 0) continue;
+        queue.push({
+          type: 'enemy',
+          caster: enemy,
+          intent: enemy.intent
+        });
+      }
+      return queue;
+    }
+
+    // 执行下一个行动
+    async function executeNextAction() {
+      if (battleEnded) {
+        isRoundExecuting = false;
+        return;
+      }
+
+      // 模式2（宝可梦模式）：使用单独的行动队列
+      if (currentBattleMode === 2) {
+        await executeNextActionMode2();
+        return;
+      }
+
+      // 模式1（经典模式）：构建统一行动队列
+      actionQueue = buildActionQueue();
+      showActionOrder(actionQueue);
+
+      // 找到当前速度最快的行动者
+      while (currentActionIndex < actionQueue.length) {
+        const action = actionQueue[currentActionIndex];
+
+        // 检查行动者是否仍然存活
+        if (action.caster.currentHp <= 0) {
+          currentActionIndex++;
+          continue;
+        }
+
+        // 更新UI：显示当前行动者
+        updateTurnDisplay(action);
+
+        // 根据行动者类型执行
+        if (action.type === 'enemy') {
+          // 敌人行动：立即执行
+          await executeAction(action);
+          // 重新计算敌人意图
+          updateEnemyIntent(action.caster);
+          renderEnemyUnits();
+        } else {
+          // 玩家行动
+          if (action.hasCommand && action.skill) {
+            // 有预设指令，立即执行
+            await executePlayerActionAndContinue(
+              action.caster,
+              action.skill,
+              action.targetId
+            );
+            continue;
+          } else {
+            // 没有指令，等待玩家选择技能
+            selectedPlayer = action.caster;
+            renderSkillPanel(action.caster);
+            renderPlayerUnits();
+            return; // 等待玩家选择技能
+          }
+        }
+
+        currentActionIndex++;
+        await delay(200);
+
+        // 检查战斗结束
+        if (checkBattleEnd()) {
+          isRoundExecuting = false;
+          return;
+        }
+      }
+
+      // 当前行动者都已行动完毕，进入下一轮结束处理
+      await finishRound();
+    }
+
+    // 模式2（宝可梦模式）：执行下一个行动
+    async function executeNextActionMode2() {
+      if (battleEnded) {
+        isRoundExecuting = false;
+        return;
+      }
+
+      // 构建合并后的行动队列
+      const allActions = [];
+      playerActionQueue.forEach(a => allActions.push({...a, actionType: 'player'}));
+      enemyActionQueue.forEach(a => allActions.push({...a, actionType: 'enemy'}));
+      allActions.sort((a, b) => b.caster.speed - a.caster.speed);
+
+      // 找到下一个可执行的行动
+      while (allActions.length > 0) {
+        const action = allActions[0];
+
+        // 检查行动者是否仍然存活
+        if (action.caster.currentHp <= 0) {
+          allActions.shift();
+          continue;
+        }
+
+        // 更新UI
+        updateTurnDisplay(action);
+
+        if (action.actionType === 'enemy') {
+          // 敌人行动
+          await executeAction(action);
+          allActions.shift();
+          updateEnemyIntent(action.caster);
+          renderEnemyUnits();
+        } else {
+          // 玩家行动：等待玩家选择
+          selectedPlayer = action.caster;
+          renderSkillPanel(action.caster);
+          renderPlayerUnits();
+          // 将当前行动保存到外部变量
+          currentAction = action;
+          return;
+        }
+
+        await delay(200);
+
+        // 检查战斗结束
+        if (checkBattleEnd()) {
+          isRoundExecuting = false;
+          return;
+        }
+      }
+
+      // 所有行动执行完毕
+      await finishRound();
+    }
+
+    // 轮次结束处理
+    async function finishRound() {
       // 标记所有指令为已执行
       playerCommands.forEach(cmd => {
         if (cmd.status === 'pending') cmd.status = 'executed';
       });
 
       hideActionOrder();
+      currentActionIndex = 0;
 
       // 回合结束 - 处理状态效果
       await delay(300);
@@ -1901,38 +4345,35 @@ syncSkillDescriptions();
 
         const burnDebuff = unit.debuffs.find(d => d.type === 'burn');
         if (burnDebuff && burnDebuff.stacks > 0) {
-          // 计算伤害：每层2%最大HP
           const burnDamage = Math.floor(unit.maxHp * burnDebuff.damagePercentPerStack * burnDebuff.stacks);
           unit.currentHp = Math.max(0, unit.currentHp - burnDamage);
           showDamageNumber(unit.id, burnDamage, 'damage');
           updateHpBar(unit);
           addLog(`${unit.name} 受到灼烧伤害 ${burnDamage} HP（${burnDebuff.stacks}层）`, 'damage');
 
-          // 层数减半（向下取整，最小为1）
           burnDebuff.stacks = Math.max(1, Math.floor(burnDebuff.stacks / 2));
           burnDebuff.remainingDuration--;
 
           if (burnDebuff.remainingDuration <= 0) {
-            // 移除灼烧debuff
             unit.debuffs = unit.debuffs.filter(d => d.type !== 'burn');
             addLog(`${unit.name} 的灼烧状态消失了`);
           }
         }
 
-        // 处理燃尽印记
         if (unit.combustionStacks > 0 && unit.currentHp > 0) {
           unit.combustionTurnsLeft--;
           if (unit.combustionTurnsLeft <= 0) {
-            const combustionDamage = Math.floor(unit.currentHp * 0.3); // 30%当前HP
+            const combustionDamage = Math.floor(unit.currentHp * 0.3);
             unit.currentHp = Math.max(0, unit.currentHp - combustionDamage);
             showDamageNumber(unit.id, combustionDamage, 'damage');
             updateHpBar(unit);
             addLog(`${unit.name} 的「燃尽印记」触发，受到 ${combustionDamage} 真实伤害！`, 'damage');
             unit.combustionStacks = 0;
+          } else {
+            addLog(`${unit.name} 的「燃尽印记」剩余 ${unit.combustionTurnsLeft} 回合`);
           }
         }
 
-        // 处理减速状态
         if (unit.slowed && unit.currentHp > 0) {
           unit.slowTurns--;
           if (unit.slowTurns <= 0) {
@@ -1941,7 +4382,6 @@ syncSkillDescriptions();
           }
         }
 
-        // 处理麻痹状态
         if (unit.paralyzed && unit.currentHp > 0) {
           unit.paralyzeTurns--;
           if (unit.paralyzeTurns <= 0) {
@@ -1950,7 +4390,6 @@ syncSkillDescriptions();
           }
         }
 
-        // 处理潮湿状态
         if (unit.wet && unit.currentHp > 0) {
           unit.wetTurns--;
           if (unit.wetTurns <= 0) {
@@ -1959,45 +4398,220 @@ syncSkillDescriptions();
           }
         }
 
-        // 处理属性抗性倒计时
-        if (unit.resistanceTurns && unit.currentHp > 0) {
-          for (const el in unit.resistanceTurns) {
-            unit.resistanceTurns[el]--;
-            if (unit.resistanceTurns[el] <= 0) {
-              unit.resistances[el] = 0;
-              delete unit.resistanceTurns[el];
-              addLog(`${unit.name} 的 ${el} 属性抗性消失了`);
+        // ==================== 草系效果处理 ====================
+        // 寄生种子效果
+        const parasiticSeedDebuff = unit.debuffs.find(d => d.type === 'parasitic_seed');
+        if (parasiticSeedDebuff && parasiticSeedDebuff.remainingDuration > 0 && unit.currentHp > 0) {
+          // 目标受到伤害
+          const drainDamage = Math.floor(unit.maxHp * parasiticSeedDebuff.drainPercent);
+          unit.currentHp = Math.max(0, unit.currentHp - drainDamage);
+          showDamageNumber(unit.id, drainDamage, 'damage');
+          updateHpBar(unit);
+          addLog(`${unit.name} 受到寄生种子伤害 ${drainDamage} HP（-${Math.round(parasiticSeedDebuff.drainPercent * 100)}%HP）`, 'damage');
+
+          // 施法者回复
+          if (parasiticSeedDebuff.caster && parasiticSeedDebuff.caster.currentHp > 0) {
+            const healAmount = Math.min(drainDamage, parasiticSeedDebuff.caster.maxHp - parasiticSeedDebuff.caster.currentHp);
+            if (healAmount > 0) {
+              parasiticSeedDebuff.caster.currentHp += healAmount;
+              showDamageNumber(parasiticSeedDebuff.caster.id, healAmount, 'heal');
+              updateHpBar(parasiticSeedDebuff.caster);
+              addLog(`${parasiticSeedDebuff.caster.name} 回复 ${healAmount} HP（寄生种子吸收）`, 'heal');
             }
           }
+
+          parasiticSeedDebuff.remainingDuration--;
+          if (parasiticSeedDebuff.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'parasitic_seed');
+            addLog(`${unit.name} 的寄生种子状态消失了`);
+          }
+        }
+
+        // 枯萎效果
+        const witherDebuff = unit.debuffs.find(d => d.type === 'wither');
+        if (witherDebuff && witherDebuff.stacks > 0 && unit.currentHp > 0) {
+          // 枯萎伤害 = 层数 × 每层威力（按目标属性计算）
+          const witherDamage = witherDebuff.stacks * (witherDebuff.damagePerStack || 10);
+          unit.currentHp = Math.max(0, unit.currentHp - witherDamage);
+          showDamageNumber(unit.id, witherDamage, 'damage');
+          updateHpBar(unit);
+          addLog(`${unit.name} 受到枯萎伤害 ${witherDamage} HP（${witherDebuff.stacks}层）`, 'damage');
+
+          witherDebuff.remainingDuration--;
+          if (witherDebuff.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'wither');
+            addLog(`${unit.name} 的枯萎状态消失了`);
+          }
+        }
+
+        // 扎根状态回复
+        if (unit.rootBound && unit.rootBoundTurns > 0 && unit.currentHp > 0) {
+          const rootHeal = Math.floor(unit.maxHp * 0.08);
+          unit.currentHp = Math.min(unit.maxHp, unit.currentHp + rootHeal);
+          showDamageNumber(unit.id, rootHeal, 'heal');
+          updateHpBar(unit);
+          addLog(`${unit.name} 扎根回复 ${rootHeal} HP（+8%HP）`, 'heal');
+
+          unit.rootBoundTurns--;
+          if (unit.rootBoundTurns <= 0) {
+            unit.rootBound = false;
+            addLog(`${unit.name} 的扎根状态消失了`);
+          }
+        }
+
+        // 芬芳环境回复（己方全体）
+        if (unit.fragrantBloom && unit.fragrantBloomTurns > 0 && unit.currentHp > 0) {
+          const fragrantHeal = Math.floor(unit.maxHp * 0.05);
+          unit.currentHp = Math.min(unit.maxHp, unit.currentHp + fragrantHeal);
+          showDamageNumber(unit.id, fragrantHeal, 'heal');
+          updateHpBar(unit);
+          addLog(`${unit.name} 受到芬芳环境影响回复 ${fragrantHeal} HP（+5%HP）`, 'heal');
+        }
+      }
+
+      // 更新战场环境回合数
+      if (battleEnvironment && battleEnvironmentTurns > 0) {
+        battleEnvironmentTurns--;
+        if (battleEnvironmentTurns <= 0) {
+          addLog(`芬芳环境消散了`);
+          battleEnvironment = null;
+        }
+      }
+
+      // 更新芬芳绽放的持续回合
+      playerUnits.forEach(unit => {
+        if (unit.fragrantBloom) {
+          unit.fragrantBloomTurns--;
+          if (unit.fragrantBloomTurns <= 0) {
+            unit.fragrantBloom = false;
+          }
+        }
+      });
+
+      // ==================== 水系状态效果回合处理（模式3 finishRound）====================
+      for (const unit of [...playerUnits, ...enemyUnits]) {
+        if (unit.currentHp <= 0) continue;
+
+        // 处理浸透状态（特防-1级/层）
+        const waterSoakDebuff3 = unit.debuffs.find(d => d.type === 'water_soak');
+        if (waterSoakDebuff3 && waterSoakDebuff3.remainingDuration > 0) {
+          waterSoakDebuff3.remainingDuration--;
+          if (waterSoakDebuff3.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'water_soak');
+            addLog(`${unit.name} 的「浸透」状态消失了`);
+          }
+        }
+
+        // 处理溺水状态
+        const drowningDebuff3 = unit.debuffs.find(d => d.type === 'drowning');
+        if (drowningDebuff3 && drowningDebuff3.remainingDuration > 0) {
+          drowningDebuff3.remainingDuration--;
+          if (drowningDebuff3.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'drowning');
+            addLog(`${unit.name} 的「溺水」状态消失了`);
+          }
+        }
+
+        // 处理浑浊状态（命中率-1级/层）
+        const muddyDebuff3 = unit.debuffs.find(d => d.type === 'muddy');
+        if (muddyDebuff3 && muddyDebuff3.remainingDuration > 0) {
+          muddyDebuff3.remainingDuration--;
+          if (muddyDebuff3.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'muddy');
+            addLog(`${unit.name} 的「浑浊」状态消失了`);
+          }
+        }
+
+        // 处理蒸汽灼伤状态
+        const steamBurnDebuff3 = unit.debuffs.find(d => d.type === 'steam_burn');
+        if (steamBurnDebuff3 && steamBurnDebuff3.remainingDuration > 0) {
+          const steamBurnDamage3 = Math.floor(unit.maxHp * steamBurnDebuff3.damagePercentPerStack * steamBurnDebuff3.stacks);
+          unit.currentHp = Math.max(0, unit.currentHp - steamBurnDamage3);
+          showDamageNumber(unit.id, steamBurnDamage3, 'damage');
+          updateHpBar(unit);
+          addLog(`${unit.name} 受到蒸汽灼伤 ${steamBurnDamage3} HP`, 'damage');
+
+          steamBurnDebuff3.remainingDuration--;
+          if (steamBurnDebuff3.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'steam_burn');
+            addLog(`${unit.name} 的「蒸汽灼伤」状态消失了`);
+          }
+        }
+
+        // 处理虚弱状态
+        const weaknessDebuff3 = unit.debuffs.find(d => d.type === 'weakness');
+        if (weaknessDebuff3 && weaknessDebuff3.remainingDuration > 0) {
+          weaknessDebuff3.remainingDuration--;
+          if (weaknessDebuff3.remainingDuration <= 0) {
+            unit.debuffs = unit.debuffs.filter(d => d.type !== 'weakness');
+            addLog(`${unit.name} 的「虚弱」状态消失了`);
+          }
+        }
+
+        // 处理清泉护盾状态（每回合回复10%HP并清除1个debuff）
+        const clearSpringBuff3 = unit.buffs?.find(b => b.type === 'clear_spring');
+        if (clearSpringBuff3 && clearSpringBuff3.remainingDuration > 0) {
+          const clearSpringHeal3 = Math.floor(unit.maxHp * clearSpringBuff3.healPercent);
+          unit.currentHp = Math.min(unit.maxHp, unit.currentHp + clearSpringHeal3);
+          showDamageNumber(unit.id, clearSpringHeal3, 'heal');
+          updateHpBar(unit);
+          addLog(`${unit.name} 的「清泉护盾」回复 ${clearSpringHeal3} HP`, 'heal');
+
+          if (unit.debuffs && unit.debuffs.length > 0) {
+            const removedDebuff3 = unit.debuffs.shift();
+            addLog(`${unit.name} 的「${removedDebuff3.type}」状态被清泉护盾清除`);
+          }
+
+          clearSpringBuff3.remainingDuration--;
+          if (clearSpringBuff3.remainingDuration <= 0) {
+            unit.buffs = unit.buffs.filter(b => b.type !== 'clear_spring');
+            addLog(`${unit.name} 的「清泉护盾」状态消失了`);
+          }
+        }
+
+        // 处理流水状态（速度+1级）
+        const flowBuff3 = unit.buffs?.find(b => b.type === 'flow');
+        if (flowBuff3 && flowBuff3.remainingDuration > 0) {
+          flowBuff3.remainingDuration--;
+          if (flowBuff3.remainingDuration <= 0) {
+            unit.buffs = unit.buffs.filter(b => b.type !== 'flow');
+            addLog(`${unit.name} 的「流水」状态消失了`);
+          }
+        }
+      }
+
+      // 处理雨天天气
+      if (globalWeather && globalWeather.type === 'rainy' && globalWeather.duration > 0) {
+        globalWeather.duration--;
+        if (globalWeather.duration <= 0) {
+          globalWeather = null;
+          addLog(`雨天天气结束了`);
         }
       }
 
       await delay(500);
 
       if (!checkBattleEnd()) {
-        // 更新敌人意图
-        for (const enemy of enemyUnits) {
-          if (enemy.currentHp > 0) {
-            updateEnemyIntent(enemy);
-          }
-        }
-
-        // 进入下一回合
-        currentTurn++;
+        // 进入下一轮
+        currentRound++;
+        isRoundExecuting = false;
 
         // 更新所有单位的buff/debuff回合数
         updateBuffTurns();
 
-        playerCommands = []; // 清空指令
-        isPreparing = true;
-        isExecuting = false;
+        // 清空指令
+        playerCommands = [];
+        currentActionIndex = 0;
 
         renderEnemyUnits();
-        renderPlayerUnits();  // 更新能量显示
+        renderPlayerUnits();
         document.getElementById('commandList').style.display = 'block';
         renderCommandList();
         updateTurnDisplay();
-        addLog(`===== 第 ${currentTurn} 回合开始 =====`);
+        addLog(`===== 第 ${currentRound} 轮开始 =====`);
+
+        // 开始下一轮
+        setTimeout(() => startRound(), 300);
       }
     }
 
@@ -2020,6 +4634,14 @@ syncSkillDescriptions();
               delete unit.resistanceTurns[element];
               addLog(`${unit.name} 的 ${element} 属性抗性消失了`, 'buff');
             }
+          }
+        }
+        // 更新防反状态回合
+        if (unit.counterStance && unit.counterStanceTurns > 0) {
+          unit.counterStanceTurns--;
+          if (unit.counterStanceTurns === 0) {
+            unit.counterStance = false;
+            addLog(`${unit.name} 的防反之姿消失了`, 'buff');
           }
         }
       });
@@ -2337,7 +4959,7 @@ syncSkillDescriptions();
       }
 
       // 1. 决策行动类型
-      const actionType = decideActionType(enemy);
+      let actionType = decideActionType(enemy);
       console.log(`${enemy.name} 决定行动: ${actionType}`);
 
       // 2. 选择具体技能
@@ -2461,57 +5083,88 @@ syncSkillDescriptions();
       overlay.classList.add('visible');
     }
 
-    // 初始配置（用于重置）
-    const INITIAL_PLAYER_CONFIG = JSON.parse(JSON.stringify(playerUnits));
-    const INITIAL_ENEMY_CONFIG = JSON.parse(JSON.stringify(enemyUnits));
-
     function restartBattle() {
       // 深拷贝恢复初始状态
       playerUnits.length = 0;
       INITIAL_PLAYER_CONFIG.forEach(u => playerUnits.push(JSON.parse(JSON.stringify(u))));
       enemyUnits.length = 0;
       INITIAL_ENEMY_CONFIG.forEach(u => enemyUnits.push(JSON.parse(JSON.stringify(u))));
-      currentTurn = 1;
-      isPlayerTurn = true;
+      currentRound = 1;
       battleEnded = false;
       selectedPlayer = null;
       playerCommands = [];
-      isPreparing = true;
+      actionQueue = [];
+      isRoundExecuting = false;
+      isBattleStarted = false;
+      isPreparing = false;
       isExecuting = false;
+      executedPlayerIds.clear();
+      playerActionQueue = [];
+      enemyActionQueue = [];
+      currentActionIndex = 0;
+      currentAction = null;
       document.getElementById('battleEndOverlay').classList.remove('visible');
       document.getElementById('commandList').style.display = 'block';
       document.getElementById('logContent').innerHTML = '';
-      
+      hideActionOrder();
+
       // 重新初始化技能（确保所有单位都有技能）
       initializeCompanionSkills();
       initializeEnemySkills();
-      
+
       renderPlayerUnits();
       renderEnemyUnits();
       renderSkillPanel(null);
       renderCommandList();
       updateTurnDisplay();
-      addLog('战斗开始！');
+
+      // 不自动开始战斗，让玩家可以先切换模式
+      addLog('===== 战斗模拟 =====');
+      addLog('点击伙伴开始行动！');
     }
 
     // ==================== 初始化 ====================
     function init() {
+      // 初始化初始配置（在技能分配之后）
+      INITIAL_PLAYER_CONFIG = JSON.parse(JSON.stringify(playerUnits));
+      INITIAL_ENEMY_CONFIG = JSON.parse(JSON.stringify(enemyUnits));
+
       // 调试日志：验证初始化状态
       console.log('=== 战斗初始化 ===');
+      console.log('当前模式: ' + getModeName(currentBattleMode));
       playerUnits.forEach(unit => {
         console.log(`${unit.name}: HP=${unit.currentHp}/${unit.maxHp}, energy=${unit.energy}, skills=${unit.skills.length}`);
         if (unit.skills.length === 0) {
           console.warn(`警告: ${unit.name} 没有技能！`);
         }
       });
-      
+
+      // 初始化敌人意图
+      for (const enemy of enemyUnits) {
+        if (enemy.currentHp > 0) {
+          updateEnemyIntent(enemy);
+        }
+      }
+
       renderPlayerUnits();
       renderEnemyUnits();
       renderCommandList();
       updateTurnDisplay();
-      addLog('战斗开始！');
+
+      // 初始化模式2的预备状态
+      if (currentBattleMode === 2) {
+        isPreparing = true;
+        document.getElementById('actionOrderDisplay').classList.add('visible');
+      }
+
+      // 不自动开始战斗，让玩家可以先切换模式
+      addLog('===== 战斗模拟 =====');
+      addLog('点击伙伴开始行动！');
+
+      // 只有当玩家点击伙伴时才检查是否开始战斗
+      // 监听玩家点击事件，在第一个玩家行动时自动开始
+
       document.addEventListener('click', (e) => {
-        // 如果是拖拽释放（未命中目标），跳过此次点击处理
         if (wasDragReleased) {
           wasDragReleased = false;
           return;
