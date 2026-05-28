@@ -5,21 +5,15 @@
 
 // 选择速度最快的未行动玩家
 function selectNextFastestPlayer() {
-  console.log('[DEBUG] selectNextFastestPlayer called');
-  console.log('[DEBUG] playerUnits:', playerUnits.map(p => ({name: p.name, hp: p.currentHp, id: p.id})));
-  console.log('[DEBUG] executedPlayerIds:', [...executedPlayerIds]);
   const remainingPlayers = playerUnits.filter(p => p.currentHp > 0 && !executedPlayerIds.has(p.id));
-  console.log('[DEBUG] remainingPlayers:', remainingPlayers.map(p => p.name));
   if (remainingPlayers.length === 0) return null;
   // 按速度降序排序，选择速度最快的
   remainingPlayers.sort((a, b) => b.speed - a.speed);
-  console.log('[DEBUG] selected fastest:', remainingPlayers[0]?.name, 'speed:', remainingPlayers[0]?.speed);
   return remainingPlayers[0];
 }
 
 // 模式3：初始化轮次
 function startRoundMode3() {
-  console.log('[DEBUG] startRoundMode3 called');
   if (battleEnded) return;
 
   isBattleStarted = true;
@@ -54,14 +48,10 @@ function startRoundMode3() {
   // 进入玩家选择阶段，并自动选择速度最快的玩家
   phase = 'player_select';
   const fastestPlayer = selectNextFastestPlayer();
-  console.log('[DEBUG] fastestPlayer:', fastestPlayer);
   if (fastestPlayer) {
     selectedPlayer = fastestPlayer;
-    console.log('[DEBUG] Setting selectedPlayer to:', fastestPlayer.name);
     renderSkillPanel(fastestPlayer);
     addLog(`自动选择 ${fastestPlayer.name}（速度 ${fastestPlayer.speed}）`);
-  } else {
-    console.log('[DEBUG] No fastestPlayer found, selectedPlayer stays null');
   }
   updateTurnDisplay();
   renderPlayerUnits();
@@ -1174,4 +1164,301 @@ function updateBuffTurns() {
       }
     }
   });
+}
+
+// ==================== 敌人行动系统 ====================
+
+// 执行敌人行动
+async function executeEnemyAction(enemy) {
+  // 根据意图找到要使用的技能
+  let skill = null;
+  if (enemy.intent.skillId && enemy.skills) {
+    skill = enemy.skills.find(s => s.id === enemy.intent.skillId);
+  }
+
+  // 检查能量是否足够
+  if (skill && enemy.energy < skill.energyCost) {
+    addLog(`${enemy.name} 能量不足，无法使用 ${skill.name}，跳过`);
+    updateEnemyIntent(enemy);
+    return;
+  }
+
+  // 检查目标是否有效
+  let actualTarget = playerUnits.find(p => p.id === enemy.intent.targetId);
+  if (!actualTarget || actualTarget.currentHp <= 0) {
+    const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
+    if (alivePlayers.length > 0) {
+      actualTarget = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+    } else {
+      addLog(`${enemy.name} 无法选择目标，跳过`);
+      return;
+    }
+  }
+
+  // 消耗能量
+  if (skill) {
+    const energyBefore = enemy.energy;
+    enemy.energy -= skill.energyCost;
+    addLog(`${enemy.name} 使用 ${skill.name}（消耗${skill.energyCost}能量 ${energyBefore}→${enemy.energy}）`);
+
+    // 使用技能执行逻辑（复用玩家技能执行）
+    await executeEnemySkill(enemy, skill, actualTarget);
+  } else {
+    // 兼容旧代码：没有技能时使用原始的攻击逻辑
+    if (enemy.intent.type === 'attack') {
+      await executeEnemyBasicAttack(enemy, actualTarget);
+    }
+  }
+
+  // 更新敌人意图
+  updateEnemyIntent(enemy);
+}
+
+// 执行敌人技能（复用玩家技能执行逻辑）
+async function executeEnemySkill(enemy, skill, target) {
+  // 处理休息技能（回复能量）
+  if (skill.effect === 'energy_restore') {
+    const energyRestore = skill.power || 5;
+    const oldEnergy = enemy.energy;
+    enemy.energy = Math.min(enemy.energy + energyRestore, MAX_ENERGY);
+    const actualRestore = enemy.energy - oldEnergy;
+    addLog(`${enemy.name} 使用 ${skill.name}，回复 ${actualRestore} 点能量（${oldEnergy}→${enemy.energy}）`, 'heal');
+    return;
+  }
+
+  if (skill.target === 'single_enemy' || skill.target === 'all_enemy') {
+    // 攻击技能
+    let totalDamage = 0;
+
+    // 检查蓄焰增伤buff
+    let powerBonus = 0;
+    if (enemy.flameCharge && enemy.flameChargeTurns > 0 && skill.element === 'fire') {
+      powerBonus = enemy.flameChargePower || (enemy.energy * 10);
+      addLog(`${enemy.name} 的蓄焰效果生效，火属性攻击威力+${powerBonus}！`, 'buff');
+      enemy.flameCharge = false;
+      enemy.flameChargeTurns = 0;
+    }
+
+    // 检查烈火护体下次火攻增伤
+    if (enemy.wallOfFlamesPower > 0 && skill.element === 'fire') {
+      powerBonus += enemy.wallOfFlamesPower;
+      addLog(`${enemy.name} 的烈火护体效果生效，火属性攻击威力+${enemy.wallOfFlamesPower}！`, 'buff');
+      enemy.wallOfFlamesPower = 0;
+    }
+
+    // 检查光能汇聚增伤（草系技能）
+    let lightGatherBonus = 0;
+    if (enemy.lightGatherStacks && enemy.lightGatherStacks > 0 && skill.element === 'grass') {
+      lightGatherBonus = enemy.lightGatherStacks * (skill.powerPerStack || 60);
+      addLog(`${enemy.name} 消耗 ${enemy.lightGatherStacks} 层光能汇聚，草系攻击威力+${lightGatherBonus}！`, 'buff');
+      enemy.lightGatherStacks = 0;
+    }
+    powerBonus += lightGatherBonus;
+
+    // 雷霆连击：多段攻击
+    if (skill.effect === 'combo') {
+      const hits = skill.comboHits || 3;
+      const powerPerHit = skill.comboPower || Math.floor(skill.power / hits);
+
+      for (let i = 0; i < hits; i++) {
+        const hitDamage = Math.floor((powerPerHit + powerBonus) * (0.8 + Math.random() * 0.4));
+
+        if (target.damageReduction && target.damageReduction > 0) {
+          hitDamage = Math.floor(hitDamage * (1 - target.damageReduction));
+        }
+        if (target.shield && target.shield > 0) {
+          if (hitDamage > target.shield) {
+            hitDamage -= target.shield;
+            target.shield = 0;
+          } else {
+            target.shield -= hitDamage;
+            hitDamage = 0;
+          }
+        }
+
+        totalDamage += hitDamage;
+        target.currentHp = Math.max(0, target.currentHp - hitDamage);
+        showDamageNumber(target.id, hitDamage, 'damage');
+        addLog(`${enemy.name} 使用 ${skill.name}，第${i + 1}段攻击造成 ${hitDamage} 伤害`, 'damage');
+        await delay(200);
+      }
+
+      // 必定灼烧
+      if (skill.burnStacks && !skill.burnChance) {
+        const existingBurn = target.debuffs.find(d => d.type === 'burn');
+        if (existingBurn) {
+          existingBurn.stacks += skill.burnStacks;
+          existingBurn.remainingDuration = 3;
+        } else {
+          target.debuffs.push({
+            type: 'burn',
+            stacks: skill.burnStacks,
+            damagePercentPerStack: 0.02,
+            remainingDuration: 3
+          });
+        }
+        addLog(`${target.name} 陷入灼烧状态！`, 'damage');
+      }
+    } else {
+      // 普通单次攻击
+      let damage = Math.floor((skill.power + powerBonus) * (0.8 + Math.random() * 0.4));
+
+      if (target.damageReduction && target.damageReduction > 0) {
+        damage = Math.floor(damage * (1 - target.damageReduction));
+      }
+      if (target.shield && target.shield > 0) {
+        if (damage > target.shield) {
+          damage -= target.shield;
+          target.shield = 0;
+        } else {
+          target.shield -= damage;
+          damage = 0;
+        }
+      }
+
+      totalDamage = damage;
+      target.currentHp = Math.max(0, target.currentHp - damage);
+      showDamageNumber(target.id, damage, 'damage');
+      addLog(`${enemy.name} 使用 ${skill.name}，对 ${target.name} 造成 ${damage} 伤害`, 'damage');
+    }
+
+    // 灼烧效果
+    if (skill.effect === 'burn' || skill.burnStacks) {
+      const burnChance = skill.burnChance ?? 1;
+      if (Math.random() < burnChance) {
+        const stacks = skill.burnStacks || 1;
+        const existingBurn = target.debuffs.find(d => d.type === 'burn');
+        if (existingBurn) {
+          existingBurn.stacks += stacks;
+          existingBurn.remainingDuration = 3;
+        } else {
+          target.debuffs.push({
+            type: 'burn',
+            stacks: stacks,
+            damagePercentPerStack: 0.02,
+            remainingDuration: 3
+          });
+        }
+        addLog(`${target.name} 陷入灼烧状态！`, 'damage');
+      }
+    }
+
+    updateHpBar(target);
+    if (target.currentHp <= 0) addLog(`${target.name} 倒下了！`);
+
+    // 火盾反伤
+    if (target.fireShield && target.reflectDamage > 0 && target.currentHp > 0) {
+      const reflectDmg = Math.floor(target.reflectDamage * (0.8 + Math.random() * 0.4));
+      enemy.currentHp = Math.max(0, enemy.currentHp - reflectDmg);
+      showDamageNumber(enemy.id, reflectDmg, 'damage');
+      updateHpBar(enemy);
+      addLog(`${target.name} 的火盾反伤触发，对 ${enemy.name} 造成 ${reflectDmg} 火属性伤害！`, 'damage');
+      if (enemy.currentHp <= 0) addLog(`${enemy.name} 倒下了！`);
+    }
+  } else if (skill.target === 'self') {
+    // 自身目标技能
+    if (skill.type === 'shield') {
+      enemy.shield = (enemy.shield || 0) + skill.power;
+      addLog(`${enemy.name} 使用 ${skill.name}，为自身施加 ${skill.power} 点护盾`);
+    }
+    if (skill.type === 'buff' && skill.speedBoost) {
+      enemy.speedBoost = (enemy.speedBoost || 0) + skill.speedBoost;
+      addLog(`${enemy.name} 使用 ${skill.name}，速度提升 ${skill.speedBoost} 级！`, 'buff');
+    }
+  }
+
+  renderPlayerUnits();
+  renderEnemyUnits();
+  await delay(300);
+}
+
+// 执行敌人基础攻击
+async function executeEnemyBasicAttack(enemy, target) {
+  const fakeSkill = {
+    power: enemy.intent.power,
+    element: enemy.element
+  };
+  const result = calculatePokemonDamage(enemy, target, fakeSkill);
+  let damage = result.damage;
+
+  if (target.damageReduction && target.damageReduction > 0) {
+    damage = Math.floor(damage * (1 - target.damageReduction));
+  }
+  if (target.shield && target.shield > 0) {
+    if (damage > target.shield) {
+      damage -= target.shield;
+      target.shield = 0;
+    } else {
+      target.shield -= damage;
+      damage = 0;
+    }
+  }
+
+  target.currentHp = Math.max(0, target.currentHp - damage);
+  showDamageNumber(target.id, damage, 'damage');
+  updateHpBar(target);
+
+  let logMsg = `${enemy.name} 攻击 ${target.name}，造成 ${damage} 伤害`;
+  if (result.isCrit) logMsg += '（暴击！）';
+  if (result.typeMultiplier !== 1) logMsg += `【${result.typeMultiplier >= 2 ? '效果拔群' : '效果微弱'}×${result.typeMultiplier}】`;
+  addLog(logMsg, 'damage');
+
+  // 火盾反伤
+  if (target.fireShield && target.reflectDamage > 0 && target.currentHp > 0) {
+    const reflectDmg = Math.floor(target.reflectDamage * (0.8 + Math.random() * 0.4));
+    enemy.currentHp = Math.max(0, enemy.currentHp - reflectDmg);
+    showDamageNumber(enemy.id, reflectDmg, 'damage');
+    updateHpBar(enemy);
+    addLog(`${target.name} 的火盾反伤触发，对 ${enemy.name} 造成 ${reflectDmg} 火属性伤害！`, 'damage');
+    if (enemy.currentHp <= 0) addLog(`${enemy.name} 倒下了！`);
+  }
+
+  if (target.currentHp <= 0) addLog(`${target.name} 倒下了！`);
+}
+
+// 使用宝可梦公式计算伤害
+function calculatePokemonDamage(attacker, defender, skill, options = {}) {
+  const powerBonus = options.powerBonus || 0;
+  const level = attacker.level || 60;
+  const attack = attacker.attack || 75;
+  const defense = defender.defense || 75;
+
+  // 基础伤害 = 等级 × 2 / 5 + 2
+  let baseDamage = Math.floor(level * 2 / 5 + 2);
+
+  // × 技能威力
+  baseDamage = Math.floor(baseDamage * (skill.power + powerBonus));
+
+  // × 攻击 / 防御
+  baseDamage = Math.floor(baseDamage * attack / defense);
+
+  // + 2
+  baseDamage = Math.floor(baseDamage / 2) + 2;
+
+  // 随机系数 0.85 - 1.0
+  const randomFactor = 0.85 + Math.random() * 0.15;
+  baseDamage = Math.floor(baseDamage * randomFactor);
+
+  // 属性克制
+  let typeMultiplier = 1;
+  if (skill.element && defender.element) {
+    typeMultiplier = calculateDamageMultiplier(skill.element, defender.element);
+  }
+
+  // 最终伤害
+  const damage = Math.max(1, Math.floor(baseDamage * typeMultiplier));
+
+  // 暴击判定（1/16 概率，1.5 倍伤害）
+  const isCrit = Math.random() < 1/16;
+  const finalDamage = isCrit ? Math.floor(damage * 1.5) : damage;
+
+  // STAB 加成（属性一致加成，1.5 倍）
+  const stabBonus = (skill.element && skill.element === attacker.element) ? 1.5 : 1;
+
+  return {
+    damage: finalDamage,
+    isCrit: isCrit,
+    typeMultiplier: typeMultiplier,
+    stabBonus: stabBonus
+  };
 }

@@ -12,10 +12,12 @@ function switchBattleMode(mode) {
   document.querySelectorAll('.mode-switch-btn').forEach(btn => btn.classList.remove('active'));
   document.getElementById('mode' + mode + 'Btn').classList.add('active');
 
+  // 先设置当前模式
+  currentBattleMode = mode;
+
   // 重置战斗状态
   restartBattleForModeSwitch();
 
-  currentBattleMode = mode;
   addLog('切换至' + getModeName(mode));
 
   // 根据模式更新UI
@@ -424,6 +426,11 @@ function applyCustomBattle() {
   addLog('=== 自定义战斗开始 ===');
   renderPlayerUnits();
   renderEnemyUnits();
+
+  // 模式3需要初始化战斗流程
+  if (currentBattleMode === 3) {
+    startRoundMode3();
+  }
 }
 
 // 获取模式名称
@@ -463,7 +470,8 @@ function restartBattleForModeSwitch() {
   enemyActionQueue = [];
 
   document.getElementById('battleEndOverlay').classList.remove('visible');
-  document.getElementById('commandList').style.display = 'block';
+  // 模式1和模式3不显示指令列表
+  document.getElementById('commandList').style.display = currentBattleMode === 2 ? 'block' : 'none';
   document.getElementById('logContent').innerHTML = '';
   document.getElementById('actionOrderDisplay').classList.remove('visible');
   hideActionOrder();
