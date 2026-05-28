@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>战斗模拟</title>
+  <script src="status-data.js"></script>
+  <script src="skills-data.js"></script>
+  <link rel="stylesheet" href="css/battle.css">
+</head>
+<body>
+  <div class="battle-container">
+    <button class="skill-book-btn" onclick="window.location.href='skill-book.html'">图鉴</button>
+
+    <!-- 模式切换按钮 -->
+    <div class="mode-switch-container">
+      <div class="mode-title">战斗模式</div>
+      <button class="mode-switch-btn mode-1 active" id="mode1Btn" onclick="switchBattleMode(1)">经典模式</button>
+      <button class="mode-switch-btn mode-2" id="mode2Btn" onclick="switchBattleMode(2)">宝可梦模式</button>
+      <button class="mode-switch-btn mode-3" id="mode3Btn" onclick="switchBattleMode(3)">以太术士模式</button>
+      <button class="mode-switch-btn custom-btn" id="customBtn" onclick="openCustomBattleEditor()">自定义战斗</button>
+    </div>
+
+    <!-- 自定义战斗编辑界面 -->
+    <div class="custom-battle-overlay" id="customBattleOverlay">
+      <div class="custom-battle-panel">
+        <div class="custom-battle-header">
+          <div class="custom-battle-title">自定义战斗配置</div>
+          <div class="custom-battle-mode-select">
+            <button class="custom-mode-btn active" id="customMode1" onclick="selectCustomMode(1)">经典</button>
+            <button class="custom-mode-btn" id="customMode2" onclick="selectCustomMode(2)">宝可梦</button>
+            <button class="custom-mode-btn" id="customMode3" onclick="selectCustomMode(3)">术士</button>
+          </div>
+          <button class="custom-battle-close" onclick="closeCustomBattleEditor()">&times;</button>
+        </div>
+
+        <!-- 伙伴配置 -->
+        <div class="custom-battle-section">
+          <div class="custom-battle-section-title">
+            <span>己方伙伴</span>
+            <span class="count" id="playerCount">3/5</span>
+          </div>
+          <div id="playerList"></div>
+          <button class="custom-battle-add-btn" id="addPlayerBtn" onclick="addCustomPlayer()">+ 添加伙伴</button>
+        </div>
+
+        <!-- 敌人配置 -->
+        <div class="custom-battle-section">
+          <div class="custom-battle-section-title">
+            <span>敌方单位</span>
+            <span class="count" id="enemyCount">3/5</span>
+          </div>
+          <div id="enemyList"></div>
+          <button class="custom-battle-add-btn" id="addEnemyBtn" onclick="addCustomEnemy()">+ 添加敌人</button>
+          <div class="custom-battle-hint">
+            <span>普通</span>: 基础属性 |
+            <span>精英</span>: 生命&times;2.5, 攻/防/特攻/特防&times;1.3, 速度不变 |
+            <span>首领</span>: 生命&times;8, 攻/特攻&times;1.6, 防/特防&times;1.3, 速度不变
+          </div>
+        </div>
+
+        <div class="custom-battle-actions">
+          <button class="custom-battle-btn secondary" onclick="closeCustomBattleEditor()">取消</button>
+          <button class="custom-battle-btn" onclick="applyCustomBattle()">载入战斗</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="turn-info">
+      <div class="turn-number" id="turnNumber">第 1 轮</div>
+      <div class="phase-text" id="phaseText">己方回合</div>
+    </div>
+
+    <div class="action-order-display" id="actionOrderDisplay">
+      <div class="action-order-title">行动顺序</div>
+      <div class="action-order-list" id="actionOrderList"></div>
+    </div>
+
+    <div class="battle-log">
+      <div class="log-title">战斗记录</div>
+      <div id="logContent"></div>
+    </div>
+
+    <div class="battlefield">
+      <div class="player-side" id="playerSide"></div>
+      <div class="enemy-side" id="enemySide"></div>
+    </div>
+
+    <div class="skill-panel" id="skillPanel">
+      <div class="action-hint" id="actionHint">点击左侧伙伴选择技能</div>
+    </div>
+
+    <div class="command-list" id="commandList">
+      <div class="command-title">指令列表（随时下达）</div>
+      <div id="commandItems"></div>
+    </div>
+
+    <div class="battle-end-overlay" id="battleEndOverlay">
+      <div class="end-content">
+        <div class="end-title" id="endTitle">胜利</div>
+        <button class="restart-btn" onclick="restartBattle()">重新开始</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模块化 JavaScript 引用 -->
+  <script src="js/00-constants.js"></script>
+  <script src="js/00-state.js"></script>
+  <script src="js/01-data.js"></script>
+  <script src="js/02-status-system.js"></script>
+  <script src="js/03-skill-effects.js"></script>
+  <script src="js/04-utils.js"></script>
+  <script src="js/05-renderer.js"></script>
+  <script src="js/06-skill-panel.js"></script>
+  <script src="js/07-mode-system.js"></script>
+  <script src="js/08-battle-engine.js"></script>
+  <script src="js/09-enemy-ai.js"></script>
+  <script src="js/10-events.js"></script>
+  <script src="js/11-init.js"></script>
+  <script src="js/12-skill-execution.js"></script>
+</body>
+</html>
