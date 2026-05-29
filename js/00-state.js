@@ -36,3 +36,8 @@ let globalWeather = null;  // 全局天气效果：rainy（雨天）等
 // 初始配置（用于重置）- 在初始化后填充
 let INITIAL_PLAYER_CONFIG = [];
 let INITIAL_ENEMY_CONFIG = [];
+
+// ==================== 防御技能冷却系统 ====================
+// 追踪单位身上的防御技能冷却状态
+// 结构: { 'unitId': { 'skillId': remainingCooldown } }
+let defenseSkillCooldowns = {};

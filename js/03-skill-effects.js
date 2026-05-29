@@ -236,14 +236,10 @@ function convertSkillToBattleFormat(skillData, element) {
   let target = 'single_enemy';
   if (skillData.t) {
     const targetStr = String(skillData.t);
-    if (targetStr.includes('self')) target = 'self';
-    else if (targetStr.includes('all_ally')) target = 'all_ally';
-    else if (targetStr.includes('ally')) target = 'ally';
-    else if (targetStr.includes('all_enemy')) target = 'all_enemy';
-    else if (targetStr.includes('自身')) target = 'self';
-    else if (targetStr.includes('己方全体')) target = 'all_ally';
-    else if (targetStr.includes('己方单体')) target = 'ally';
-    else if (targetStr.includes('敌方全体') || targetStr.includes('全体敌人')) target = 'all_enemy';
+    if (targetStr.includes('self') || targetStr.includes('自身')) target = 'self';
+    else if (targetStr.includes('all_ally') || targetStr.includes('己方全体')) target = 'all_ally';
+    else if (targetStr.includes('ally') || targetStr.includes('己方单体')) target = 'ally';
+    else if (targetStr.includes('all_enemy') || targetStr.includes('敌方全体') || targetStr.includes('全体敌人')) target = 'all_enemy';
     else if (targetStr.includes('all')) target = 'all_enemy';
     else target = 'single_enemy';
   }
@@ -327,6 +323,9 @@ function convertSkillToBattleFormat(skillData, element) {
   let burnChance = null;
   let burnMarkPower = null;
   let damageReduction = skillData.damageReduction || 0;
+
+  // 解析冷却时间
+  let cooldown = skillData.cooldown || 0;
 
   if (skillData.effects && Array.isArray(skillData.effects)) {
     for (const effectItem of skillData.effects) {
@@ -652,6 +651,7 @@ function convertSkillToBattleFormat(skillData, element) {
     rainyDayDuration: rainyDayDuration,
     rainyDayPowerBoost: rainyDayPowerBoost,
     steamBurnChance: steamBurnChance,
+    cooldown: cooldown,
     description: skillData.eff || generateSkillDescription(skillData.effects, skillData)
   };
 }

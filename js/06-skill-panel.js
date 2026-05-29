@@ -22,7 +22,7 @@ function getSkillTypeClass(type) {
 
 // 获取目标类型文本
 function getTargetText(target) {
-  const map = { single_enemy: '单体敌人', ally: '单体队友', all_enemy: '全体敌人', all_ally: '全体队友', self: '自身' };
+  const map = { single_enemy: '单体敌人', ally: '己方单体', all_enemy: '全体敌人', all_ally: '全体队友', self: '自身' };
   return map[target] || target;
 }
 
@@ -32,7 +32,7 @@ function getEnergyCostText(cost) {
   return `${cost}能量`;
 }
 
-function showSkillTooltip(e, skill, card, target = null) {
+function showSkillTooltip(e, skill, card, target = null, unitCooldowns = {}) {
   hideSkillTooltip();
   skillTooltip = document.createElement('div');
   skillTooltip.className = 'skill-tooltip';
@@ -85,6 +85,16 @@ function showSkillTooltip(e, skill, card, target = null) {
 
   // 目标
   html += `<div class="skill-tooltip-info">目标: ${getTargetText(skill.target)}</div>`;
+
+  // 冷却信息
+  if (skill.cooldown && skill.cooldown > 0) {
+    const cooldownRemaining = unitCooldowns ? (unitCooldowns[skill.id] || 0) : 0;
+    if (cooldownRemaining > 0) {
+      html += `<div class="skill-tooltip-cooldown">⚠️ 冷却中（剩余${cooldownRemaining}回合）</div>`;
+    } else {
+      html += `<div class="skill-tooltip-cooldown">冷却: ${skill.cooldown}回合</div>`;
+    }
+  }
 
   // 能量消耗
   html += `<div class="skill-tooltip-energy">消耗: ${getEnergyCostText(skill.energyCost)}</div>`;
@@ -203,19 +213,30 @@ function renderSkillPanel(unit) {
     panel.innerHTML = '<div class="action-hint" id="actionHint">点击左侧伙伴选择技能</div>';
     return;
   }
-  
+
   // 获取当前能量
   const currentEnergy = unit.energy;
-  
-  panel.innerHTML = unit.skills.map(skill => `
-    <div class="skill-card ${skill.energyCost > currentEnergy ? 'no-energy' : ''}" data-skill-id="${skill.id}">
-      <div class="skill-icon ${skill.type}">
-        <svg viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
+
+  // 获取该单位的冷却状态
+  const unitCooldowns = defenseSkillCooldowns[unit.id] || {};
+
+  panel.innerHTML = unit.skills.map(skill => {
+    // 检查是否在冷却中
+    const cooldownRemaining = skill.cooldown && skill.cooldown > 0 ? (unitCooldowns[skill.id] || 0) : 0;
+    const isOnCooldown = cooldownRemaining > 0;
+    const canUse = !isOnCooldown && skill.energyCost <= currentEnergy;
+    const cardClass = isOnCooldown ? 'cooldown' : (skill.energyCost > currentEnergy ? 'no-energy' : '');
+
+    return `
+      <div class="skill-card ${cardClass}" data-skill-id="${skill.id}" ${isOnCooldown ? `data-cooldown="${cooldownRemaining}"` : ''}>
+        <div class="skill-icon ${skill.type}">
+          <svg viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
+        </div>
+        <div class="skill-name">${skill.name}${isOnCooldown ? `<span class="cooldown-badge">${cooldownRemaining}</span>` : ''}</div>
+        <div class="skill-energy">${isOnCooldown ? `冷却${cooldownRemaining}` : getEnergyText(skill.energyCost)}</div>
       </div>
-      <div class="skill-name">${skill.name}</div>
-      <div class="skill-energy">${getEnergyText(skill.energyCost)}</div>
-    </div>
-  `).join('') + '<div class="action-hint" id="actionHint">拖动技能到目标</div>';
+    `;
+  }).join('') + '<div class="action-hint" id="actionHint">拖动技能到目标</div>';
   panel.classList.add('visible');
 
   let dragPreview = null;
@@ -225,11 +246,17 @@ function renderSkillPanel(unit) {
     const skill = unit.skills.find(s => s.id === skillId);
 
     // 悬停显示提示
-    card.onmouseenter = (e) => { if (skill) showSkillTooltip(e, skill, card); };
+    card.onmouseenter = (e) => { if (skill) showSkillTooltip(e, skill, card, null, unitCooldowns); };
     card.onmouseleave = hideSkillTooltip;
 
     // 拖拽开始
     card.onmousedown = (e) => {
+      // 检查冷却状态
+      const cooldownRemaining = skill.cooldown && skill.cooldown > 0 ? (unitCooldowns[skill.id] || 0) : 0;
+      if (cooldownRemaining > 0) {
+        addLog(`${skill.name} 处于冷却中（剩余${cooldownRemaining}回合）`);
+        return;
+      }
       if (!skill || skill.energyCost > currentEnergy) return;
       e.preventDefault();
       isDragging = true;
@@ -276,6 +303,12 @@ function renderSkillPanel(unit) {
           targetUnit = findUnitElement('.unit.player');
           if (targetUnit && targetUnit.id === unit.id) {
             cmdSuccess = await addCommand(unit, skill, unit.id);
+          }
+        } else if (skill.target === 'ally') {
+          // 己方单体技能：必须在己方队友身上释放
+          targetUnit = findUnitElement('.unit.player.targetable');
+          if (targetUnit) {
+            cmdSuccess = await addCommand(unit, skill, targetUnit.id);
           }
         } else if (skill.target === 'all_enemy') {
           // 全体敌人技能：必须在敌人身上释放

@@ -61,6 +61,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
 .skill-card:hover { transform: scale(1.03); }
 .skill-card.no-energy { opacity: 0.4; cursor: not-allowed; }
 .skill-card.no-energy:hover { transform: none; }
+.skill-card.cooldown { opacity: 0.5; cursor: not-allowed; background: #2a2a3a; }
+.skill-card.cooldown:hover { transform: none; }
+.cooldown-badge {
+  display: inline-block;
+  background: #ff9500;
+  color: #000;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  margin-left: 2px;
+  vertical-align: middle;
+}
 .skill-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 .skill-icon.fire { background: #ff453a; }
 .skill-icon.psychic { background: #bf5af2; }
@@ -155,6 +168,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
 .skill-tooltip .skill-tooltip-heal { color: #30d158; font-weight: 600; font-size: 12px; margin-bottom: 4px; }
 .skill-tooltip .skill-tooltip-energy-restore { color: #30d158; font-weight: 600; font-size: 12px; margin-bottom: 4px; }
 .skill-tooltip .skill-tooltip-energy { color: #fff; font-weight: 500; font-size: 12px; margin-bottom: 6px; }
+.skill-tooltip .skill-tooltip-cooldown { color: #ff9500; font-weight: 600; font-size: 12px; margin-bottom: 6px; }
 .skill-tooltip .skill-tooltip-effect { color: #fff; font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #3a3a3c; }
 .skill-tooltip .skill-tooltip-desc { color: #fff; font-size: 11px; margin-top: 6px; }
 .skill-tooltip .skill-tooltip-matchup { font-weight: 600; font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #3a3a3c; }
@@ -239,8 +253,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
 .mode-switch-btn.mode-3 { border-left: 3px solid #bf5af2; }
 .mode-switch-btn.custom-btn { border-left: 3px solid #30d158; margin-top: 8px; }
 .mode-switch-btn.custom-btn:hover { border-color: #30d158; }
-.mode-switch-btn.info-btn { border-left: 3px solid #bf5af2; }
+.mode-switch-btn.info-btn {
+  border-left: 3px solid #bf5af2;
+  font-size: 11px;
+  padding: 5px 10px;
+  opacity: 0.7;
+}
+.mode-switch-btn.info-btn:hover { opacity: 1; background: rgba(50, 50, 50, 0.95); }
+.mode-switch-btn.info-btn + .mode-switch-btn.info-btn { border-left: 3px solid #8e8e93; }
 .mode-title { font-size: 10px; color: #8e8e93; margin-bottom: 2px; }
+
+/* 右侧功能按钮 */
+.info-btn-group {
+  position: absolute;
+  top: 40px;
+  right: 16px;
+  display: flex;
+  gap: 6px;
+  z-index: 50;
+}
 
 /* 自定义战斗编辑界面样式 */
 .custom-battle-overlay {

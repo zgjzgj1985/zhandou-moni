@@ -1454,6 +1454,43 @@ function updateBuffTurns() {
       }
     }
   });
+
+  // 更新防御技能冷却
+  updateDefenseSkillCooldowns();
+}
+
+// 更新防御技能冷却（每回合减少1）
+function updateDefenseSkillCooldowns() {
+  const allUnits = [...playerUnits, ...enemyUnits];
+
+  allUnits.forEach(unit => {
+    if (!defenseSkillCooldowns[unit.id]) return;
+
+    const cooldowns = defenseSkillCooldowns[unit.id];
+    let hasChanges = false;
+
+    for (const skillId in cooldowns) {
+      if (cooldowns[skillId] > 0) {
+        cooldowns[skillId]--;
+        hasChanges = true;
+        if (cooldowns[skillId] === 0) {
+          // 冷却结束，获取技能名
+          const skill = unit.skills?.find(s => s.id === skillId);
+          const skillName = skill ? skill.name : skillId;
+          addLog(`${unit.name} 的 ${skillName} 冷却结束`, 'buff');
+        }
+      }
+    }
+
+    // 清理已结束的冷却
+    if (hasChanges) {
+      for (const skillId in cooldowns) {
+        if (cooldowns[skillId] <= 0) {
+          delete cooldowns[skillId];
+        }
+      }
+    }
+  });
 }
 
 // ==================== 敌人行动系统 ====================
@@ -1664,6 +1701,28 @@ async function executeEnemySkill(enemy, skill, target) {
       updateHpBar(enemy);
       addLog(`${target.name} 的火盾反伤触发，对 ${enemy.name} 造成 ${reflectDmg} 火属性伤害！`, 'damage');
       if (enemy.currentHp <= 0) addLog(`${enemy.name} 倒下了！`);
+    }
+  } else if (skill.target === 'ally') {
+    // 己方单体目标技能（敌人使用时效果施加给其他敌人）
+    const aliveEnemies = enemyUnits.filter(e => e.currentHp > 0 && e.id !== enemy.id);
+    let allyTarget = null;
+    if (aliveEnemies.length > 0) {
+      allyTarget = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
+    } else {
+      allyTarget = enemy; // 如果没有其他敌人，则对自己使用
+    }
+    
+    if (skill.type === 'shield') {
+      allyTarget.shield = (allyTarget.shield || 0) + (skill.power || 0);
+      addLog(`${enemy.name} 对 ${allyTarget.name} 使用 ${skill.name}，施加 ${skill.power || 0} 点护盾`);
+    }
+    if (skill.type === 'buff' && skill.speedBoost) {
+      allyTarget.speedBoost = (allyTarget.speedBoost || 0) + skill.speedBoost;
+      addLog(`${enemy.name} 对 ${allyTarget.name} 使用 ${skill.name}，速度提升 ${skill.speedBoost} 级！`, 'buff');
+    }
+    if (skill.type === 'buff' && skill.defenseBoost) {
+      allyTarget.defenseBoost = (allyTarget.defenseBoost || 0) + skill.defenseBoost;
+      addLog(`${enemy.name} 对 ${allyTarget.name} 使用 ${skill.name}，防御提升 ${skill.defenseBoost} 级！`, 'buff');
     }
   } else if (skill.target === 'self') {
     // 自身目标技能

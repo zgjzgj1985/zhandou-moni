@@ -26,10 +26,10 @@ const SKILLS_DB = {
       ], tags: ['火', '爆发流', '终极', '必定灼烧']}
     ],
     defense: [
-      { id: 'fire_shield', name: '火盾', e: 1, t: '自身', eff: '受到伤害降低55%，本回合受伤时攻击者附加灼烧', effects: [
+      { id: 'fire_shield', name: '火盾', e: 1, t: '己方单体', cooldown: 1, eff: '为已方单体降低55%伤害，本回合受伤时攻击者附加灼烧', effects: [
         { type: 'add_status', statusId: 'fire_shield' }
       ], tags: ['火', '爆发流', '减伤', '灼烧']},
-      { id: 'wall_of_flames', name: '烈火护体', e: 3, t: '自身', eff: '受到伤害降低70%，本回合下次火攻必定暴击', effects: [
+      { id: 'wall_of_flames', name: '烈火护体', e: 3, t: '己方单体', cooldown: 1, eff: '为已方单体降低70%伤害，本回合下次火攻必定暴击', effects: [
         { type: 'add_status', statusId: 'wall_of_flames' }
       ], tags: ['火', '爆发流', '减伤', '暴击强化']}
     ],
@@ -76,10 +76,10 @@ const SKILLS_DB = {
       ], tags: ['水', '控制流', '全体攻击']}
     ],
     defense: [
-      { id: 'water_guard', name: '水之守护', e: 2, t: '自身', eff: '受到伤害降低70%', effects: [
+      { id: 'water_guard', name: '水之守护', e: 2, t: '己方单体', cooldown: 1, eff: '为已方单体降低70%伤害', effects: [
         { type: 'add_status', statusId: 'water_guard' }
       ], tags: ['水', '控制流', '减伤']},
-      { id: 'spring_shield', name: '清泉护盾', e: 3, t: '自身', eff: '每回合回复10%HP并清除1个负面状态，持续3回合', effects: [
+      { id: 'spring_shield', name: '清泉护盾', e: 3, t: '己方单体', cooldown: 1, eff: '为已方单体每回合回复10%HP并清除1个负面状态，持续3回合', effects: [
         { type: 'add_status', statusId: 'clear_spring' }
       ], tags: ['水', '控制流', '持续治疗', '净化']}
     ],
@@ -118,13 +118,13 @@ const SKILLS_DB = {
       ], tags: ['草', '光环流', '层数加成']}
     ],
     defense: [
-      { id: 'root_bound', name: '扎根之躯', e: 2, t: '自身', eff: '每回合回复最大HP的8%，但速度-1级，持续3回合', effects: [
+      { id: 'root_bound', name: '扎根之躯', e: 2, t: '己方单体', cooldown: 1, eff: '为已方单体每回合回复最大HP的8%，但速度-1级，持续3回合', effects: [
         { type: 'add_status', statusId: 'root_bound' }
       ], tags: ['草', '光环流', '持续回复']},
-      { id: 'vine_armor', name: '藤蔓护甲', e: 2, t: '自身', eff: '受到伤害降低50%，受到攻击时缠绕攻击者（速度-2级）', effects: [
+      { id: 'vine_armor', name: '藤蔓护甲', e: 2, t: '己方单体', cooldown: 1, eff: '为已方单体降低50%伤害，受到攻击时缠绕攻击者（速度-2级）', effects: [
         { type: 'add_status', statusId: 'entangle_on_hit' }
       ], tags: ['草', '光环流', '减伤', '缠绕']},
-      { id: 'grass_counter_stance', name: '防反之姿', e: 2, t: '自身', eff: '获得防反之姿，反弹60%伤害', effects: [
+      { id: 'grass_counter_stance', name: '防反之姿', e: 2, t: '己方单体', cooldown: 1, eff: '为已方单体获得防反之姿，反弹60%伤害', effects: [
         { type: 'add_status', statusId: 'counter_stance' }
       ], tags: ['草', '光环流', '反击', '反弹']}
     ],
@@ -164,17 +164,17 @@ const SKILLS_DB = {
       ], tags: ['冰', '冻结破冰流', '破冰', '爆发']}
     ],
     defense: [
-      { id: 'frost_armor', name: '冰霜护甲', e: 2, t: '自身', eff: '本回合受到伤害降低50%，受伤时使攻击者冻结1回合', effects: [
+      { id: 'frost_armor', name: '冰霜护甲', e: 2, t: '己方单体', cooldown: 1, eff: '为已方单体本回合降低50%伤害，受伤时使攻击者冻结1回合', effects: [
         { type: 'add_status', statusId: 'frost_armor' }
       ], tags: ['冰', '冻结破冰流', '减伤', '反击冻结']},
-      { id: 'ice_wall', name: '冰墙', e: 3, t: '己方单体', eff: '创造冰墙屏障（持续2回合），本回合获得50%闪避，存在期间敌方攻击有25%概率被格挡', effects: [
+      { id: 'ice_wall', name: '冰墙', e: 3, t: '己方单体', cooldown: 1, eff: '为已方单体创造冰墙屏障（持续2回合），本回合获得50%闪避，存在期间敌方攻击有25%概率被格挡', effects: [
         { type: 'shield', amount: 50 }
       ], tags: ['冰', '冻结破冰流', '闪避', '格挡', '地形']}
     ],
     support: [
-      { id: 'cold_aura', name: '寒气凝聚', e: 1, t: '己方单体', eff: '为己方单体赋予「寒气凝聚」（速度+2级，持续3回合）', effects: [
+      { id: 'cold_aura', name: '寒气凝聚', e: 1, t: '己方单体', eff: '为已方单体赋予「寒气凝聚」（防御+1级，持续2回合）', effects: [
         { type: 'buff', stats: { defense: 1 } }
-      ], duration: 2, tags: ['冰', '冻结破冰流', '加速']},
+      ], duration: 2, tags: ['冰', '冻结破冰流', '防御强化']},
       { id: 'frost_mark', name: '冰霜印记', e: 1, t: '单体敌人', eff: '为目标施加「冰霜印记」（持续3回合），下次受到冰系攻击时冻结概率+30%', effects: [
         { type: 'add_status', statusId: 'frost_mark' }
       ], tags: ['冰', '冻结破冰流', '冻结强化', '印记']},
@@ -216,7 +216,7 @@ const SKILLS_DB = {
       ], tags: ['地', '盾反流', '减速', '持续伤害']}
     ],
     support: [
-      { id: 'mud_sport', name: '玩泥巴', e: 2, t: '自身', eff: '自身特攻+1、防御+1、速度+1', effects: [
+      { id: 'mud_sport', name: '玩泥巴', e: 2, t: '己方单体', cooldown: 1, eff: '为已方单体特攻+1、防御+1、速度+1', effects: [
         { type: 'buff_self', stats: { spAtk: 1, defense: 1, speed: 1 } }
       ], tags: ['地', '盾反流', '自身强化']},
       { id: 'sand_attack', name: '泼沙', e: 1, t: '单体敌人', eff: '目标命中-1级', effects: [
@@ -243,10 +243,10 @@ const SKILLS_DB = {
       ], tags: ['电', '多段伤害流', '层数加成']}
     ],
     defense: [
-      { id: 'static_charge', name: '蓄电护体', e: 2, t: '自身', eff: '获得「蓄电」状态，受伤减50%，获得2层蓄电', effects: [
+      { id: 'static_charge', name: '蓄电护体', e: 2, t: '己方单体', cooldown: 1, eff: '为已方单体获得「蓄电」状态，受伤减50%，获得2层蓄电', effects: [
         { type: 'add_status', statusId: 'static_charge' }
       ], tags: ['电', '连击流', '减伤', '蓄电']},
-      { id: 'electric_deflect', name: '电磁偏转', e: 3, t: '自身', eff: '获得「电磁偏转」状态，70%闪避并反击20伤害', effects: [
+      { id: 'electric_deflect', name: '电磁偏转', e: 3, t: '己方单体', cooldown: 1, eff: '为已方单体获得「电磁偏转」状态，70%闪避并反击20伤害', effects: [
         { type: 'add_status', statusId: 'electric_deflect' }
       ], tags: ['电', '连击流', '闪避', '反弹']}
     ],
@@ -286,13 +286,13 @@ const SKILLS_DB = {
       ], tags: ['超能', '奥秘流', '延迟伤害']}
     ],
     defense: [
-      { id: 'mind_shield', name: '心智护盾', e: 2, t: '自身', eff: '获得「心智护盾」状态', effects: [
+      { id: 'mind_shield', name: '心智护盾', e: 2, t: '己方单体', cooldown: 1, eff: '为已方单体获得「心智护盾」状态', effects: [
         { type: 'add_status', statusId: 'mind_shield' }
       ], tags: ['超能', '奥秘流', '护盾']},
-      { id: 'mirror_reflect', name: '灵镜反照', e: 3, t: '自身', eff: '获得「灵镜」状态，反弹180%伤害，即使未命中也保留', effects: [
+      { id: 'mirror_reflect', name: '灵镜反照', e: 3, t: '己方单体', cooldown: 1, eff: '为已方单体获得「灵镜」状态，反弹180%伤害，即使未命中也保留', effects: [
         { type: 'add_status', statusId: 'mirror_reflect' }
       ], tags: ['超能', '奥秘流', '反弹']},
-      { id: 'mist_body', name: '迷雾之躯', e: 2, t: '自身', eff: '获得「迷雾之躯」状态，70%闪避，闪避后速度+1级', effects: [
+      { id: 'mist_body', name: '迷雾之躯', e: 2, t: '己方单体', cooldown: 1, eff: '为已方单体获得「迷雾之躯」状态，70%闪避，闪避后速度+1级', effects: [
         { type: 'add_status', statusId: 'mist_body' }
       ], tags: ['超能', '奥秘流', '闪避']}
     ],
@@ -344,10 +344,10 @@ const SKILLS_DB = {
       ], tags: ['龙', '龙之魂流', '高威力', '自残']}
     ],
     defense: [
-      { id: 'dragon_guard', name: '龙鳞守护', e: 2, t: '自身', eff: '获得「龙鳞守护」状态', effects: [
+      { id: 'dragon_guard', name: '龙鳞守护', e: 2, t: '己方单体', cooldown: 1, eff: '为已方单体获得「龙鳞守护」状态', effects: [
         { type: 'add_status', statusId: 'dragon_guard' }
       ], tags: ['龙', '龙之魂流', '护盾']},
-      { id: 'dragon_resonance_extreme', name: '龙属共鸣·极', e: 4, t: '自身', eff: '消耗所有龙息层数，每层造成15伤害+10护盾+10%防御', effects: [
+      { id: 'dragon_resonance_extreme', name: '龙属共鸣·极', e: 4, t: '己方单体', cooldown: 1, eff: '为已方单体消耗所有龙息层数，每层造成15伤害+10护盾+10%防御', effects: [
         { type: 'consume_all_stacks', statusId: 'dragon_aura', effects: { damage: 15, shield: 10, defense: 0.1 } }
       ], tags: ['龙', '龙之魂流', '消耗共鸣']}
     ],

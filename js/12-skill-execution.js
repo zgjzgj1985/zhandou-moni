@@ -6,6 +6,15 @@ async function executePlayerCommand(caster, skill, targetId) {
   const target = [...enemyUnits, ...playerUnits].find(u => u.id === targetId);
   if (!target || target.currentHp <= 0) return;
 
+  // 检查防御技能冷却
+  if (skill.cooldown && skill.cooldown > 0) {
+    const unitCooldowns = defenseSkillCooldowns[caster.id] || {};
+    if (unitCooldowns[skill.id] && unitCooldowns[skill.id] > 0) {
+      addLog(`${caster.name} 的 ${skill.name} 处于冷却中（剩余${unitCooldowns[skill.id]}回合）`);
+      return;
+    }
+  }
+
   // 处理休息技能（回复能量）
   if (skill.effect === 'energy_restore') {
     const energyRestore = skill.power || 5;
@@ -613,6 +622,122 @@ async function executePlayerCommand(caster, skill, targetId) {
       addLog(`${caster.name} 使用 ${skill.name}，为 ${target.name} 回复 ${actualRestore} 点能量`, 'heal');
     }
 
+    // 防御类技能效果（现已改为ally目标）
+    if (skill.type === 'buff' || skill.effect) {
+      // 扎根之躯：每回合回复最大HP的8%，但速度-1级
+      if (skill.effect === 'rootBound') {
+        target.rootBound = true;
+        target.rootBoundTurns = skill.duration || 3;
+        target.speedBoost = (target.speedBoost || 0) - 1;
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 进入扎根状态（持续${target.rootBoundTurns}回合），每回合回复8%HP，但速度-1级`, 'buff');
+      }
+
+      // 藤蔓护甲：减伤+缠绕攻击者
+      if (skill.effect === 'entangle_on_hit' || skill.damageReduction > 0) {
+        target.damageReduction = (target.damageReduction || 0) + (skill.damageReduction || 0.5);
+        target.damageReductionTurns = 1;
+        target.entangleOnHit = true; // 标记受到攻击时缠绕攻击者
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得 ${Math.round((skill.damageReduction || 0.5) * 100)}% 减伤（本回合），受到攻击时缠绕攻击者（速度-2级）`, 'buff');
+      }
+
+      // 防反之姿：反弹伤害
+      if (skill.effect === 'counterStance' || skill.reflectDamage > 0) {
+        target.counterStance = true;
+        target.counterStanceTurns = 1;
+        target.reflectDamage = skill.reflectDamage || 0.6;
+        target.priorityBoostOnReflect = 1;
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 进入防反之姿（持续1回合），反弹 ${Math.round((skill.reflectDamage || 0.6) * 100)}% 伤害`, 'buff');
+      }
+
+      // 火盾：反伤效果
+      if (skill.effect === 'fire_shield') {
+        target.fireShield = true;
+        target.reflectDamage = skill.reflectDamage || 0.3;
+        target.reflectElement = caster.element;
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得火盾效果（受伤时攻击者附加灼烧）`, 'buff');
+      }
+
+      // 烈火护体：减伤+下次火攻必定暴击
+      if (skill.effect === 'wall_of_flames') {
+        target.damageReduction = (target.damageReduction || 0) + 0.7;
+        target.damageReductionTurns = 1;
+        target.wallOfFlamesPower = 40;
+        target.wallOfFlamesTurns = 1;
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 降低70%伤害，本回合下次火攻必定暴击`, 'buff');
+      }
+
+      // 水之守护：受伤减50%
+      if (skill.effect === 'water_guard') {
+        target.damageReduction = (target.damageReduction || 0) + 0.7;
+        target.damageReductionTurns = 1;
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 降低70%伤害`, 'buff');
+      }
+
+      // 冰霜护甲：减伤+反击冻结
+      if (skill.effect === 'frost_armor') {
+        target.damageReduction = (target.damageReduction || 0) + 0.5;
+        target.damageReductionTurns = 1;
+        target.frostArmor = true;
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 降低50%伤害，受伤时使攻击者冻结1回合`, 'buff');
+      }
+
+      // 蓄电护体：减伤+蓄电
+      if (skill.effect === 'static_charge') {
+        target.damageReduction = (target.damageReduction || 0) + 0.5;
+        target.damageReductionTurns = 1;
+        target.chargeStacks = (target.chargeStacks || 0) + 2;
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 降低50%伤害，获得2层蓄电`, 'buff');
+      }
+
+      // 电磁偏转：闪避+反击
+      if (skill.effect === 'electric_deflect') {
+        target.electricDeflect = true;
+        target.electricDeflectTurns = 1;
+        target.evasionBonus = 0.7;
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得电磁偏转状态（70%闪避并反击20伤害）`, 'buff');
+      }
+
+      // 心智护盾：护盾
+      if (skill.effect === 'mind_shield') {
+        target.shield = (target.shield || 0) + (skill.power || 30);
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得心智护盾`, 'buff');
+      }
+
+      // 灵镜反照：反弹伤害
+      if (skill.effect === 'mirror_reflect') {
+        target.mirrorReflect = true;
+        target.mirrorReflectTurns = 1;
+        target.reflectDamage = 1.8;
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 进入灵镜状态（反弹180%伤害）`, 'buff');
+      }
+
+      // 迷雾之躯：闪避
+      if (skill.effect === 'mist_body') {
+        target.mistBody = true;
+        target.mistBodyTurns = skill.duration || 2;
+        target.evasionBonus = 0.7;
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 进入迷雾之躯状态（70%闪避，闪避后速度+1级）`, 'buff');
+      }
+
+      // 龙鳞守护：护盾
+      if (skill.effect === 'dragon_guard') {
+        target.shield = (target.shield || 0) + (skill.power || 50);
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得龙鳞守护`, 'buff');
+      }
+
+      // 清泉护盾：每回合回复HP并清除负面状态
+      if (skill.effect === 'clear_spring') {
+        target.buffs = target.buffs || [];
+        target.buffs.push({
+          type: 'clear_spring',
+          healPercent: 0.1,
+          cleanseCount: 1,
+          remainingDuration: skill.clearSpringDuration || 3
+        });
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得「清泉护盾」状态！（每回合回复10%HP并清除1个负面状态，持续${skill.clearSpringDuration || 3}回合）`, 'buff');
+      }
+    }
+
   } else if (skill.target === 'self') {
     // 自身目标
     if (skill.type === 'shield') {
@@ -825,6 +950,24 @@ async function executePlayerCommand(caster, skill, targetId) {
     globalWeather.duration = skill.rainyDayDuration || 3;
     globalWeather.powerBoost = skill.rainyDayPowerBoost || 0.5; // 50%加成
     addLog(`${caster.name} 使用 ${skill.name}，创造雨天环境！（持续${globalWeather.duration}回合，所有水属性技能威力+${Math.round(globalWeather.powerBoost * 100)}%）`, 'buff');
+  }
+
+  // 设置防御技能冷却（如果技能有冷却时间）
+  if (skill.cooldown && skill.cooldown > 0) {
+    // 获取该角色所有防御技能的ID列表
+    const defenseSkillIds = caster.skills
+      .filter(s => s.cooldown && s.cooldown > 0)
+      .map(s => s.id);
+
+    // 为角色A的所有防御技能设置冷却
+    defenseSkillIds.forEach(skillId => {
+      if (!defenseSkillCooldowns[caster.id]) {
+        defenseSkillCooldowns[caster.id] = {};
+      }
+      defenseSkillCooldowns[caster.id][skillId] = skill.cooldown;
+    });
+
+    addLog(`${caster.name} 的所有防御技能进入冷却（持续${skill.cooldown}回合）`, 'info');
   }
 
   await delay(300);

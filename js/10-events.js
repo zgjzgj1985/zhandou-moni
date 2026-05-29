@@ -290,8 +290,16 @@ function updateTargetIndicators(skill) {
         }
       }
     });
-  } else if (skill.target === 'single_ally' || skill.target === 'ally') {
-    // 对己方技能
+  } else if (skill.target === 'ally') {
+    // 己方单体技能：高亮所有己方存活单位
+    playerUnits.filter(u => u.currentHp > 0).forEach(u => {
+      const el = document.getElementById(u.id);
+      if (el) {
+        el.classList.add('targetable');
+      }
+    });
+  } else if (skill.target === 'all_ally') {
+    // 全体队友技能：高亮所有己方存活单位
     playerUnits.filter(u => u.currentHp > 0).forEach(u => {
       const el = document.getElementById(u.id);
       if (el) {
@@ -304,14 +312,6 @@ function updateTargetIndicators(skill) {
     if (el) {
       el.classList.add('targetable');
     }
-  } else if (skill.target === 'all_ally') {
-    // 全体队友技能：高亮所有己方存活单位
-    playerUnits.filter(u => u.currentHp > 0).forEach(u => {
-      const el = document.getElementById(u.id);
-      if (el) {
-        el.classList.add('targetable');
-      }
-    });
   }
 }
 
