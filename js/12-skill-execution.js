@@ -88,7 +88,11 @@ async function executePlayerCommand(caster, skill, targetId) {
 
         totalDamage += hitDamage;
         target.currentHp = Math.max(0, target.currentHp - hitDamage);
-        showDamageNumber(target.id, hitDamage, 'damage');
+        showDamageNumber(target.id, hitDamage, result.isCrit ? 'critical' : 'damage', {
+          isStab: result.hasStab,
+          isSuperEffective: result.typeMultiplier >= 2,
+          isNotEffective: result.typeMultiplier < 1
+        });
 
         // 水之守护：受到伤害时，攻击者获得1层浸透（多段攻击）
         if (target.buffs?.some(b => b.type === 'aqua_shield')) {
@@ -179,7 +183,11 @@ async function executePlayerCommand(caster, skill, targetId) {
 
         totalDamage += extraDamage;
         target.currentHp = Math.max(0, target.currentHp - extraDamage);
-        showDamageNumber(target.id, extraDamage, 'damage');
+        showDamageNumber(target.id, extraDamage, result.isCrit ? 'critical' : 'damage', {
+          isStab: result.hasStab,
+          isSuperEffective: result.typeMultiplier >= 2,
+          isNotEffective: result.typeMultiplier < 1
+        });
         addLog(`雷霆连击追加攻击！造成 ${extraDamage} 额外伤害${result.isCrit ? '（暴击！）' : ''}`, 'damage');
       }
 
@@ -221,7 +229,11 @@ async function executePlayerCommand(caster, skill, targetId) {
 
       totalDamage = damage;
       target.currentHp = Math.max(0, target.currentHp - damage);
-      showDamageNumber(target.id, damage, 'damage');
+      showDamageNumber(target.id, damage, result.isCrit ? 'critical' : 'damage', {
+        isStab: result.hasStab,
+        isSuperEffective: result.typeMultiplier >= 2,
+        isNotEffective: result.typeMultiplier < 1
+      });
 
       // 水之守护：受到伤害时，攻击者获得1层浸透
       if (target.buffs?.some(b => b.type === 'aqua_shield')) {
@@ -482,7 +494,7 @@ async function executePlayerCommand(caster, skill, targetId) {
     if (target.fireShield && target.reflectDamage > 0 && target.currentHp > 0) {
       const reflectDmg = Math.floor(target.reflectDamage * (0.8 + Math.random() * 0.4));
       caster.currentHp = Math.max(0, caster.currentHp - reflectDmg);
-      showDamageNumber(caster.id, reflectDmg, 'damage');
+      showDamageNumber(caster.id, reflectDmg, 'damage', { isSuperEffective: false });
       updateHpBar(caster);
       addLog(`${target.name} 的火盾反伤触发，对 ${caster.name} 造成 ${reflectDmg} 火属性伤害！`, 'damage');
 
@@ -505,12 +517,17 @@ async function executePlayerCommand(caster, skill, targetId) {
       if (caster.currentHp <= 0) addLog(`${caster.name} 倒下了！`);
     }
 
-    // 重新渲染单位卡片以显示debuff/buff标签
-    if (enemyUnits.includes(target)) {
-      renderEnemyUnits();
-    } else {
-      renderPlayerUnits();
-    }
+    // 延迟重新渲染单位卡片以显示debuff/buff标签，确保伤害数字动画有时间播放
+    // 注意：必须使用延迟渲染，否则会清除伤害数字动画
+    const renderTargetUnits = () => {
+      if (enemyUnits.includes(target)) {
+        renderEnemyUnits();
+      } else {
+        renderPlayerUnits();
+      }
+    };
+    // 在伤害动画播放完成后再渲染
+    setTimeout(renderTargetUnits, 900);
 
   } else if (skill.target === 'ally') {
     // 队友目标
@@ -793,8 +810,11 @@ async function executePlayerCommand(caster, skill, targetId) {
   }
 
   // 重新渲染单位卡片以显示debuff/buff标签
-  renderPlayerUnits();
-  renderEnemyUnits();
+  // 注意：延迟渲染以确保伤害数字动画有时间播放
+  setTimeout(() => {
+    renderPlayerUnits();
+    renderEnemyUnits();
+  }, 1000);
 
   // 水系天气效果
   // 雨天效果（雨天：所有生物水属性技能威力+50%）

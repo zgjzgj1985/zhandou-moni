@@ -70,6 +70,25 @@ const ENEMY_TYPE_CONFIG = {
   boss: { name: '首领', hpMult: 8, atkMult: 1.6, defMult: 1.3, spAtkMult: 1.6, spDefMult: 1.3, speedMult: 1, cssClass: 'boss' }
 };
 
+// 可编辑的精英/首领修正系数（用户可自定义）
+let editableEliteMultipliers = { hp: 2.5, atk: 1.3, def: 1.3, spAtk: 1.3, spDef: 1.3 };
+let editableBossMultipliers = { hp: 8, atk: 1.6, def: 1.3, spAtk: 1.6, spDef: 1.3 };
+
+// 更新ENEMY_TYPE_CONFIG中的精英/首领系数
+function updateEnemyTypeConfig() {
+  ENEMY_TYPE_CONFIG.elite.hpMult = editableEliteMultipliers.hp;
+  ENEMY_TYPE_CONFIG.elite.atkMult = editableEliteMultipliers.atk;
+  ENEMY_TYPE_CONFIG.elite.defMult = editableEliteMultipliers.def;
+  ENEMY_TYPE_CONFIG.elite.spAtkMult = editableEliteMultipliers.spAtk;
+  ENEMY_TYPE_CONFIG.elite.spDefMult = editableEliteMultipliers.spDef;
+
+  ENEMY_TYPE_CONFIG.boss.hpMult = editableBossMultipliers.hp;
+  ENEMY_TYPE_CONFIG.boss.atkMult = editableBossMultipliers.atk;
+  ENEMY_TYPE_CONFIG.boss.defMult = editableBossMultipliers.def;
+  ENEMY_TYPE_CONFIG.boss.spAtkMult = editableBossMultipliers.spAtk;
+  ENEMY_TYPE_CONFIG.boss.spDefMult = editableBossMultipliers.spDef;
+}
+
 // 自定义配置状态
 let customPlayerConfig = [];
 let customEnemyConfig = [];
@@ -87,6 +106,7 @@ function openCustomBattleEditor() {
     level: p.level
   }));
 
+  // 从敌人单位反推类型，并更新全局修正系数
   customEnemyConfig = enemyUnits.map(e => {
     // 根据敌人的属性倍率反推敌人类型
     let enemyType = 'normal';
@@ -111,8 +131,61 @@ function openCustomBattleEditor() {
     };
   });
 
+  // 同步全局修正系数到编辑区
+  syncMultiplierInputs();
+
   renderCustomEditor();
   document.getElementById('customBattleOverlay').classList.add('visible');
+}
+
+// 同步全局修正系数到输入框
+function syncMultiplierInputs() {
+  document.getElementById('eliteHpMult').value = editableEliteMultipliers.hp;
+  document.getElementById('eliteSpAtkMult').value = editableEliteMultipliers.spAtk;
+  document.getElementById('eliteAtkMult').value = editableEliteMultipliers.atk;
+  document.getElementById('eliteSpDefMult').value = editableEliteMultipliers.spDef;
+  document.getElementById('eliteDefMult').value = editableEliteMultipliers.def;
+
+  document.getElementById('bossHpMult').value = editableBossMultipliers.hp;
+  document.getElementById('bossSpAtkMult').value = editableBossMultipliers.spAtk;
+  document.getElementById('bossAtkMult').value = editableBossMultipliers.atk;
+  document.getElementById('bossSpDefMult').value = editableBossMultipliers.spDef;
+  document.getElementById('bossDefMult').value = editableBossMultipliers.def;
+}
+
+// 切换全局修正系数面板显示
+function toggleGlobalMultiplierPanel() {
+  const panel = document.getElementById('globalMultiplierPanel');
+  const toggle = document.getElementById('globalMultiplierToggle');
+  if (panel.classList.contains('expanded')) {
+    panel.classList.remove('expanded');
+    toggle.textContent = '展开';
+  } else {
+    panel.classList.add('expanded');
+    toggle.textContent = '收起';
+  }
+}
+
+// 更新精英修正系数
+function updateEliteMultipliers() {
+  editableEliteMultipliers.hp = parseFloat(document.getElementById('eliteHpMult').value) || 2.5;
+  editableEliteMultipliers.spAtk = parseFloat(document.getElementById('eliteSpAtkMult').value) || 1.3;
+  editableEliteMultipliers.atk = parseFloat(document.getElementById('eliteAtkMult').value) || 1.3;
+  editableEliteMultipliers.spDef = parseFloat(document.getElementById('eliteSpDefMult').value) || 1.3;
+  editableEliteMultipliers.def = parseFloat(document.getElementById('eliteDefMult').value) || 1.3;
+  updateEnemyTypeConfig();
+  renderEnemyList();
+}
+
+// 更新首领修正系数
+function updateBossMultipliers() {
+  editableBossMultipliers.hp = parseFloat(document.getElementById('bossHpMult').value) || 8;
+  editableBossMultipliers.spAtk = parseFloat(document.getElementById('bossSpAtkMult').value) || 1.6;
+  editableBossMultipliers.atk = parseFloat(document.getElementById('bossAtkMult').value) || 1.6;
+  editableBossMultipliers.spDef = parseFloat(document.getElementById('bossSpDefMult').value) || 1.3;
+  editableBossMultipliers.def = parseFloat(document.getElementById('bossDefMult').value) || 1.3;
+  updateEnemyTypeConfig();
+  renderEnemyList();
 }
 
 // 关闭自定义战斗编辑器
@@ -184,28 +257,21 @@ function renderEnemyList() {
 
   container.innerHTML = customEnemyConfig.map((e, index) => {
     const typeConfig = ENEMY_TYPE_CONFIG[e.enemyType || 'normal'];
-    // 计算属性（考虑敌人类型加成）
+    // 计算属性（考虑全局敌人类型加成）
     const baseStats = getCreatureStats(e.templateId, e.level);
-    const typeMult = {
-      hp: typeConfig.hpMult,
-      attack: typeConfig.atkMult,
-      defense: typeConfig.defMult,
-      spAttack: typeConfig.spAtkMult,
-      spDefense: typeConfig.spDefMult
-    };
     const stats = {
-      maxHp: Math.floor(baseStats.maxHp * typeMult.hp),
-      attack: Math.floor(baseStats.attack * typeMult.attack),
-      defense: Math.floor(baseStats.defense * typeMult.defense),
-      spAttack: Math.floor(baseStats.spAttack * typeMult.spAttack),
-      spDefense: Math.floor(baseStats.spDefense * typeMult.spDefense)
+      maxHp: Math.floor(baseStats.maxHp * typeConfig.hpMult),
+      attack: Math.floor(baseStats.attack * typeConfig.atkMult),
+      defense: Math.floor(baseStats.defense * typeConfig.defMult),
+      spAttack: Math.floor(baseStats.spAttack * typeConfig.spAtkMult),
+      spDefense: Math.floor(baseStats.spDefense * typeConfig.spDefMult)
     };
     return `
     <div class="custom-battle-row">
       <div class="custom-battle-unit element-${e.element}">
         <div>
           <div class="custom-battle-unit-name">Lv.${e.level} ${e.name} <span class="custom-battle-type-badge ${typeConfig.cssClass}" style="margin-left:4px">${typeConfig.name}</span></div>
-          <div class="custom-battle-unit-stats">${getElementName(e.element)} | HP ${stats.maxHp}(×${typeConfig.hpMult}) | 攻 ${stats.attack}(×${typeConfig.atkMult}) | 防 ${stats.defense}(×${typeConfig.defMult})</div>
+          <div class="custom-battle-unit-stats">${getElementName(e.element)} | HP ${stats.maxHp} | 攻 ${stats.attack} | 防 ${stats.defense} | 特攻 ${stats.spAttack} | 特防 ${stats.spDefense}</div>
         </div>
       </div>
       <select class="custom-battle-type-select" onchange="changeEnemyTemplate(${index}, this.value)">

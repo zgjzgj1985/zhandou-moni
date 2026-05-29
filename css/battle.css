@@ -78,11 +78,36 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
 .log-entry.damage { color: #ff453a; }
 .log-entry.heal { color: #30d158; }
 
-.damage-number { position: absolute; font-size: 22px; font-weight: 700; pointer-events: none; animation: float-up 0.8s ease-out forwards; z-index: 1000; }
-.damage-number.damage { color: #ff453a; }
+/* 伤害数字动画 - 抛物线飘出 */
+.damage-number {
+  position: fixed;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  pointer-events: none;
+  z-index: 1000;
+  white-space: nowrap;
+  color: #ff453a;
+}
 .damage-number.heal { color: #30d158; }
-.damage-number.critical { color: #ff9f0a; font-size: 28px; }
-@keyframes float-up { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-30px); } }
+.damage-number.shield { color: #0a84ff; }
+
+.damage-number.enemy-target { animation: enemy-damage 0.8s ease-out forwards; }
+.damage-number.player-target { animation: player-damage 0.8s ease-out forwards; }
+
+@keyframes enemy-damage {
+  0% { opacity: 0; transform: translateY(0) translateX(0); }
+  20% { opacity: 1; transform: translateY(-30px) translateX(15px); }
+  50% { transform: translateY(-50px) translateX(25px); }
+  100% { opacity: 0; transform: translateY(-60px) translateX(35px); }
+}
+
+@keyframes player-damage {
+  0% { opacity: 0; transform: translateY(0) translateX(0); }
+  20% { opacity: 1; transform: translateY(-30px) translateX(-15px); }
+  50% { transform: translateY(-50px) translateX(-25px); }
+  100% { opacity: 0; transform: translateY(-60px) translateX(-35px); }
+}
 
 .battle-end-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.9); display: flex; align-items: center; justify-content: center; z-index: 200; opacity: 0; visibility: hidden; }
 .battle-end-overlay.visible { opacity: 1; visibility: visible; }
@@ -203,8 +228,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
 .drag-preview .skill-icon.shield { background: #0a84ff; }
 .drag-preview .skill-icon svg { width: 16px; height: 16px; fill: #fff; }
 
-.skill-book-btn { position: absolute; top: 40px; right: 16px; background: rgba(30, 30, 30, 0.95); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; z-index: 50; }
-.skill-book-btn:hover { background: rgba(50, 50, 50, 0.95); }
 
 /* 模式切换按钮样式 */
 .mode-switch-container { position: absolute; top: 40px; left: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 50; }
@@ -216,6 +239,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
 .mode-switch-btn.mode-3 { border-left: 3px solid #bf5af2; }
 .mode-switch-btn.custom-btn { border-left: 3px solid #30d158; margin-top: 8px; }
 .mode-switch-btn.custom-btn:hover { border-color: #30d158; }
+.mode-switch-btn.info-btn { border-left: 3px solid #bf5af2; }
 .mode-title { font-size: 10px; color: #8e8e93; margin-bottom: 2px; }
 
 /* 自定义战斗编辑界面样式 */
@@ -451,4 +475,208 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
   background: #2c2c2e;
   border-radius: 8px;
   border: 1px dashed #3a3a3c;
+}
+
+/* 属性修正编辑区样式 */
+.custom-battle-expand-btn {
+  background: #3a3a3c;
+  border: 1px solid #48484a;
+  color: #8e8e93;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.custom-battle-expand-btn:hover {
+  background: #48484a;
+  color: #fff;
+}
+.custom-battle-expand-btn.active {
+  background: rgba(255, 159, 10, 0.2);
+  border-color: #ff9f0a;
+  color: #ff9f0a;
+}
+
+.custom-battle-multiplier-panel {
+  width: 100%;
+  display: none;
+  background: #252528;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border: 1px solid #3a3a3c;
+}
+.custom-battle-multiplier-panel.expanded {
+  display: block;
+}
+
+.custom-battle-multiplier-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8e8e93;
+  margin-bottom: 10px;
+}
+
+.custom-battle-multiplier-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.custom-battle-multiplier-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.custom-battle-multiplier-item label {
+  font-size: 10px;
+  color: #8e8e93;
+  font-weight: 500;
+}
+
+.custom-battle-multiplier-input {
+  background: #2c2c2e;
+  border: 1px solid #48484a;
+  color: #ffd60a;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  width: 100%;
+}
+.custom-battle-multiplier-input:focus {
+  outline: none;
+  border-color: #ffd60a;
+  box-shadow: 0 0 0 2px rgba(255, 214, 10, 0.2);
+}
+
+.custom-battle-multiplier-hint {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #3a3a3c;
+}
+.multiplier-hint-item {
+  font-size: 10px;
+  color: #8e8e93;
+  padding: 2px 6px;
+  background: #2c2c2e;
+  border-radius: 4px;
+}
+
+/* 全局精英/首领属性修正系数编辑区 */
+.custom-battle-multiplier-section {
+  margin-top: 16px;
+  background: #252528;
+  border-radius: 10px;
+  border: 1px solid #3a3a3c;
+  overflow: hidden;
+}
+
+.custom-battle-multiplier-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.custom-battle-multiplier-header:hover {
+  background: rgba(255,255,255,0.05);
+}
+.custom-battle-multiplier-header > span:first-child {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+.custom-battle-multiplier-toggle {
+  font-size: 12px;
+  color: #8e8e93;
+  padding: 4px 10px;
+  background: #3a3a3c;
+  border-radius: 6px;
+}
+
+.custom-battle-multiplier-content {
+  display: none;
+  padding: 0 16px 16px;
+  border-top: 1px solid #3a3a3c;
+}
+.custom-battle-multiplier-content.expanded {
+  display: block;
+}
+
+.custom-battle-multiplier-row {
+  display: flex;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.custom-battle-multiplier-group {
+  flex: 1;
+  background: #1c1c1e;
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid #3a3a3c;
+}
+.custom-battle-multiplier-group.elite-group {
+  border-left: 3px solid #ff9f0a;
+}
+.custom-battle-multiplier-group.boss-group {
+  border-left: 3px solid #ff453a;
+}
+
+.custom-battle-multiplier-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #3a3a3c;
+}
+.elite-group .custom-battle-multiplier-group-title { color: #ff9f0a; }
+.boss-group .custom-battle-multiplier-group-title { color: #ff453a; }
+
+.custom-battle-multiplier-fields {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.custom-battle-multiplier-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.custom-battle-multiplier-field label {
+  font-size: 10px;
+  color: #8e8e93;
+  text-align: center;
+}
+.custom-battle-multiplier-field input {
+  background: #2c2c2e;
+  border: 1px solid #48484a;
+  color: #ffd60a;
+  padding: 6px 4px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  width: 100%;
+}
+.custom-battle-multiplier-field input:focus {
+  outline: none;
+  border-color: #ffd60a;
+}
+
+.custom-battle-multiplier-hint {
+  font-size: 10px;
+  color: #8e8e93;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #3a3a3c;
 }

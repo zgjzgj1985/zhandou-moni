@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>属性克制关系</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      background: #000;
+      color: #fff;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 44px;
+      background: rgba(0,0,0,0.9);
+      backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+    }
+    .nav-back {
+      color: #fff;
+      font-size: 12px;
+      background: rgba(30, 30, 30, 0.95);
+      border: 1px solid rgba(255,255,255,0.15);
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .nav-back:hover { background: rgba(50, 50, 50, 0.95); }
+    .nav-title {
+      font-size: 17px;
+      font-weight: 600;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .content {
+      padding: 60px 12px 40px;
+      overflow-x: auto;
+    }
+
+    /* 说明 */
+    .legend-box {
+      background: #1c1c1e;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+    }
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+    }
+    .lg-super { background: #ff453a; }
+    .lg-weak { background: #30d158; }
+    .lg-normal { background: #636366; }
+    .lg-immune { background: #1c1c1e; border: 1px solid #ff453a; }
+
+    /* 表格 */
+    .type-chart {
+      background: #1c1c1e;
+      border-radius: 12px;
+      padding: 12px;
+      min-width: 500px;
+    }
+
+    .chart-header {
+      display: flex;
+      padding-left: 50px;
+      margin-bottom: 4px;
+    }
+    .chart-header-cell {
+      width: 50px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 0;
+    }
+
+    .chart-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .chart-row-label {
+      width: 50px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .chart-cells {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .chart-cell {
+      width: 50px;
+      height: 44px;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .chart-cell:active {
+      transform: scale(0.95);
+    }
+
+    .cell-mult {
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .cell-rate {
+      font-size: 9px;
+      opacity: 0.8;
+    }
+
+    /* 倍率颜色 */
+    .rate-super { background: #ff453a; color: #fff; }
+    .rate-weak { background: #30d158; color: #fff; }
+    .rate-normal { background: #3a3a3c; color: #8e8e93; }
+    .rate-immune { background: #2c2c2e; color: #ff453a; border: 1px solid #ff453a; }
+
+    /* 属性颜色标签 */
+    .el-fire { color: #ff453a; }
+    .el-water { color: #0a84ff; }
+    .el-grass { color: #34c759; }
+    .el-electric { color: #ffd60a; }
+    .el-ice { color: #64d2ff; }
+    .el-rock { color: #ac8e77; }
+    .el-psychic { color: #bf5af2; }
+    .el-dragon { color: #ab47ba; }
+
+    /* 使用说明 */
+    .usage {
+      background: #1c1c1e;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 20px;
+    }
+    .usage-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #fff;
+    }
+    .usage-text {
+      font-size: 13px;
+      color: #8e8e93;
+      line-height: 1.6;
+    }
+    .usage-text .highlight {
+      color: #fff;
+      font-weight: 500;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30, 30, 30, 0.95);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 1000;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="battle-simple-modular.html" class="nav-back">返回战斗</a>
+    <span class="nav-title">属性克制关系</span>
+  </nav>
+
+  <div class="content">
+    <!-- 图例 -->
+    <div class="legend-box">
+      <div class="legend-item">
+        <div class="legend-color lg-super"></div>
+        <span>效果拔群 (×2)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color lg-weak"></div>
+        <span>效果微弱 (×0.5)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color lg-normal"></div>
+        <span>普通 (×1)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color lg-immune"></div>
+        <span>无效 (×0)</span>
+      </div>
+    </div>
+
+    <!-- 克制关系表 -->
+    <div class="type-chart">
+      <!-- 表头 -->
+      <div class="chart-header">
+        <div class="chart-header-cell"></div>
+        <div class="chart-header-cell el-fire">火</div>
+        <div class="chart-header-cell el-water">水</div>
+        <div class="chart-header-cell el-grass">草</div>
+        <div class="chart-header-cell el-electric">电</div>
+        <div class="chart-header-cell el-ice">冰</div>
+        <div class="chart-header-cell el-rock">岩</div>
+        <div class="chart-header-cell el-psychic">超能</div>
+        <div class="chart-header-cell el-dragon">龙</div>
+      </div>
+
+      <!-- 火属性行 -->
+      <div class="chart-row">
+        <div class="chart-row-label el-fire">火</div>
+        <div class="chart-cells">
+          <div class="chart-cell rate-weak" onclick="showInfo('火', '火', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-weak" onclick="showInfo('火', '水', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-super" onclick="showInfo('火', '草', '×2 效果拔群')">
+            <span class="cell-mult">2</span>
+            <span class="cell-rate">拔群</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('火', '电', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-super" onclick="showInfo('火', '冰', '×2 效果拔群')">
+            <span class="cell-mult">2</span>
+            <span class="cell-rate">拔群</span>
+          </div>
+          <div class="chart-cell rate-weak" onclick="showInfo('火', '岩', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('火', '超能', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('火', '龙', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 水属性行 -->
+      <div class="chart-row">
+        <div class="chart-row-label el-water">水</div>
+        <div class="chart-cells">
+          <div class="chart-cell rate-super" onclick="showInfo('水', '火', '×2 效果拔群')">
+            <span class="cell-mult">2</span>
+            <span class="cell-rate">拔群</span>
+          </div>
+          <div class="chart-cell rate-weak" onclick="showInfo('水', '水', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-weak" onclick="showInfo('水', '草', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-weak" onclick="showInfo('水', '电', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('水', '冰', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-super" onclick="showInfo('水', '岩', '×2 效果拔群')">
+            <span class="cell-mult">2</span>
+            <span class="cell-rate">拔群</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('水', '超能', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('水', '龙', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 草属性行 -->
+      <div class="chart-row">
+        <div class="chart-row-label el-grass">草</div>
+        <div class="chart-cells">
+          <div class="chart-cell rate-weak" onclick="showInfo('草', '火', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-super" onclick="showInfo('草', '水', '×2 效果拔群')">
+            <span class="cell-mult">2</span>
+            <span class="cell-rate">拔群</span>
+          </div>
+          <div class="chart-cell rate-weak" onclick="showInfo('草', '草', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('草', '电', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('草', '冰', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-super" onclick="showInfo('草', '岩', '×2 效果拔群')">
+            <span class="cell-mult">2</span>
+            <span class="cell-rate">拔群</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('草', '超能', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('草', '龙', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 电属性行 -->
+      <div class="chart-row">
+        <div class="chart-row-label el-electric">电</div>
+        <div class="chart-cells">
+          <div class="chart-cell rate-normal" onclick="showInfo('电', '火', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-super" onclick="showInfo('电', '水', '×2 效果拔群')">
+            <span class="cell-mult">2</span>
+            <span class="cell-rate">拔群</span>
+          </div>
+          <div class="chart-cell rate-weak" onclick="showInfo('电', '草', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-weak" onclick="showInfo('电', '电', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('电', '冰', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-immune" onclick="showInfo('电', '岩', '×0 无效')">
+            <span class="cell-mult">0</span>
+            <span class="cell-rate">无效</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('电', '超能', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-weak" onclick="showInfo('电', '龙', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 冰属性行 -->
+      <div class="chart-row">
+        <div class="chart-row-label el-ice">冰</div>
+        <div class="chart-cells">
+          <div class="chart-cell rate-weak" onclick="showInfo('冰', '火', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-weak" onclick="showInfo('冰', '水', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-super" onclick="showInfo('冰', '草', '×2 效果拔群')">
+            <span class="cell-mult">2</span>
+            <span class="cell-rate">拔群</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('冰', '电', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-weak" onclick="showInfo('冰', '冰', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-super" onclick="showInfo('冰', '岩', '×2 效果拔群')">
+            <span class="cell-mult">2</span>
+            <span class="cell-rate">拔群</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('冰', '超能', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-super" onclick="showInfo('冰', '龙', '×2 效果拔群')">
+            <span class="cell-mult">2</span>
+            <span class="cell-rate">拔群</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 岩属性行 -->
+      <div class="chart-row">
+        <div class="chart-row-label el-rock">岩</div>
+        <div class="chart-cells">
+          <div class="chart-cell rate-super" onclick="showInfo('岩', '火', '×2 效果拔群')">
+            <span class="cell-mult">2</span>
+            <span class="cell-rate">拔群</span>
+          </div>
+          <div class="chart-cell rate-weak" onclick="showInfo('岩', '水', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-weak" onclick="showInfo('岩', '草', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('岩', '电', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-super" onclick="showInfo('岩', '冰', '×2 效果拔群')">
+            <span class="cell-mult">2</span>
+            <span class="cell-rate">拔群</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('岩', '岩', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('岩', '超能', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('岩', '龙', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 超能属性行 -->
+      <div class="chart-row">
+        <div class="chart-row-label el-psychic">超能</div>
+        <div class="chart-cells">
+          <div class="chart-cell rate-normal" onclick="showInfo('超能', '火', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('超能', '水', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('超能', '草', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('超能', '电', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('超能', '冰', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('超能', '岩', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-weak" onclick="showInfo('超能', '超能', '×0.5 效果微弱')">
+            <span class="cell-mult">0.5</span>
+            <span class="cell-rate">微弱</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('超能', '龙', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 龙属性行 -->
+      <div class="chart-row">
+        <div class="chart-row-label el-dragon">龙</div>
+        <div class="chart-cells">
+          <div class="chart-cell rate-normal" onclick="showInfo('龙', '火', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('龙', '水', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('龙', '草', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('龙', '电', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('龙', '冰', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-normal" onclick="showInfo('龙', '岩', '×1 普通')">
+            <span class="cell-mult">1</span>
+            <span class="cell-rate">普通</span>
+          </div>
+          <div class="chart-cell rate-super" onclick="showInfo('龙', '超能', '×2 效果拔群')">
+            <span class="cell-mult">2</span>
+            <span class="cell-rate">拔群</span>
+          </div>
+          <div class="chart-cell rate-super" onclick="showInfo('龙', '龙', '×2 效果拔群')">
+            <span class="cell-mult">2</span>
+            <span class="cell-rate">拔群</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 使用说明 -->
+    <div class="usage">
+      <div class="usage-title">如何使用</div>
+      <div class="usage-text">
+        <span class="highlight">行</span> = 攻击方的属性<br>
+        <span class="highlight">列</span> = 防御方的属性<br><br>
+        例如：火属性攻击草属性 → 查看<span class="highlight">火行</span>与<span class="highlight">草列</span>交叉的格子，显示<span style="color:#ff453a">×2 效果拔群</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showInfo(attacker, defender, result) {
+      const existing = document.querySelector('.toast');
+      if (existing) existing.remove();
+      
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = `${attacker} → ${defender}：${result}`;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 2000);
+    }
+  </script>
+</body>
+</html>

@@ -600,7 +600,8 @@ async function executeEnemyTurnMode2() {
     await executeAction(action);
     enemyActionQueue.shift();
     updateEnemyIntent(action.caster);
-    renderEnemyUnits();
+    // 延迟渲染以确保伤害数字动画有时间播放
+    setTimeout(() => renderEnemyUnits(), 1000);
 
     await delay(200);
 
@@ -1281,7 +1282,11 @@ async function executeEnemySkill(enemy, skill, target) {
 
         totalDamage += hitDamage;
         target.currentHp = Math.max(0, target.currentHp - hitDamage);
-        showDamageNumber(target.id, hitDamage, 'damage');
+        showDamageNumber(target.id, hitDamage, result.isCrit ? 'critical' : 'damage', {
+          isStab: result.hasStab,
+          isSuperEffective: result.typeMultiplier >= 2,
+          isNotEffective: result.typeMultiplier < 1
+        });
         
         let logMsg = `${enemy.name} 使用 ${skill.name}，第${i + 1}段攻击造成 ${hitDamage} 伤害`;
         if (result.isCrit) logMsg += '（暴击！）';
@@ -1327,7 +1332,11 @@ async function executeEnemySkill(enemy, skill, target) {
 
       totalDamage = damage;
       target.currentHp = Math.max(0, target.currentHp - damage);
-      showDamageNumber(target.id, damage, 'damage');
+      showDamageNumber(target.id, damage, result.isCrit ? 'critical' : 'damage', {
+        isStab: result.hasStab,
+        isSuperEffective: result.typeMultiplier >= 2,
+        isNotEffective: result.typeMultiplier < 1
+      });
       
       let logMsg = `${enemy.name} 使用 ${skill.name}，对 ${target.name} 造成 ${damage} 伤害`;
       if (result.isCrit) logMsg += '（暴击！）';
@@ -1364,7 +1373,7 @@ async function executeEnemySkill(enemy, skill, target) {
     if (target.fireShield && target.reflectDamage > 0 && target.currentHp > 0) {
       const reflectDmg = Math.floor(target.reflectDamage * (0.8 + Math.random() * 0.4));
       enemy.currentHp = Math.max(0, enemy.currentHp - reflectDmg);
-      showDamageNumber(enemy.id, reflectDmg, 'damage');
+      showDamageNumber(enemy.id, reflectDmg, 'damage', { isSuperEffective: false });
       updateHpBar(enemy);
       addLog(`${target.name} 的火盾反伤触发，对 ${enemy.name} 造成 ${reflectDmg} 火属性伤害！`, 'damage');
       if (enemy.currentHp <= 0) addLog(`${enemy.name} 倒下了！`);
@@ -1381,8 +1390,11 @@ async function executeEnemySkill(enemy, skill, target) {
     }
   }
 
-  renderPlayerUnits();
-  renderEnemyUnits();
+  // 延迟渲染以确保伤害数字动画有时间播放
+  setTimeout(() => {
+    renderPlayerUnits();
+    renderEnemyUnits();
+  }, 1000);
   await delay(300);
 }
 
@@ -1409,7 +1421,11 @@ async function executeEnemyBasicAttack(enemy, target) {
   }
 
   target.currentHp = Math.max(0, target.currentHp - damage);
-  showDamageNumber(target.id, damage, 'damage');
+  showDamageNumber(target.id, damage, result.isCrit ? 'critical' : 'damage', {
+    isStab: result.hasStab,
+    isSuperEffective: result.typeMultiplier >= 2,
+    isNotEffective: result.typeMultiplier < 1
+  });
   updateHpBar(target);
 
   let logMsg = `${enemy.name} 攻击 ${target.name}，造成 ${damage} 伤害`;
@@ -1422,7 +1438,7 @@ async function executeEnemyBasicAttack(enemy, target) {
   if (target.fireShield && target.reflectDamage > 0 && target.currentHp > 0) {
     const reflectDmg = Math.floor(target.reflectDamage * (0.8 + Math.random() * 0.4));
     enemy.currentHp = Math.max(0, enemy.currentHp - reflectDmg);
-    showDamageNumber(enemy.id, reflectDmg, 'damage');
+    showDamageNumber(enemy.id, reflectDmg, 'damage', { isSuperEffective: false });
     updateHpBar(enemy);
     addLog(`${target.name} 的火盾反伤触发，对 ${enemy.name} 造成 ${reflectDmg} 火属性伤害！`, 'damage');
     if (enemy.currentHp <= 0) addLog(`${enemy.name} 倒下了！`);
@@ -1481,4 +1497,315 @@ function calculatePokemonDamage(attacker, defender, skill, options = {}) {
     stabBonus: stabValue,
     hasStab: hasStab
   };
+}
+
+// ==================== 经典模式（模式1）核心战斗流程 ====================
+
+// 执行下一个行动（经典模式核心函数）
+async function executeNextAction() {
+  if (battleEnded) {
+    isRoundExecuting = false;
+    return;
+  }
+
+  // 模式2（宝可梦模式）：使用单独的函数
+  if (currentBattleMode === 2) {
+    await executeNextActionMode2();
+    return;
+  }
+
+  // 模式1（经典模式）：构建统一行动队列
+  actionQueue = buildActionQueue();
+  showActionOrder(actionQueue);
+
+  // 找到当前速度最快的行动者
+  while (currentActionIndex < actionQueue.length) {
+    const action = actionQueue[currentActionIndex];
+
+    // 检查行动者是否仍然存活
+    if (action.caster.currentHp <= 0) {
+      currentActionIndex++;
+      continue;
+    }
+
+    // 更新UI：显示当前行动者
+    updateTurnDisplay(action);
+
+    // 根据行动者类型执行
+    if (action.type === 'enemy') {
+      // 敌人行动：立即执行
+      await executeAction(action);
+      // 重新计算敌人意图
+      updateEnemyIntent(action.caster);
+      renderEnemyUnits();
+    } else {
+      // 玩家行动
+      if (action.hasCommand && action.skill) {
+        // 有预设指令，立即执行
+        await executePlayerActionAndContinue(
+          action.caster,
+          action.skill,
+          action.targetId
+        );
+        continue;
+      } else {
+        // 没有指令，等待玩家选择技能
+        selectedPlayer = action.caster;
+        renderSkillPanel(action.caster);
+        renderPlayerUnits();
+        return; // 等待玩家选择技能
+      }
+    }
+
+    currentActionIndex++;
+    await delay(200);
+
+    // 检查战斗结束
+    if (checkBattleEnd()) {
+      isRoundExecuting = false;
+      return;
+    }
+  }
+
+  // 所有行动者都行动完毕，进入下一轮处理
+  await finishRound();
+}
+
+// 玩家下达指令后继续执行（经典模式）
+async function continueBattleAfterCommand() {
+  if (currentBattleMode !== 1) return;
+  if (battleEnded) return;
+  if (!isRoundExecuting) return;
+
+  // 找到当前伙伴的指令
+  const currentAction = actionQueue[currentActionIndex];
+  if (!currentAction || currentAction.type !== 'player') return;
+
+  // 检查是否有有效指令
+  const cmd = playerCommands.find(c => c.casterId === currentAction.caster.id && c.status === 'pending');
+  if (!cmd) return;
+
+  const skill = currentAction.caster.skills.find(s => s.id === cmd.skillId);
+  if (!skill) return;
+
+  // 执行玩家行动
+  await executePlayerActionAndContinue(
+    currentAction.caster,
+    skill,
+    cmd.targetId
+  );
+}
+
+// 回合结束处理（经典模式）
+async function finishRound() {
+  // 标记所有指令为已执行
+  playerCommands.forEach(cmd => {
+    if (cmd.status === 'pending') cmd.status = 'executed';
+  });
+
+  hideActionOrder();
+  currentActionIndex = 0;
+
+  // 回合结束 - 处理状态效果
+  await delay(300);
+
+  // 处理灼烧效果
+  for (const unit of [...playerUnits, ...enemyUnits]) {
+    if (unit.currentHp <= 0) continue;
+
+    const burnDebuff = unit.debuffs.find(d => d.type === 'burn');
+    if (burnDebuff && burnDebuff.stacks > 0) {
+      const burnDamage = Math.floor(unit.maxHp * burnDebuff.damagePercentPerStack * burnDebuff.stacks);
+      unit.currentHp = Math.max(0, unit.currentHp - burnDamage);
+      showDamageNumber(unit.id, burnDamage, 'damage');
+      updateHpBar(unit);
+      addLog(`${unit.name} 受到灼烧伤害 ${burnDamage} HP（${burnDebuff.stacks}层）`, 'damage');
+
+      burnDebuff.stacks = Math.max(1, Math.floor(burnDebuff.stacks / 2));
+      burnDebuff.remainingDuration--;
+
+      if (burnDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'burn');
+        addLog(`${unit.name} 的灼烧状态消失了`);
+      }
+    }
+
+    // 处理燃尽印记
+    if (unit.combustionStacks > 0 && unit.currentHp > 0) {
+      unit.combustionTurnsLeft--;
+      if (unit.combustionTurnsLeft <= 0) {
+        const combustionDamage = Math.floor(unit.currentHp * 0.3);
+        unit.currentHp = Math.max(0, unit.currentHp - combustionDamage);
+        showDamageNumber(unit.id, combustionDamage, 'damage');
+        updateHpBar(unit);
+        addLog(`${unit.name} 的「燃尽印记」触发，受到 ${combustionDamage} 真实伤害！`, 'damage');
+        unit.combustionStacks = 0;
+      } else {
+        addLog(`${unit.name} 的「燃尽印记」剩余 ${unit.combustionTurnsLeft} 回合`);
+      }
+    }
+
+    // 处理减速状态
+    if (unit.slowed && unit.currentHp > 0) {
+      unit.slowTurns--;
+      if (unit.slowTurns <= 0) {
+        unit.slowed = false;
+        addLog(`${unit.name} 的减速状态消失了`);
+      }
+    }
+
+    // 处理属性抗性倒计时
+    if (unit.resistanceTurns && unit.currentHp > 0) {
+      for (const el in unit.resistanceTurns) {
+        unit.resistanceTurns[el]--;
+        if (unit.resistanceTurns[el] <= 0) {
+          unit.resistances[el] = 0;
+          delete unit.resistanceTurns[el];
+          addLog(`${unit.name} 的 ${el} 属性抗性消失了`);
+        }
+      }
+    }
+
+    // 处理水系状态效果
+    const waterSoakDebuff = unit.debuffs.find(d => d.type === 'water_soak');
+    if (waterSoakDebuff && waterSoakDebuff.remainingDuration > 0) {
+      waterSoakDebuff.remainingDuration--;
+      if (waterSoakDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'water_soak');
+        addLog(`${unit.name} 的「浸透」状态消失了`);
+      }
+    }
+
+    const drowningDebuff = unit.debuffs.find(d => d.type === 'drowning');
+    if (drowningDebuff && drowningDebuff.remainingDuration > 0) {
+      drowningDebuff.remainingDuration--;
+      if (drowningDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'drowning');
+        addLog(`${unit.name} 的「溺水」状态消失了`);
+      }
+    }
+
+    const muddyDebuff = unit.debuffs.find(d => d.type === 'muddy');
+    if (muddyDebuff && muddyDebuff.remainingDuration > 0) {
+      muddyDebuff.remainingDuration--;
+      if (muddyDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'muddy');
+        addLog(`${unit.name} 的「浑浊」状态消失了`);
+      }
+    }
+
+    const steamBurnDebuff = unit.debuffs.find(d => d.type === 'steam_burn');
+    if (steamBurnDebuff && steamBurnDebuff.remainingDuration > 0) {
+      const steamBurnDamage = Math.floor(unit.maxHp * steamBurnDebuff.damagePercentPerStack * steamBurnDebuff.stacks);
+      unit.currentHp = Math.max(0, unit.currentHp - steamBurnDamage);
+      showDamageNumber(unit.id, steamBurnDamage, 'damage');
+      updateHpBar(unit);
+      addLog(`${unit.name} 受到蒸汽灼伤 ${steamBurnDamage} HP`, 'damage');
+
+      steamBurnDebuff.remainingDuration--;
+      if (steamBurnDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'steam_burn');
+        addLog(`${unit.name} 的「蒸汽灼伤」状态消失了`);
+      }
+    }
+
+    const weaknessDebuff = unit.debuffs.find(d => d.type === 'weakness');
+    if (weaknessDebuff && weaknessDebuff.remainingDuration > 0) {
+      weaknessDebuff.remainingDuration--;
+      if (weaknessDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'weakness');
+        addLog(`${unit.name} 的「虚弱」状态消失了`);
+      }
+    }
+
+    // 处理清泉护盾状态
+    const clearSpringBuff = unit.buffs?.find(b => b.type === 'clear_spring');
+    if (clearSpringBuff && clearSpringBuff.remainingDuration > 0) {
+      const clearSpringHeal = Math.floor(unit.maxHp * clearSpringBuff.healPercent);
+      unit.currentHp = Math.min(unit.maxHp, unit.currentHp + clearSpringHeal);
+      showDamageNumber(unit.id, clearSpringHeal, 'heal');
+      updateHpBar(unit);
+      addLog(`${unit.name} 的「清泉护盾」回复 ${clearSpringHeal} HP`, 'heal');
+
+      if (unit.debuffs && unit.debuffs.length > 0) {
+        const removedDebuff = unit.debuffs.shift();
+        addLog(`${unit.name} 的「${removedDebuff.type}」状态被清泉护盾清除`);
+      }
+
+      clearSpringBuff.remainingDuration--;
+      if (clearSpringBuff.remainingDuration <= 0) {
+        unit.buffs = unit.buffs.filter(b => b.type !== 'clear_spring');
+        addLog(`${unit.name} 的「清泉护盾」状态消失了`);
+      }
+    }
+
+    // 处理流水状态
+    const flowBuff = unit.buffs?.find(b => b.type === 'flow');
+    if (flowBuff && flowBuff.remainingDuration > 0) {
+      flowBuff.remainingDuration--;
+      if (flowBuff.remainingDuration <= 0) {
+        unit.buffs = unit.buffs.filter(b => b.type !== 'flow');
+        addLog(`${unit.name} 的「流水」状态消失了`);
+      }
+    }
+
+    // 处理雨天天气
+    if (globalWeather && globalWeather.type === 'rainy' && globalWeather.duration > 0) {
+      globalWeather.duration--;
+      if (globalWeather.duration <= 0) {
+        globalWeather = null;
+        addLog(`雨天天气结束了`);
+      }
+    }
+  }
+
+  await delay(500);
+
+  // 检查战斗是否结束
+  if (checkBattleEnd()) {
+    isExecuting = false;
+    return;
+  }
+
+  // 更新敌人意图
+  for (const enemy of enemyUnits) {
+    if (enemy.currentHp > 0) {
+      updateEnemyIntent(enemy);
+    }
+  }
+
+  // 清空指令和行动状态
+  playerCommands = [];
+  executedPlayerIds.clear();
+  actionQueue = [];
+
+  // 更新所有单位的buff/debuff回合数
+  updateBuffTurns();
+
+  // 重置能量（每轮回复能量）
+  playerUnits.forEach(u => {
+    if (u.currentHp > 0) {
+      u.energy = MAX_ENERGY;
+    }
+  });
+  enemyUnits.forEach(u => {
+    if (u.currentHp > 0) {
+      u.energy = Math.min(u.energy + 3, u.maxEnergy);
+    }
+  });
+
+  // 进入下一轮
+  currentRound++;
+  isRoundExecuting = false;
+
+  renderEnemyUnits();
+  renderPlayerUnits();
+  document.getElementById('commandList').style.display = 'block';
+  renderCommandList();
+  updateTurnDisplay();
+
+  addLog(`===== 第 ${currentRound} 轮开始 =====`);
+
+  // 开始下一轮
+  setTimeout(() => startRound(), 300);
 }

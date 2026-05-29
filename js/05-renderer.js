@@ -1,14 +1,38 @@
-// Source: battle-simple.html lines 2607-2984
-function showDamageNumber(targetId, amount, type) {
+// 伤害数字显示
+function showDamageNumber(targetId, amount, type, options = {}) {
   const el = document.getElementById(targetId);
   if (!el) return;
+
   const num = document.createElement('div');
-  num.className = 'damage-number ' + type;
-  num.textContent = (type === 'heal' ? '+' : '-') + amount;
-  num.style.left = '50%';
-  num.style.top = '20%';
-  num.style.transform = 'translateX(-50%)';
-  el.appendChild(num);
+
+  // 只显示简单数值
+  let text = '';
+  switch (type) {
+    case 'heal':
+      text = '+' + amount;
+      break;
+    case 'shield':
+      text = '盾+' + amount;
+      break;
+    default:
+      text = '-' + amount;
+  }
+
+  // 判断目标是敌人还是伙伴
+  const isEnemy = targetId.includes('_enemy');
+  const targetClass = isEnemy ? 'enemy-target' : 'player-target';
+
+  num.className = 'damage-number ' + targetClass;
+  num.textContent = text;
+
+  // 获取单位元素的位置
+  const rect = el.getBoundingClientRect();
+  num.style.position = 'fixed';
+  num.style.left = rect.left + rect.width / 2 + 'px';
+  num.style.top = rect.top - 10 + 'px';
+
+  document.body.appendChild(num);
+
   setTimeout(() => num.remove(), 800);
 }
 

@@ -85,13 +85,25 @@ function onPlayerClickClassic(unit) {
     isRoundExecuting = true;
     document.getElementById('actionOrderDisplay').classList.add('visible');
     addLog('===== 战斗开始 =====');
-    addLog('选择技能开始行动！');
+
+    // 构建行动队列（必须先构建，否则 executeNextAction 无法工作）
+    actionQueue = buildActionQueue();
+    showActionOrder(actionQueue);
 
     // 选中点击的伙伴并显示技能面板
     selectedPlayer = unit;
     renderSkillPanel(unit);
     renderPlayerUnits();
     updateTurnDisplay();
+
+    // 如果当前行动者不是这个伙伴，等待下一个行动者
+    const currentAction = getCurrentAction();
+    if (currentAction && currentAction.type === 'player' && currentAction.caster.id === unit.id) {
+      addLog('选择技能开始行动！');
+    } else {
+      // 当前行动者不是这个伙伴，等待当前行动者完成
+      addLog('等待 ' + (currentAction?.caster?.name || '对手') + ' 行动...');
+    }
     return;
   }
 
@@ -184,6 +196,14 @@ async function addCommand(caster, skill, targetId) {
   if (currentBattleMode === 2) {
     checkAllReady();
     deselectPlayer();
+    return true;
+  }
+
+  // 模式1（经典模式）：下达指令后，继续执行战斗流程
+  if (currentBattleMode === 1) {
+    deselectPlayer();
+    // 异步调用继续执行
+    continueBattleAfterCommand();
     return true;
   }
 
@@ -283,3 +303,16 @@ function updateTargetIndicators(skill) {
     });
   }
 }
+
+// ==================== 全局点击事件监听器 ====================
+document.addEventListener('click', (e) => {
+  // 如果是拖拽释放（未命中目标），跳过此次点击处理
+  if (wasDragReleased) {
+    wasDragReleased = false;
+    return;
+  }
+  // 点击空白区域时取消选择
+  if (!e.target.closest('.unit.player') && !e.target.closest('.skill-panel') && !e.target.closest('.skill-card')) {
+    if (!isDragging) deselectPlayer();
+  }
+});
