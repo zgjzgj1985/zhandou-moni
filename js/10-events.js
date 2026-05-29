@@ -1,5 +1,9 @@
 // Source: battle-simple.html lines 3352-3569
 // 事件处理系统
+// 包含：点击伙伴、点击敌人、下达指令、拖拽释放等事件处理
+// 模式1（经典模式）：点击伙伴 → 初始化敌人意图 → 构建行动队列 → 按速度依次行动
+// 模式2（宝可梦模式）：伙伴先选技能 → 全部下达指令后统一结算
+// 模式3（以太术士模式）：伙伴按速度顺序逐个选择技能并执行
 
 // ==================== 事件处理 ====================
 
@@ -76,34 +80,40 @@ function onPlayerClickMode3(unit) {
 }
 
 // 模式1（经典模式）
+// 经典模式：点击伙伴 → 初始化敌人意图 → 构建行动队列 → 展示行动顺序 → 按速度依次行动
+// 敌人立即行动，玩家手动选择技能，行动后自动切换到下一个速度最快的未行动伙伴
 function onPlayerClickClassic(unit) {
   if (battleEnded) return;
 
-  // 如果战斗还没开始，点击玩家时开始战斗并选中该玩家
+  // 如果战斗还没开始，点击玩家时开始战斗并初始化一切
   if (!isBattleStarted) {
     isBattleStarted = true;
     isRoundExecuting = true;
-    document.getElementById('actionOrderDisplay').classList.add('visible');
+    currentActionIndex = 0;
+    executedPlayerIds.clear();
+    playerCommands = [];
+
     addLog('===== 战斗开始 =====');
 
-    // 构建行动队列（必须先构建，否则 executeNextAction 无法工作）
+    // 1. 初始化敌人意图
+    for (const enemy of enemyUnits) {
+      if (enemy.currentHp > 0) {
+        updateEnemyIntent(enemy);
+      }
+    }
+    renderEnemyUnits();
+
+    // 2. 构建行动队列（所有存活伙伴 + 所有敌人，按速度从高到低排序）
     actionQueue = buildActionQueue();
     showActionOrder(actionQueue);
 
-    // 选中点击的伙伴并显示技能面板
-    selectedPlayer = unit;
-    renderSkillPanel(unit);
+    // 3. 显示技能面板，交给 executeNextAction 决定当前行动者
+    selectedPlayer = null;
     renderPlayerUnits();
     updateTurnDisplay();
 
-    // 如果当前行动者不是这个伙伴，等待下一个行动者
-    const currentAction = getCurrentAction();
-    if (currentAction && currentAction.type === 'player' && currentAction.caster.id === unit.id) {
-      addLog('选择技能开始行动！');
-    } else {
-      // 当前行动者不是这个伙伴，等待当前行动者完成
-      addLog('等待 ' + (currentAction?.caster?.name || '对手') + ' 行动...');
-    }
+    // 4. 启动行动循环（由 executeNextAction 决定是敌人直接行动还是玩家选技能）
+    executeNextAction();
     return;
   }
 
@@ -222,7 +232,8 @@ async function addCommand(caster, skill, targetId) {
   return true;
 }
 
-// 检查是否所有存活伙伴都已下达指令（模式2）
+// 检查是否所有存活伙伴都已下达指令（模式2宝可梦模式）
+// 所有存活伙伴都下达了指令后，触发 startCombatPhaseMode2 开始结算
 function checkAllReady() {
   const alivePlayers = playerUnits.filter(u => u.currentHp > 0);
   const readyCount = playerCommands.filter(c => {
@@ -232,7 +243,7 @@ function checkAllReady() {
 
   if (alivePlayers.length > 0 && readyCount === alivePlayers.length) {
     // 所有存活伙伴都已下达指令，自动开始战斗结算
-    setTimeout(() => startCombatPhase(), 500);
+    setTimeout(() => startCombatPhaseMode2(), 500);
   }
 }
 

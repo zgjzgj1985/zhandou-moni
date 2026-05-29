@@ -1,9 +1,12 @@
 // Source: battle-simple.html lines 3570-6248
-// 核心战斗流程和模式3（以太术士模式）系统
+// 核心战斗流程系统
+// 模式1（经典模式）：速度制，玩家按队列顺序手动选择技能，敌人立即行动
+// 模式2（宝可梦模式）：准备阶段预存指令，全部下达后按速度统一结算（玩家+敌人穿插执行）
+// 模式3（以太术士模式）：速度制，玩家选择技能后立即执行，伙伴全行动完后敌人才行动
 
 // ==================== 模式3（以太术士模式）系统 ====================
 
-// 选择速度最快的未行动玩家
+// 模式3：选择速度最快的未行动伙伴
 function selectNextFastestPlayer() {
   const remainingPlayers = playerUnits.filter(p => p.currentHp > 0 && !executedPlayerIds.has(p.id));
   if (remainingPlayers.length === 0) return null;
@@ -57,7 +60,7 @@ function startRoundMode3() {
   renderPlayerUnits();
 }
 
-// 模式3：构建玩家行动队列
+// 模式3：构建玩家行动队列（仅包含未执行过的存活伙伴，用于展示行动顺序）
 function buildPlayerActionQueueMode3() {
   const actions = [];
   const alivePlayers = playerUnits.filter(p => p.currentHp > 0);
@@ -227,7 +230,7 @@ async function startEnemyPhaseMode3() {
   await executeEnemyTurnMode3();
 }
 
-// 模式3：执行敌人回合
+// 模式3：执行所有敌人行动（按 enemyActionQueue 顺序）
 async function executeEnemyTurnMode3() {
   for (const action of enemyActionQueue) {
     if (battleEnded) break;
@@ -245,7 +248,7 @@ async function executeEnemyTurnMode3() {
   await finishRoundMode3();
 }
 
-// 模式3：轮次结束处理
+// 模式3：回合结算（状态效果、能量重置、进入下一轮）
 async function finishRoundMode3() {
   // 标记所有指令为已执行
   playerCommands.forEach(cmd => {
@@ -461,9 +464,14 @@ async function finishRoundMode3() {
 
   addLog(`===== 第 ${currentRound} 轮等待开始 =====`);
   addLog('点击伙伴开始行动');
+
+  // 自动开始下一轮（显示行动顺序列表）
+  setTimeout(() => startRoundMode3(), 300);
 }
 
 // 执行玩家行动并继续下一个
+// 模式1/3：执行技能 → 标记指令完成 → currentActionIndex++ → 递归调用 executeNextAction
+// 模式2：调用 executePlayerActionMode2
 async function executePlayerActionAndContinue(caster, skill, targetId) {
   if (battleEnded) return;
 
@@ -579,6 +587,50 @@ async function startEnemyPhaseMode2() {
   await executeEnemyTurnMode2();
 }
 
+// 模式2（宝可梦模式）：玩家选择下一个行动的伙伴
+// 从预设指令队列中按速度排序，让玩家依次选择并执行
+async function executeNextActionMode2() {
+  if (battleEnded) return;
+
+  // 按速度排序行动队列
+  playerActionQueue.sort((a, b) => b.caster.speed - a.caster.speed);
+
+  if (playerActionQueue.length === 0) {
+    // 所有玩家指令都已执行完毕，进入敌人回合
+    await startEnemyPhaseMode2();
+    return;
+  }
+
+  // 获取当前应该行动的伙伴（速度最快的）
+  const nextAction = playerActionQueue[0];
+  if (!nextAction || nextAction.caster.currentHp <= 0) {
+    // 伙伴已死亡，从队列中移除并继续
+    playerActionQueue.shift();
+    await executeNextActionMode2();
+    return;
+  }
+
+  // 高亮当前行动者
+  updateTurnDisplay(nextAction);
+  updateActionOrderDisplay();
+
+  // 检查是否有预设指令
+  const cmd = nextAction.command;
+  if (cmd && cmd.status === 'pending') {
+    const skill = nextAction.skill;
+    if (skill) {
+      // 有预设指令，执行该伙伴的行动
+      await executePlayerActionMode2(nextAction.caster, skill, nextAction.targetId);
+      return;
+    }
+  }
+
+  // 没有预设指令，等待玩家选择技能
+  selectedPlayer = nextAction.caster;
+  renderSkillPanel(nextAction.caster);
+  renderPlayerUnits();
+}
+
 // 模式2：执行敌人回合
 async function executeEnemyTurnMode2() {
   while (enemyActionQueue.length > 0) {
@@ -612,6 +664,234 @@ async function executeEnemyTurnMode2() {
 
   // 敌人回合结束，进入下一轮
   await finishRound();
+}
+
+// 模式2（宝可梦模式）：开始战斗结算阶段
+// 玩家指令全部下达后，按速度依次执行所有行动，然后敌人行动
+async function startCombatPhaseMode2() {
+  isExecuting = true;
+  updateTurnDisplay();
+
+  // 隐藏技能面板和指令列表
+  document.getElementById('skillPanel').classList.remove('visible');
+  document.getElementById('commandList').style.display = 'none';
+
+  addLog('===== 战斗结算开始 =====');
+
+  // 构建行动队列（按速度排序）
+  const actionQueue = buildActionQueueMode3();
+  showActionOrder(actionQueue);
+
+  await delay(800);
+
+  // 依次执行每个行动（玩家 + 敌人，统一按速度排序）
+  for (let i = 0; i < actionQueue.length; i++) {
+    if (checkBattleEnd()) break;
+    await executeActionMode3(actionQueue[i], i, actionQueue.length);
+    await delay(200);
+  }
+
+  // 标记所有指令为已执行
+  playerCommands.forEach(cmd => {
+    if (cmd.status === 'pending') cmd.status = 'executed';
+  });
+
+  hideActionOrder();
+
+  // 回合结束 - 处理状态效果
+  await delay(300);
+
+  // 处理灼烧效果
+  for (const unit of [...playerUnits, ...enemyUnits]) {
+    if (unit.currentHp <= 0) continue;
+
+    const burnDebuff = unit.debuffs.find(d => d.type === 'burn');
+    if (burnDebuff && burnDebuff.stacks > 0) {
+      const burnDamage = Math.floor(unit.maxHp * burnDebuff.damagePercentPerStack * burnDebuff.stacks);
+      unit.currentHp = Math.max(0, unit.currentHp - burnDamage);
+      showDamageNumber(unit.id, burnDamage, 'damage');
+      updateHpBar(unit);
+      addLog(`${unit.name} 受到灼烧伤害 ${burnDamage} HP（${burnDebuff.stacks}层）`, 'damage');
+
+      burnDebuff.stacks = Math.max(1, Math.floor(burnDebuff.stacks / 2));
+      burnDebuff.remainingDuration--;
+
+      if (burnDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'burn');
+        addLog(`${unit.name} 的灼烧状态消失了`);
+      }
+    }
+
+    // 处理燃尽印记
+    if (unit.combustionStacks > 0 && unit.currentHp > 0) {
+      unit.combustionTurnsLeft--;
+      if (unit.combustionTurnsLeft <= 0) {
+        const combustionDamage = Math.floor(unit.currentHp * 0.3);
+        unit.currentHp = Math.max(0, unit.currentHp - combustionDamage);
+        showDamageNumber(unit.id, combustionDamage, 'damage');
+        updateHpBar(unit);
+        addLog(`${unit.name} 的「燃尽印记」触发，受到 ${combustionDamage} 真实伤害！`, 'damage');
+        unit.combustionStacks = 0;
+      } else {
+        addLog(`${unit.name} 的「燃尽印记」剩余 ${unit.combustionTurnsLeft} 回合`);
+      }
+    }
+
+    // 处理减速状态
+    if (unit.slowed && unit.currentHp > 0) {
+      unit.slowTurns--;
+      if (unit.slowTurns <= 0) {
+        unit.slowed = false;
+        addLog(`${unit.name} 的减速状态消失了`);
+      }
+    }
+
+    // 处理属性抗性倒计时
+    if (unit.resistanceTurns && unit.currentHp > 0) {
+      for (const el in unit.resistanceTurns) {
+        unit.resistanceTurns[el]--;
+        if (unit.resistanceTurns[el] <= 0) {
+          unit.resistances[el] = 0;
+          delete unit.resistanceTurns[el];
+          addLog(`${unit.name} 的 ${el} 属性抗性消失了`);
+        }
+      }
+    }
+
+    // 处理水系状态效果回合处理
+    const waterSoakDebuff = unit.debuffs.find(d => d.type === 'water_soak');
+    if (waterSoakDebuff && waterSoakDebuff.remainingDuration > 0) {
+      waterSoakDebuff.remainingDuration--;
+      if (waterSoakDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'water_soak');
+        addLog(`${unit.name} 的「浸透」状态消失了`);
+      }
+    }
+
+    const drowningDebuff = unit.debuffs.find(d => d.type === 'drowning');
+    if (drowningDebuff && drowningDebuff.remainingDuration > 0) {
+      drowningDebuff.remainingDuration--;
+      if (drowningDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'drowning');
+        addLog(`${unit.name} 的「溺水」状态消失了`);
+      }
+    }
+
+    const muddyDebuff = unit.debuffs.find(d => d.type === 'muddy');
+    if (muddyDebuff && muddyDebuff.remainingDuration > 0) {
+      muddyDebuff.remainingDuration--;
+      if (muddyDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'muddy');
+        addLog(`${unit.name} 的「浑浊」状态消失了`);
+      }
+    }
+
+    const steamBurnDebuff = unit.debuffs.find(d => d.type === 'steam_burn');
+    if (steamBurnDebuff && steamBurnDebuff.remainingDuration > 0) {
+      const steamBurnDamage = Math.floor(unit.maxHp * steamBurnDebuff.damagePercentPerStack * steamBurnDebuff.stacks);
+      unit.currentHp = Math.max(0, unit.currentHp - steamBurnDamage);
+      showDamageNumber(unit.id, steamBurnDamage, 'damage');
+      updateHpBar(unit);
+      addLog(`${unit.name} 受到蒸汽灼伤 ${steamBurnDamage} HP`, 'damage');
+
+      steamBurnDebuff.remainingDuration--;
+      if (steamBurnDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'steam_burn');
+        addLog(`${unit.name} 的「蒸汽灼伤」状态消失了`);
+      }
+    }
+
+    const weaknessDebuff = unit.debuffs.find(d => d.type === 'weakness');
+    if (weaknessDebuff && weaknessDebuff.remainingDuration > 0) {
+      weaknessDebuff.remainingDuration--;
+      if (weaknessDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'weakness');
+        addLog(`${unit.name} 的「虚弱」状态消失了`);
+      }
+    }
+
+    const clearSpringBuff = unit.buffs?.find(b => b.type === 'clear_spring');
+    if (clearSpringBuff && clearSpringBuff.remainingDuration > 0) {
+      const clearSpringHeal = Math.floor(unit.maxHp * clearSpringBuff.healPercent);
+      unit.currentHp = Math.min(unit.maxHp, unit.currentHp + clearSpringHeal);
+      showDamageNumber(unit.id, clearSpringHeal, 'heal');
+      updateHpBar(unit);
+      addLog(`${unit.name} 的「清泉护盾」回复 ${clearSpringHeal} HP`, 'heal');
+
+      if (unit.debuffs && unit.debuffs.length > 0) {
+        const removedDebuff = unit.debuffs.shift();
+        addLog(`${unit.name} 的「${removedDebuff.type}」状态被清泉护盾清除`);
+      }
+
+      clearSpringBuff.remainingDuration--;
+      if (clearSpringBuff.remainingDuration <= 0) {
+        unit.buffs = unit.buffs.filter(b => b.type !== 'clear_spring');
+        addLog(`${unit.name} 的「清泉护盾」状态消失了`);
+      }
+    }
+
+    const flowBuff = unit.buffs?.find(b => b.type === 'flow');
+    if (flowBuff && flowBuff.remainingDuration > 0) {
+      flowBuff.remainingDuration--;
+      if (flowBuff.remainingDuration <= 0) {
+        unit.buffs = unit.buffs.filter(b => b.type !== 'flow');
+        addLog(`${unit.name} 的「流水」状态消失了`);
+      }
+    }
+  }
+
+  await delay(500);
+
+  // 检查战斗是否结束
+  if (checkBattleEnd()) {
+    isExecuting = false;
+    return;
+  }
+
+  // 更新敌人意图
+  for (const enemy of enemyUnits) {
+    if (enemy.currentHp > 0) {
+      updateEnemyIntent(enemy);
+    }
+  }
+
+  // 清空指令和行动状态
+  playerCommands = [];
+  executedPlayerIds.clear();
+  playerActionQueue = [];
+  enemyActionQueue = [];
+
+  // 更新所有单位的buff/debuff回合数
+  updateBuffTurns();
+
+  // 重置能量（每轮回复能量）
+  playerUnits.forEach(u => {
+    if (u.currentHp > 0) {
+      u.energy = MAX_ENERGY;
+    }
+  });
+  enemyUnits.forEach(u => {
+    if (u.currentHp > 0) {
+      u.energy = Math.min(u.energy + 3, u.maxEnergy);
+    }
+  });
+
+  // 进入下一轮
+  currentRound++;
+  isExecuting = false;
+  isRoundExecuting = false;
+
+  renderEnemyUnits();
+  renderPlayerUnits();
+  document.getElementById('commandList').style.display = 'block';
+  renderCommandList();
+  updateTurnDisplay();
+
+  addLog(`===== 第 ${currentRound} 轮开始 =====`);
+  addLog('请为所有伙伴下达指令');
+
+  // 开始下一轮
+  setTimeout(() => startRound(), 300);
 }
 
 // 模式3（以太术士模式）：开始战斗结算阶段
@@ -930,6 +1210,9 @@ function getCurrentAction() {
 }
 
 // 获取所有行动单位的行动队列
+// 包含：所有存活的伙伴（标记 hasCommand） + 所有存活的敌人
+// 按速度从高到低排序，同速随机
+// 注意：伙伴即使没有下达指令也会进入队列（hasCommand=false），由 executeNextAction 决定是否等待玩家选择
 function buildActionQueue() {
   const actions = [];
 
@@ -1062,7 +1345,9 @@ async function executeAction(action) {
   if (el) el.classList.remove('selected');
 }
 
-// 开始新的一轮
+// 开始新的一轮（模式1/2）
+// 模式1：初始化敌人意图 → 构建队列 → 按速度执行（敌人自动，玩家手动）
+// 模式2：初始化敌人意图 → 构建玩家/敌人队列 → 等待所有伙伴下达指令后按速度统一结算
 function startRound() {
   if (battleEnded) return;
 
@@ -1086,7 +1371,7 @@ function startRound() {
   }
   renderEnemyUnits();
 
-  // 模式2（宝可梦模式）：初始化行动队列
+  // 模式2（宝可梦模式）：只初始化队列并显示，等待玩家下达指令
   if (currentBattleMode === 2) {
     executedPlayerIds.clear();
     playerActionQueue = buildPlayerActionQueue();
@@ -1096,13 +1381,15 @@ function startRound() {
     allActions.sort((a, b) => b.caster.speed - a.caster.speed);
     showActionOrder(allActions);
     updateTurnDisplay();
+    // 不调用 executeNextAction()，等待玩家下达指令（由 checkAllReady 触发 startCombatPhase）
+    return;
   }
 
   // 开始执行第一个行动
   executeNextAction();
 }
 
-// 构建玩家行动队列（模式2）
+// 构建玩家行动队列（模式2：从已下达的指令中构建，按速度排序后由 executeNextActionMode2 执行）
 function buildPlayerActionQueue() {
   const queue = [];
   for (const cmd of playerCommands) {
@@ -1501,7 +1788,10 @@ function calculatePokemonDamage(attacker, defender, skill, options = {}) {
 
 // ==================== 经典模式（模式1）核心战斗流程 ====================
 
-// 执行下一个行动（经典模式核心函数）
+// 执行下一个行动（模式1/2 入口）
+// 模式1（经典模式）：构建队列 → 敌人立即执行 / 玩家等待选择技能 → 行动后切换下一个 → 队列空则回合结算
+// 模式2（宝可梦模式）：调用 executeNextActionMode2（准备阶段不下达指令到队列，由 startRound 构建）
+// 模式3（以太术士模式）：不使用此函数，使用独立的 startRoundMode3 流程
 async function executeNextAction() {
   if (battleEnded) {
     isRoundExecuting = false;
@@ -1597,6 +1887,7 @@ async function continueBattleAfterCommand() {
 }
 
 // 回合结束处理（经典模式）
+// 处理所有单位的状态效果（灼烧、燃尽、减速等）→ 更新敌人意图 → 清空指令 → 重置能量 → 下一轮
 async function finishRound() {
   // 标记所有指令为已执行
   playerCommands.forEach(cmd => {
