@@ -118,8 +118,19 @@ function renderPlayerUnits() {
     if (unit.flameCharge && unit.flameChargeTurns > 0) {
       buffTags += `<div class="buff-tag flame_charge" title="蓄焰：下次火属性攻击威力+${unit.flameChargePower}">蓄焰${unit.flameChargeTurns}回合</div>`;
     }
+    if (unit.fireShield) {
+      const pct = Math.round((unit.reflectDamage || 0.3) * 100);
+      buffTags += `<div class="buff-tag fire_shield" title="火盾：受伤降低${pct}%并反伤附加灼烧">火盾</div>`;
+    }
     if (unit.wallOfFlamesPower > 0) {
       buffTags += `<div class="buff-tag wall_of_flames" title="烈火护体：下次火属性攻击威力+${unit.wallOfFlamesPower}">烈火${unit.wallOfFlamesPower}</div>`;
+    }
+    if (unit.fireBodyEffect || (unit.buffs && unit.buffs.some(b => b.type === 'fire_body'))) {
+      buffTags += `<div class="buff-tag fire_body" title="炎体：受伤时攻击者附加灼烧">炎体</div>`;
+    }
+    if (unit.buffs && unit.buffs.some(b => b.type === 'blaze_will')) {
+      const blazeBuff = unit.buffs.find(b => b.type === 'blaze_will');
+      buffTags += `<div class="buff-tag blaze_will" title="炎之意志：攻击+1、特攻+1、火伤+25%">炎意${blazeBuff.remainingDuration}回合</div>`;
     }
     if (unit.aquaShield || (unit.buffs && unit.buffs.some(b => b.type === 'aqua_shield'))) {
       buffTags += `<div class="buff-tag aqua_shield" title="水之守护：受到攻击时反击者获得浸透">水之守护</div>`;
@@ -272,8 +283,19 @@ function renderEnemyUnits() {
     if (unit.flameCharge && unit.flameChargeTurns > 0) {
       buffTags += `<div class="buff-tag flame_charge" title="蓄焰：下次火属性攻击威力+${unit.flameChargePower}">蓄焰${unit.flameChargeTurns}回合</div>`;
     }
+    if (unit.fireShield) {
+      const pct = Math.round((unit.reflectDamage || 0.3) * 100);
+      buffTags += `<div class="buff-tag fire_shield" title="火盾：受伤降低${pct}%并反伤附加灼烧">火盾</div>`;
+    }
     if (unit.wallOfFlamesPower > 0) {
       buffTags += `<div class="buff-tag wall_of_flames" title="烈火护体：下次火属性攻击威力+${unit.wallOfFlamesPower}">烈火${unit.wallOfFlamesPower}</div>`;
+    }
+    if (unit.fireBodyEffect || (unit.buffs && unit.buffs.some(b => b.type === 'fire_body'))) {
+      buffTags += `<div class="buff-tag fire_body" title="炎体：受伤时攻击者附加灼烧">炎体</div>`;
+    }
+    if (unit.buffs && unit.buffs.some(b => b.type === 'blaze_will')) {
+      const blazeBuff = unit.buffs.find(b => b.type === 'blaze_will');
+      buffTags += `<div class="buff-tag blaze_will" title="炎之意志：攻击+1、特攻+1、火伤+25%">炎意${blazeBuff.remainingDuration}回合</div>`;
     }
     if (unit.aquaShield || (unit.buffs && unit.buffs.some(b => b.type === 'aqua_shield'))) {
       buffTags += `<div class="buff-tag aqua_shield" title="水之守护：受到攻击时反击者获得浸透">水之守护</div>`;

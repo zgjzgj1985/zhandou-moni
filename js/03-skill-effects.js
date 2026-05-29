@@ -74,7 +74,14 @@ function parseSingleEffect(effect) {
       break;
 
     case 'heal':
-      result.healPercent = (effect.percent || 0) / 100;
+      // 修复：skills-db 中 percent 使用小数表示（如 0.25 表示 25%，即 0.0025 在 eff 字符串中）
+      // 但在 effects 数组中，0.0025 表示 0.25% 治疗（太小了，无意义）
+      // 实际意图应该是 25%，需要乘以 100
+      // 对于所有值都乘以 100，这样：
+      //   - 0.0025 (skills-db 新格式) → 0.25 (25%)
+      //   - 25 (旧格式) → 2500 (超出100%，但 Math.min 会限制到 100%)
+      // 结果值 0.25 表示 25% 治疗
+      result.healPercent = (effect.percent || 0) * 100;
       result.type = 'heal';
       break;
 
@@ -86,7 +93,12 @@ function parseSingleEffect(effect) {
       break;
 
     case 'add_status':
-      Object.assign(result, applyAddStatusEffect(effect));
+      const statusResult = applyAddStatusEffect(effect);
+      Object.assign(result, statusResult);
+      // 只有当 applyAddStatusEffect 没有返回任何属性时，才用 statusId 作为 effect 兜底
+      if (effect.statusId && Object.keys(statusResult).length === 0) {
+        result.effect = effect.statusId;
+      }
       break;
 
     case 'buff':
@@ -108,6 +120,10 @@ function parseSingleEffect(effect) {
         if (effect.stats.speed !== undefined) result.enemySpeedDebuff = effect.stats.speed;
         if (effect.stats.accuracy !== undefined) result.enemyAccuracyDebuff = effect.stats.accuracy;
       }
+      // 处理速度降级（扎根之躯：速度-1级）
+      if (effect.stat === 'speed' && effect.stages !== undefined) {
+        result.speedBoost = effect.stages; // 负值表示降低
+      }
       break;
 
     case 'buff_all':
@@ -116,10 +132,29 @@ function parseSingleEffect(effect) {
         if (effect.stats.spAtk !== undefined) result.spAtkBoost = effect.stats.spAtk;
         if (effect.stats.speed !== undefined) result.speedBoost = effect.stats.speed;
         if (effect.stats.defense !== undefined) result.defenseBoost = effect.stats.defense;
+        // blaze_will 等在 stats 里用下划线命名
+        if (effect.stats.fire_damage_boost !== undefined) result.fireDamageBoost = effect.stats.fire_damage_boost;
       }
       if (effect.fireDamageBoost !== undefined) result.fireDamageBoost = effect.fireDamageBoost;
       if (effect.grassDamageBoost !== undefined) result.grassDamageBoost = effect.grassDamageBoost;
       if (effect.waterDamageBoost !== undefined) result.waterDamageBoost = effect.waterDamageBoost;
+      break;
+
+    case 'add_status':
+      // 处理 add_status 效果，映射到对应的执行层字段
+      if (effect.statusId === 'vine_body') {
+        result.vineBody = true;
+        result.damageReduction = 0.5;
+      } else if (effect.statusId === 'counter_stance') {
+        result.effect = 'counterStance';
+        result.reflectDamage = 0.6;
+      } else if (effect.statusId === 'root_bound') {
+        result.effect = 'rootBound';
+      } else if (effect.statusId === 'fragrant_env') {
+        result.effect = 'fragrantEnvironment';
+      } else if (effect.statusId === 'light_gather') {
+        result.lightGather = 1;
+      }
       break;
 
     case 'clear_buff':
@@ -193,11 +228,26 @@ function parseSingleEffect(effect) {
         if (effect.stats.spAtk !== undefined) result.spAtkBoost = effect.stats.spAtk;
         if (effect.stats.speed !== undefined) result.speedBoost = effect.stats.speed;
         if (effect.stats.defense !== undefined) result.defenseBoost = effect.stats.defense;
+        if (effect.stats.grass_power !== undefined) result.lightGather = 1;
       }
       break;
 
     case 'energy_gain':
       result.energyRestore = effect.amount || 0;
+      break;
+
+    case 'special':
+      if (effect.specialType === 'extra_attack_damage') {
+        result.addFirePower = effect.value || 0;
+        // wall_of_flames / flame_body 都用这个字段
+        // 检查是否关联了 flame_body 状态
+      }
+      if (effect.specialType === 'cleanse_target_buff') {
+        result.clearBuff = true;
+      }
+      if (effect.specialType === 'weakness_debuff') {
+        result.weaknessEffect = true;
+      }
       break;
 
     case 'remove_buff':
@@ -209,6 +259,10 @@ function parseSingleEffect(effect) {
       result.baseDamage = effect.baseDamage || 0;
       result.damagePerStack = effect.damagePerStack || 0;
       result.statusId = effect.statusId || null;
+      break;
+
+    // skills-db.js 中 damageType='special' 会产生 type:'special' 字段，静默忽略
+    case 'special':
       break;
 
     default:
@@ -323,6 +377,12 @@ function convertSkillToBattleFormat(skillData, element) {
   let burnChance = null;
   let burnMarkPower = null;
   let damageReduction = skillData.damageReduction || 0;
+  let combustionMark = false;
+  let flameCharge = false;
+  let blazeWillEffect = false;
+  let fireBodyEffect = false;
+  let fireShield = false;
+  let vineBody = false;
 
   // 解析冷却时间
   let cooldown = skillData.cooldown || 0;
@@ -338,7 +398,7 @@ function convertSkillToBattleFormat(skillData, element) {
           drowningEffect, drowningDuration, weaknessEffect, weaknessDuration, muddyEffect,
           muddyMaxStacks, flowEffect, clearSpringEffect, clearSpringDuration, rainyDayEffect,
           rainyDayDuration, rainyDayPowerBoost, steamBurnChance, effect, burnStacks, burnChance,
-          burnMarkPower, type },
+          burnMarkPower, type, combustionMark, flameCharge, blazeWillEffect },
         parsed
       );
       if (parsed.attackBoost !== undefined) attackBoost = parsed.attackBoost;
@@ -385,6 +445,12 @@ function convertSkillToBattleFormat(skillData, element) {
       if (parsed.comboHits !== undefined) comboHits = parsed.comboHits;
       if (parsed.comboPower !== undefined) comboPower = parsed.comboPower;
       if (parsed.power !== undefined) power = parsed.power;
+      if (parsed.combustionMark !== undefined) combustionMark = parsed.combustionMark;
+      if (parsed.flameCharge !== undefined) flameCharge = parsed.flameCharge;
+      if (parsed.blazeWillEffect !== undefined) blazeWillEffect = parsed.blazeWillEffect;
+      if (parsed.fireBodyEffect !== undefined) fireBodyEffect = parsed.fireBodyEffect;
+      if (parsed.fireShield !== undefined) fireShield = parsed.fireShield;
+      if (parsed.vineBody !== undefined) vineBody = parsed.vineBody;
     }
   } else if (skillData.eff) {
     if (skillData.eff.includes('攻击+1级') || skillData.eff.includes('攻击+1')) {
@@ -651,6 +717,12 @@ function convertSkillToBattleFormat(skillData, element) {
     rainyDayDuration: rainyDayDuration,
     rainyDayPowerBoost: rainyDayPowerBoost,
     steamBurnChance: steamBurnChance,
+    combustionMark: combustionMark,
+    flameCharge: flameCharge,
+    blazeWillEffect: blazeWillEffect,
+    fireBodyEffect: fireBodyEffect,
+    fireShield: fireShield,
+    vineBody: vineBody,
     cooldown: cooldown,
     description: skillData.eff || generateSkillDescription(skillData.effects, skillData)
   };
@@ -671,6 +743,12 @@ function addStatusToUnit(unit, statusId, stacks, duration) {
       existingBuff.stacks = Math.min(existingBuff.stacks + (stacks || 1), statusDef.maxStacks || 99);
     }
     existingBuff.remainingDuration = duration || statusDef.duration || 2;
+    // 灼伤印记特殊处理：刷新时也更新属性
+    if (statusId === 'burn_mark') {
+      unit.burnMark = true;
+      unit.burnMarkPower = statusDef.delayedDamage || 40;
+      unit.burnMarkDamageType = 'special';
+    }
   } else {
     const buff = {
       type: statusId,
@@ -692,6 +770,19 @@ function addStatusToUnit(unit, statusId, stacks, duration) {
     if (statusDef.skipTurnChance) buff.skipTurnChance = statusDef.skipTurnChance;
     if (statusDef.selfAttackChance) buff.selfAttackChance = statusDef.selfAttackChance;
     if (statusDef.healBlock) buff.healBlock = true;
+
+    // 灼伤印记特殊处理：设置战斗引擎检查所需的属性
+    if (statusId === 'burn_mark') {
+      unit.burnMark = true;
+      unit.burnMarkPower = statusDef.delayedDamage || 40;
+      unit.burnMarkDamageType = 'special';
+    }
+
+    // 寄生种子特殊处理：存储吸血属性
+    if (statusId === 'parasitic_seed') {
+      buff.drainPercent = statusDef.drainPercent || 0.06;
+      buff.sourceId = buff.sourceId; // 释放者ID稍后在技能执行时设置
+    }
 
     unit.buffs.push(buff);
   }
@@ -726,7 +817,13 @@ function executeSkillEffects(skill, caster, targets) {
           if (target.currentHp <= 0) return;
           const duration = effect.duration || STATUS[statusId]?.duration || 2;
           const stacks = effect.stacks || 1;
-          addStatusToUnit(target, statusId, stacks, duration);
+          const buff = addStatusToUnit(target, statusId, stacks, duration);
+
+          // 寄生种子特殊处理：存储释放者ID用于回合结算
+          if (statusId === 'parasitic_seed' && buff) {
+            buff.sourceId = caster.id;
+          }
+
           addLog(`${target.name} 获得「${STATUS[statusId]?.name || statusId}」状态！`, 'buff');
         });
         break;
@@ -826,8 +923,29 @@ function getTargets(caster, skill, allPlayerUnits, allEnemyUnits) {
 }
 
 function initializeCompanionSkills() {
-  playerUnits.forEach(unit => {
+  playerUnits.forEach((unit, index) => {
     unit.skills = assignSkillsByElement(unit.element, unit.id);
+    // 测试技能注入：替换第一个伙伴的第1个技能
+    // customPlayerConfig 在 applyCustomBattle 时已设置 testSkill 字段
+    if (index === 0 && typeof customPlayerConfig !== 'undefined' && customPlayerConfig[0]?.testSkill) {
+      const testSkillId = customPlayerConfig[0].testSkill;
+      let rawSkill = null;
+      for (const elementKey in SKILLS_DB) {
+        const allSkills = [
+          ...(SKILLS_DB[elementKey].attack || []),
+          ...(SKILLS_DB[elementKey].defense || []),
+          ...(SKILLS_DB[elementKey].support || []),
+        ];
+        rawSkill = allSkills.find(s => s.id === testSkillId);
+        if (rawSkill) break;
+      }
+      if (rawSkill) {
+        const converted = convertSkillToBattleFormat(rawSkill, unit.element);
+        converted.energyCost = 0;
+        unit.skills[0] = converted;
+        console.log(`[注入] 测试技能 ${converted.name} 已替换 ${unit.name} 第1个技能`);
+      }
+    }
   });
 }
 
@@ -852,6 +970,59 @@ debugLog('=== 技能分配调试 ===');
 playerUnits.forEach(unit => {
   debugLog(`${unit.name} (${unit.element}):`, unit.skills.map(s => `${s.name}[${s.energyCost}能量]`).join(', '));
 });
+
+/**
+ * 状态效果中文名映射（用于生成描述）
+ */
+const STATUS_NAMES = {
+  burn:              '灼烧',
+  burn_mark:         '灼伤印记',
+  flame_charge:      '蓄焰',
+  fire_shield:       '火盾',
+  wall_of_flames:    '烈火护体',
+  blaze_will:        '炎之意志',
+  flame_body:        '烈焰护体',
+  combustion_mark:   '燃尽印记',
+  overheat_penalty:  '过热代价',
+  water_soak:        '浸透',
+  weakness:          '虚弱',
+  drowning:         '溺水',
+  steam_burn:       '蒸汽灼伤',
+  muddy:             '浑浊',
+  flow:              '流水',
+  clear_spring:      '清泉',
+  rainy_day:         '雨天',
+  light_gather:      '光能汇聚',
+  wither:            '枯萎',
+  fragrant_env:       '芬芳环境',
+  root_bound:        '扎根',
+  vine_body:         '藤蔓护体',
+  counter_stance:    '防反之姿',
+  parasite:          '寄生种子',
+  nutrient:          '养分',
+  static_body:       '蓄电护体',
+  electric_deflect:  '电磁偏转',
+  charge:            '蓄电',
+  electric_field_buff: '电场',
+  static:            '静电标记',
+  frost:             '冰霜',
+  extreme_cold_mark: '极寒印记',
+  ice_armor:         '冰霜护甲',
+  ice_wall:          '冰墙',
+  frost_mark:        '冰霜印记',
+  frozen_land_env:   '冻土',
+  mind_body:         '心灵护体',
+  psychic_terrain:   '精神场地',
+  psychic_noise:     '精神噪音',
+  sandstorm:         '沙暴',
+  underground:       '挖洞',
+  sand_tomb:         '流沙地狱',
+  dragon_guard:      '龙鳞守护',
+  dragon_power_loss: '龙威减退',
+  slow:              '减速',
+  paralysis:         '麻痹',
+  defense_up:        '防御强化',
+};
 
 function generateSkillDescription(effects, skillData) {
   if (!effects || effects.length === 0) return '';
@@ -878,7 +1049,7 @@ function generateSkillDescription(effects, skillData) {
         parts.push(`减伤${Math.round((1 - (effect.reduction || 0)) * 100)}%`);
         break;
       case 'add_status':
-        const statusName = STATUS[effect.statusId]?.name || effect.statusId;
+        const statusName = STATUS_NAMES[effect.statusId] || effect.statusId;
         if (effect.stacks) parts.push(`+${statusName}(${effect.stacks}层)`);
         else parts.push(`+${statusName}`);
         break;

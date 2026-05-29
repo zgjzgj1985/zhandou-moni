@@ -298,14 +298,46 @@ async function executePlayerCommand(caster, skill, targetId) {
     }
 
     // 燃尽：延迟伤害（3回合后扣除30%当前HP）
-    if (skill.effect === 'combustion') {
+    if (skill.effect === 'combustion' || skill.combustionMark) {
       target.combustionStacks = (target.combustionStacks || 0) + 1;
       target.combustionTurnsLeft = 3;
-      addLog(`${target.name} 被施加「燃尽印记」（${target.combustionTurnsLeft}回合后扣除30%当前HP）`, 'debuff');
+      target.debuffs = target.debuffs || [];
+      target.debuffs = target.debuffs.filter(d => d.type !== 'combustion');
+      target.debuffs.push({ type: 'combustion', remainingDuration: 3 });
+      addLog(`${target.name} 被施加「燃尽印记」（3回合后扣除30%当前HP）`, 'debuff');
+    }
+
+    // 韶光（splendor）：攻击后召唤芬芳环境
+    if (skill.effect === 'fragrantEnvironment' || skill.grassDamageBoost) {
+      battleEnvironment = 'fragrant';
+      battleEnvironmentTurns = 4;
+      playerUnits.forEach(unit => {
+        if (unit.currentHp <= 0) return;
+        unit.fragrantBloom = true;
+        unit.fragrantBloomTurns = 4;
+      });
+      addLog(`${caster.name} 使用 ${skill.name}，召唤芬芳环境！（持续4回合：草系技能威力+25%）`, 'buff');
+    }
+
+    // 烈火护体（攻击附带）：下次火属性攻击威力+40
+    if (skill.effect === 'wall_of_flames' || skill.wallOfFlamesPower > 0) {
+      caster.wallOfFlamesPower = skill.wallOfFlamesPower || 40;
+      caster.wallOfFlamesTurns = 1;
+      addLog(`${caster.name} 的烈火护体效果激活，下次火属性攻击威力+${caster.wallOfFlamesPower}！`, 'buff');
+    }
+
+    // 炎之意志（攻击附带）：给目标加 buff）
+    if (skill.effect === 'blaze_will' || skill.blazeWillEffect) {
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'blaze_will', remainingDuration: skill.duration || 3 });
+      target.attackBoost = (target.attackBoost || 0) + 1;
+      target.spAtkBoost = (target.spAtkBoost || 0) + 1;
+      target.fireDamageBoost = (target.fireDamageBoost || 0) + 0.25;
+      addLog(`${target.name} 获得「炎之意志」！（攻击+1、特攻+1、火伤+25%）`, 'buff');
     }
 
     // 灼伤印记：每次行动前受到自身威力计算的物理/特殊伤害
-    if (skill.effect === 'burnMark') {
+    if (skill.effect === 'burn_mark') {
       target.burnMark = true;
       target.burnMarkPower = skill.burnMarkPower || 20;
       target.burnMarkDamageType = skill.damageType || 'special';
@@ -351,6 +383,17 @@ async function executePlayerCommand(caster, skill, targetId) {
         target.paralyzed = true;
         target.paralyzeTurns = 2;
         addLog(`${target.name} 被麻痹了！（速度-1级，持续2回合）`, 'debuff');
+      }
+    }
+
+    // 冰冻效果（freeze）
+    if (skill.effect === 'freeze' || skill.frostEffect) {
+      if (Math.random() < 0.2) {
+        target.frozen = true;
+        target.frozenTurns = 1;
+        addLog(`${target.name} 被冻结了！（1回合无法行动）`, 'debuff');
+      } else {
+        addLog(`${target.name} 被冰霜附着。（有概率被冻结）`, 'debuff');
       }
     }
 
@@ -487,6 +530,7 @@ async function executePlayerCommand(caster, skill, targetId) {
 
     // 虚弱效果（水炮：自身获得虚弱状态，下一回合无法使用技能）
     if (skill.weaknessEffect) {
+      caster.debuffs = caster.debuffs || [];
       caster.debuffs = caster.debuffs.filter(d => d.type !== 'weakness');
       caster.debuffs.push({
         type: 'weakness',
@@ -524,6 +568,16 @@ async function executePlayerCommand(caster, skill, targetId) {
       }
 
       if (caster.currentHp <= 0) addLog(`${caster.name} 倒下了！`);
+    }
+
+    // 光能汇聚：fiber_weave 等既有伤害又有 self_buff (grass_power) 的技能，在伤害后处理光能汇聚
+    if (skill.lightGather && skill.lightGather > 0) {
+      caster.lightGatherStacks = (caster.lightGatherStacks || 0) + skill.lightGather;
+      addLog(`${caster.name} 使用 ${skill.name}，获得 ${skill.lightGather} 层光能汇聚（下回合草系技能+60威力/层）`, 'buff');
+      // 施法者如果是玩家，需要刷新显示
+      if (playerUnits.includes(caster)) {
+        setTimeout(() => renderPlayerUnits(), 950);
+      }
     }
 
     // 延迟重新渲染单位卡片以显示debuff/buff标签，确保伤害数字动画有时间播放
@@ -598,11 +652,26 @@ async function executePlayerCommand(caster, skill, targetId) {
     }
 
     // 蓄焰：为目标施加蓄焰状态（持续3回合），下次火属性攻击威力+（自身能量×10）
-    if (skill.effect === 'flameCharge') {
+    if (skill.effect === 'flameCharge' || skill.flameCharge) {
       target.flameCharge = true;
       target.flameChargeTurns = 3;
       target.flameChargePower = caster.energy * 10;
       addLog(`${caster.name} 使用 ${skill.name}，为 ${target.name} 施加蓄焰（持续${target.flameChargeTurns}回合），下次火属性攻击威力+${target.flameChargePower}`, 'buff');
+    }
+
+    // 蓄电：为目标增加蓄电层数
+    if (skill.chargeEffect) {
+      target.chargeStacks = (target.chargeStacks || 0) + 2;
+      target.chargeTurns = skill.duration || 3;
+      addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得2层蓄电！（蓄电层数提升下次电属性技能威力）`, 'buff');
+    }
+
+    // 火盾：减伤+反伤（给队友使用）
+    if (skill.fireShield) {
+      target.fireShield = true;
+      target.reflectDamage = skill.reflectDamage || 0.3;
+      target.reflectElement = caster.element;
+      addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得火盾效果（受伤时攻击者附加灼烧）`, 'buff');
     }
 
     // 养分汲取：回复HP并增加能量
@@ -650,11 +719,19 @@ async function executePlayerCommand(caster, skill, targetId) {
       }
 
       // 火盾：反伤效果
-      if (skill.effect === 'fire_shield') {
+      if (skill.effect === 'fire_shield' || skill.fireShield) {
         target.fireShield = true;
-        target.reflectDamage = skill.reflectDamage || 0.3;
+        target.reflectDamage = skill.reflectDamage || (skill.effect === 'fire_shield' ? 0.3 : 0.3);
         target.reflectElement = caster.element;
         addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得火盾效果（受伤时攻击者附加灼烧）`, 'buff');
+      }
+
+      // 炎体（flame_body）：受伤时攻击者附加灼烧
+      if (skill.effect === 'fire_body' || skill.fireBodyEffect) {
+        target.fireBodyEffect = true;
+        target.buffs = target.buffs || [];
+        target.buffs.push({ type: 'fire_body', remainingDuration: 1 });
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 进入炎体状态（受伤时攻击者附加灼烧）`, 'buff');
       }
 
       // 烈火护体：减伤+下次火攻必定暴击
@@ -763,6 +840,29 @@ async function executePlayerCommand(caster, skill, targetId) {
         addLog(`${caster.name} 使用 ${skill.name}，为自身施加 ${skill.power} 点护盾`);
       }
     }
+
+    // 光能聚集：获得光能汇聚层数（与 type 无关，self_buff + grass_power 会产生 lightGather 字段）
+    if (skill.lightGather && skill.lightGather > 0) {
+      target.lightGatherStacks = (target.lightGatherStacks || 0) + skill.lightGather;
+      addLog(`${caster.name} 使用 ${skill.name}，获得 ${skill.lightGather} 层光能汇聚（下回合草系技能+60威力/层）`, 'buff');
+    }
+
+    // 火盾：减伤+反伤（self 目标，fire_shield_skill 的 type='special' 不会进入 shield 分支）
+    if (skill.fireShield) {
+      target.fireShield = true;
+      target.reflectDamage = skill.reflectDamage || 0.3;
+      target.reflectElement = caster.element;
+      addLog(`${caster.name} 使用 ${skill.name}，自身获得火盾效果（受伤时攻击者附加灼烧）`, 'buff');
+    }
+
+    // 炎体：受伤时攻击者附加灼烧（self 目标，wall_of_flames 的 type='special'）
+    if (skill.effect === 'flame_body' || skill.fireBodyEffect) {
+      target.fireBodyEffect = true;
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'fire_body', remainingDuration: 1 });
+      addLog(`${caster.name} 使用 ${skill.name}，自身进入炎体状态（受伤时攻击者附加灼烧）`, 'buff');
+    }
+
     if (skill.type === 'buff') {
       // 充能加速：速度+2级
       if (skill.speedBoost) {
@@ -808,12 +908,6 @@ async function executePlayerCommand(caster, skill, targetId) {
         target.reflectDamage = skill.reflectDamage || 0.6;
         target.priorityBoostOnReflect = 1; // 反弹后获得先手+1
         addLog(`${caster.name} 使用 ${skill.name}，进入防反之姿（持续1回合），反弹 ${Math.round(skill.reflectDamage * 100)}% 伤害，反弹后获得先手+1`, 'buff');
-      }
-
-      // 光能聚集：获得光能汇聚层数
-      if (skill.lightGather && skill.lightGather > 0) {
-        target.lightGatherStacks = (target.lightGatherStacks || 0) + skill.lightGather;
-        addLog(`${caster.name} 使用 ${skill.name}，获得 ${skill.lightGather} 层光能汇聚（下回合草系技能+60威力/层）`, 'buff');
       }
     }
 
@@ -894,6 +988,16 @@ async function executePlayerCommand(caster, skill, targetId) {
       }
     }
 
+    // 炎之意志：blazeWillEffect（为全体己方添加炎之意志标记，属性由上面的 buff_all 处理器统一设置）
+    if (skill.blazeWillEffect) {
+      playerUnits.forEach(unit => {
+        if (unit.currentHp <= 0) return;
+        unit.buffs = unit.buffs || [];
+        unit.buffs.push({ type: 'blaze_will', remainingDuration: skill.duration || 3 });
+      });
+      addLog(`${caster.name} 使用 ${skill.name}，己方全体获得「炎之意志」！（攻击+1、特攻+1、火属性伤害+25%）`, 'buff');
+    }
+
     // 芬芳绽放：召唤芬芳环境（持续4回合），己方草系技能伤害+25%，每回合回复5%HP
     if (skill.effect === 'fragrantEnvironment' || skill.grassDamageBoost) {
       battleEnvironment = 'fragrant';
@@ -904,6 +1008,111 @@ async function executePlayerCommand(caster, skill, targetId) {
         unit.fragrantBloomTurns = 4;
       });
       addLog(`${caster.name} 使用 ${skill.name}，召唤芬芳环境！（持续4回合：己方草系技能伤害+25%，每回合回复5%HP）`, 'buff');
+    }
+
+    // 草系：藤蔓护体
+    if (skill.vineBody) {
+      target.damageReduction = (target.damageReduction || 0) + (skill.vineBodyReduction || 0.5);
+      target.damageReductionTurns = 1;
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'vine_body', remainingDuration: 2 });
+      addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得藤蔓护体！（减伤50%，受伤时缠绕攻击者）`, 'buff');
+    }
+
+    // 电系：电磁场
+    if (skill.electricFieldEffect) {
+      battleEnvironment = 'electric';
+      battleEnvironmentTurns = skill.duration || 4;
+      addLog(`${caster.name} 使用 ${skill.name}，创造电磁场环境！（持续${skill.duration || 4}回合）`, 'buff');
+    }
+
+    // 电系：静电标记
+    if (skill.staticMark) {
+      target.debuffs = target.debuffs || [];
+      target.debuffs.push({ type: 'static_mark', remainingDuration: skill.duration || 3 });
+      addLog(`${target.name} 获得「静电标记」！（受到电属性攻击时额外受到伤害）`, 'debuff');
+    }
+
+    // 冰系：极寒印记
+    if (skill.extremeColdMark) {
+      target.debuffs = target.debuffs || [];
+      target.debuffs.push({ type: 'extreme_cold_mark', remainingDuration: skill.duration || 3 });
+      addLog(`${target.name} 获得「极寒印记」！（下次使用技能时额外消耗2能量）`, 'debuff');
+    }
+
+    // 冰系：冰墙
+    if (skill.effect === 'ice_wall') {
+      target.shield = (target.shield || 0) + (skill.power || 40);
+      target.iceWallTurns = 2;
+      addLog(`${caster.name} 使用 ${skill.name}，${target.name} 创造冰墙屏障！（护盾+40）`, 'buff');
+    }
+
+    // 冰系：冻土环境
+    if (skill.frozenLandEffect) {
+      battleEnvironment = 'frozen_land';
+      battleEnvironmentTurns = skill.duration || 3;
+      addLog(`${caster.name} 使用 ${skill.name}，创造冻土环境！（冰属性技能能耗-1，持续${skill.duration || 3}回合）`, 'buff');
+    }
+
+    // 超能系：心灵护体
+    if (skill.mindShield) {
+      target.shield = (target.shield || 0) + (skill.power || 30);
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'mind_body', remainingDuration: skill.duration || 3 });
+      addLog(`${caster.name} 使用 ${skill.name}，${target.name} 进入心灵护体状态！（护盾+30，受伤降低50%）`, 'buff');
+    }
+
+    // 超能系：精神场地
+    if (skill.psychicTerrain) {
+      battleEnvironment = 'psychic';
+      battleEnvironmentTurns = skill.duration || 4;
+      addLog(`${caster.name} 使用 ${skill.name}，召唤精神场地！（超能属性技能威力+30%，持续${skill.duration || 4}回合）`, 'buff');
+    }
+
+    // 超能系：精神噪音
+    if (skill.psychicNoise) {
+      enemyUnits.forEach(e => {
+        if (e.currentHp <= 0) return;
+        e.debuffs = e.debuffs || [];
+        e.debuffs.push({ type: 'psychic_noise', remainingDuration: skill.duration || 3 });
+      });
+      addLog(`${caster.name} 使用 ${skill.name}，全体敌人受到精神噪音干扰！（无法通过任何方式恢复HP）`, 'debuff');
+    }
+
+    // 地系：沙暴
+    if (skill.sandstormEffect) {
+      battleEnvironment = 'sandstorm';
+      battleEnvironmentTurns = skill.duration || 5;
+      addLog(`${caster.name} 使用 ${skill.name}，召唤沙暴天气！（持续${skill.duration || 5}回合）`, 'buff');
+    }
+
+    // 地系：挖洞
+    if (skill.undergroundEffect) {
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'underground', remainingDuration: 1, evasionBonus: 1.0 });
+      addLog(`${caster.name} 使用 ${skill.name}，${target.name} 进入地下！（免疫地面攻击，下回合必定先手）`, 'buff');
+    }
+
+    // 地系：流沙地狱
+    if (skill.sandTombEffect) {
+      target.debuffs = target.debuffs || [];
+      target.debuffs.push({
+        type: 'sand_tomb',
+        remainingDuration: skill.duration || 3,
+        speedDebuff: 2,
+        damagePercent: skill.sandTombDamage || 0.04
+      });
+      target.speedStage = Math.max(-6, (target.speedStage || 0) - 2);
+      addLog(`${target.name} 陷入「流沙地狱」！（速度-2级，每回合受到4%最大HP伤害）`, 'debuff');
+    }
+
+    // 龙系：龙威减退
+    if (skill.dragonPowerLoss) {
+      target.debuffs = target.debuffs || [];
+      target.debuffs.push({ type: 'dragon_power_loss', remainingDuration: skill.duration || 3 });
+      target.attackBoost = (target.attackBoost || 0) - 2;
+      target.spAtkBoost = (target.spAtkBoost || 0) - 2;
+      addLog(`${target.name} 陷入「龙威减退」！（攻击-2级、特攻-2级）`, 'debuff');
     }
 
     // 水系全体队友效果
@@ -950,6 +1159,19 @@ async function executePlayerCommand(caster, skill, targetId) {
     globalWeather.duration = skill.rainyDayDuration || 3;
     globalWeather.powerBoost = skill.rainyDayPowerBoost || 0.5; // 50%加成
     addLog(`${caster.name} 使用 ${skill.name}，创造雨天环境！（持续${globalWeather.duration}回合，所有水属性技能威力+${Math.round(globalWeather.powerBoost * 100)}%）`, 'buff');
+  }
+
+  // 炎之意志（全体己方）
+  if (skill.blazeWillEffect) {
+    playerUnits.forEach(unit => {
+      if (unit.currentHp <= 0) return;
+      unit.buffs = unit.buffs || [];
+      unit.buffs.push({ type: 'blaze_will', remainingDuration: skill.duration || 3 });
+      unit.attackBoost = (unit.attackBoost || 0) + 1;
+      unit.spAtkBoost = (unit.spAtkBoost || 0) + 1;
+      unit.fireDamageBoost = (unit.fireDamageBoost || 0) + 0.25;
+    });
+    addLog(`${caster.name} 使用 ${skill.name}，己方全体获得「炎之意志」！（攻击+1、特攻+1、火属性伤害+25%）`, 'buff');
   }
 
   // 设置防御技能冷却（如果技能有冷却时间）

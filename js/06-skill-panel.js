@@ -118,6 +118,7 @@ function showSkillTooltip(e, skill, card, target = null, unitCooldowns = {}) {
       }
     } else {
       const effectNames = {
+        // 通用
         drain: '每回合吸取目标12%HP',
         poison: '目标中毒，每回合受到8%最大HP伤害',
         freeze: '20%概率冻结目标',
@@ -130,10 +131,62 @@ function showSkillTooltip(e, skill, card, target = null, unitCooldowns = {}) {
         priority: '先手+1',
         static_body: '蓄电护体：减伤+蓄电',
         chain_damage: '连锁效果：扩散伤害',
+
         // 水系效果
         water_soak: '目标获得浸透（特防-1级/层）',
+        wet: '目标获得浸透状态（特防-1级/层）',
         drowning: '目标溺水（下次能量消耗>3的技能伤害-30%）',
-        weakness: '自身虚弱（下一回合无法使用技能）'
+        weakness: '自身虚弱（下一回合无法使用技能）',
+
+        // 火系效果
+        flameCharge: '下次火系攻击威力+50%',
+        flame_charge: '下次火系攻击威力+50%',
+        flame_body: '受到攻击时使攻击者灼烧',
+        blaze_will: '攻击+速度+火属性伤害提升',
+        combustion_mark: '目标获得燃尽印记（3回合后扣除30%当前HP）',
+        overheat_penalty: '自身陷入虚弱（特攻-2级）',
+
+        // 草系效果
+        light_gather: '下次草系输出技能+60威力',
+        wither: '目标获得枯萎（每回合受到自身威力10点特殊伤害/层）',
+        fragrant_env: '创造芬芳环境（草系技能威力+30%）',
+        fragrantEnvironment: '创造芬芳环境（草系技能威力+30%）',
+        rootBound: '扎根：每回合回复最大HP的8%，速度-1级',
+        vine_body: '受到攻击时缠绕攻击者（速度-2级）',
+        counter_stance: '反弹60%伤害+先手+1',
+
+        // 电系效果
+        static_mark: '攻击者受到雷电伤害并获得1层电荷',
+        electric_deflect: '闪避+反击雷电伤害',
+        electric_field: '电场展开（己方全体电荷加速+威力加成）',
+        frost_armor: '冰霜护甲：受伤时使攻击者获得1层冰霜',
+
+        // 冰系效果
+        ice_armor: '冰霜护甲：受伤时使攻击者获得1层冰霜',
+        ice_wall: '创造冰墙屏障（减伤50%，持续2回合）',
+        frost_mark: '冰霜印记：受到冰属性攻击时附加冰霜',
+        extreme_cold_mark: '极寒印记：下次技能能耗+2',
+        frozen_land: '创造冻土（冰属性技能能耗-1）',
+
+        // 超能系效果
+        mind_shield: '受到伤害降低50%，免疫精神类攻击',
+        psychic_terrain: '召唤精神场地（超能技能威力+30%）',
+        psychic_noise: '目标无法通过任何方式恢复HP',
+
+        // 地系效果
+        sandstorm: '召唤沙暴天气（非岩/地/钢系每回合受损）',
+        underground: '进入地下（免疫地面攻击，下回合必定先手）',
+        sand_tomb: '流沙地狱：速度-2且每回合受到伤害',
+
+        // 龙系效果
+        dragon_guard: '龙鳞守护：减伤+受击反击伤害',
+        dragon_power_loss: '使用后自身攻击/特攻-2级',
+
+        // 其他效果
+        sand_tomb_debuff: '流沙地狱：每回合受到伤害，速度-2',
+        dragon_intimidate: '全体敌人攻击-1级、速度-1级',
+        entangle: '目标速度-2级',
+        parasitic: '寄生种子：每回合扣除目标HP并回复自身',
       };
       effectText = effectNames[skill.effect] || skill.effect;
     }
@@ -220,12 +273,22 @@ function renderSkillPanel(unit) {
   // 获取该单位的冷却状态
   const unitCooldowns = defenseSkillCooldowns[unit.id] || {};
 
+  // 经典模式：检查该伙伴是否满足行动条件
+  const isClassicMode = currentBattleMode === 1;
+  let canAct = true;
+  if (isClassicMode) {
+    const currentAction = actionQueue[currentActionIndex];
+    canAct = !!(currentAction && currentAction.type === 'player' && currentAction.caster.id === unit.id);
+  }
+
   panel.innerHTML = unit.skills.map(skill => {
     // 检查是否在冷却中
     const cooldownRemaining = skill.cooldown && skill.cooldown > 0 ? (unitCooldowns[skill.id] || 0) : 0;
     const isOnCooldown = cooldownRemaining > 0;
-    const canUse = !isOnCooldown && skill.energyCost <= currentEnergy;
-    const cardClass = isOnCooldown ? 'cooldown' : (skill.energyCost > currentEnergy ? 'no-energy' : '');
+    const isNoEnergy = skill.energyCost > currentEnergy;
+    // 经典模式且该伙伴无法行动时也视为禁用
+    const isDisabled = !canAct;
+    const cardClass = isOnCooldown ? 'cooldown' : (isNoEnergy ? 'no-energy' : (isDisabled ? 'disabled' : ''));
 
     return `
       <div class="skill-card ${cardClass}" data-skill-id="${skill.id}" ${isOnCooldown ? `data-cooldown="${cooldownRemaining}"` : ''}>
@@ -251,6 +314,14 @@ function renderSkillPanel(unit) {
 
     // 拖拽开始
     card.onmousedown = (e) => {
+      // 经典模式：只有当前速度最快的行动者才能拖拽使用技能
+      if (currentBattleMode === 1) {
+        const currentAction = actionQueue[currentActionIndex];
+        if (!currentAction || currentAction.type !== 'player' || currentAction.caster.id !== unit.id) {
+          addLog(`${unit.name} 当前无法行动，请先让 ${actionQueue[currentActionIndex]?.caster?.name || '速度更快的伙伴'} 行动`);
+          return;
+        }
+      }
       // 检查冷却状态
       const cooldownRemaining = skill.cooldown && skill.cooldown > 0 ? (unitCooldowns[skill.id] || 0) : 0;
       if (cooldownRemaining > 0) {

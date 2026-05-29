@@ -6,7 +6,8 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "build:skills": "tsx scripts/generate-skills-db.ts"
   },
   "dependencies": {
     "playwright": "^1.60.0"
@@ -14,6 +15,8 @@
   "devDependencies": {
     "@types/node": "^20.12.0",
     "@vitest/coverage-v8": "^1.6.1",
+    "esbuild": "^0.28.0",
+    "tsx": "^4.22.3",
     "typescript": "^5.4.0",
     "vitest": "^1.6.1"
   }

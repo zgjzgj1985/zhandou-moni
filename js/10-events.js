@@ -135,7 +135,8 @@ function onPlayerClickClassic(unit) {
     return;
   }
 
-  // 其他情况：选中显示技能面板
+  // 其他情况：允许自由切换伙伴以查看技能
+  // 注意：拖拽使用技能的限制在 renderSkillPanel 的 onmousedown 中检查
   if (selectedPlayer && selectedPlayer.id === unit.id) {
     selectedPlayer = null;
     renderSkillPanel(null);
@@ -211,6 +212,14 @@ async function addCommand(caster, skill, targetId) {
 
   // 模式1（经典模式）：下达指令后，继续执行战斗流程
   if (currentBattleMode === 1) {
+    // 验证当前行动者是否匹配（经典模式必须严格按照速度顺序行动）
+    const currentAction = actionQueue[currentActionIndex];
+    if (!currentAction || currentAction.type !== 'player' || currentAction.caster.id !== caster.id) {
+      // 恢复消耗的能量
+      caster.energy += skill.energyCost;
+      addLog(`${caster.name} 当前无法行动（速度顺序限制）`);
+      return false;
+    }
     deselectPlayer();
     // 异步调用继续执行
     continueBattleAfterCommand();

@@ -67,6 +67,10 @@ function restartBattle() {
 
 // ==================== 初始化 ====================
 function init() {
+  // 初始化技能（在访问 unit.skills 之前）
+  initializeCompanionSkills();
+  initializeEnemySkills();
+
   // 初始化初始配置（在技能分配之后）
   INITIAL_PLAYER_CONFIG = JSON.parse(JSON.stringify(playerUnits));
   INITIAL_ENEMY_CONFIG = JSON.parse(JSON.stringify(enemyUnits));

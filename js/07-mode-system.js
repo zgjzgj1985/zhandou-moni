@@ -226,11 +226,12 @@ function renderPlayerList() {
 
   container.innerHTML = customPlayerConfig.map((p, index) => {
     const stats = getCreatureStats(p.templateId, p.level);
+    const isFirst = index === 0;
     return `
     <div class="custom-battle-row">
       <div class="custom-battle-unit element-${p.element}">
         <div>
-          <div class="custom-battle-unit-name">Lv.${p.level} ${p.name}</div>
+          <div class="custom-battle-unit-name">${isFirst ? '🔬 ' : ''}Lv.${p.level} ${p.name}</div>
           <div class="custom-battle-unit-stats">${getElementName(p.element)} | HP ${stats.maxHp} | 攻 ${stats.attack} | 防 ${stats.defense} | 速 ${stats.speed}</div>
         </div>
       </div>
@@ -240,6 +241,62 @@ function renderPlayerList() {
       <select class="custom-battle-level-select" onchange="changePlayerLevel(${index}, this.value)">
         ${Array.from({length: MAX_LEVEL}, (_, i) => i + 1).map(l => `<option value="${l}" ${p.level === l ? 'selected' : ''}>Lv.${l}</option>`).join('')}
       </select>
+      ${isFirst ? `
+      <select class="test-skill-select" onchange="changeTestSkill(0, this.value)" title="测试技能：将替换该伙伴的第1个技能">
+        <option value="">— 测试技能 —</option>
+        <optgroup label="火系攻击">
+          <option value="ember">点燃（灼烧5层）</option>
+          <option value="flame_punch">烈焰拳（50%灼烧）</option>
+          <option value="flare_blitz">大字爆炎（灼伤印记）</option>
+          <option value="explosion_flame">爆炸烈焰（燃尽+灼烧）</option>
+          <option value="overheat">过热（虚弱）</option>
+          <option value="flame_impact">火焰冲击（清除增益）</option>
+        </optgroup>
+        <optgroup label="火系防御">
+          <option value="fire_shield_skill">火盾</option>
+          <option value="wall_of_flames">烈火护体</option>
+        </optgroup>
+        <optgroup label="火系辅助">
+          <option value="flame_charge_skill">蓄焰</option>
+          <option value="combustion">燃尽</option>
+          <option value="blaze_will">炎之意志</option>
+        </optgroup>
+        <optgroup label="草系攻击">
+          <option value="leaf_beam">叶绿光束（枯萎）</option>
+          <option value="bloom_dance">绽放之舞（必定暴击）</option>
+          <option value="fiber_weave">纤维化（光能汇聚）</option>
+          <option value="solar_detonation">光能爆轰（消耗光能）</option>
+          <option value="splendor">韶光（140威力）</option>
+        </optgroup>
+        <optgroup label="草系防御">
+          <option value="root_bound">扎根之躯</option>
+          <option value="vine_armor">藤蔓护甲</option>
+          <option value="grass_counter_stance">防反之姿</option>
+        </optgroup>
+        <optgroup label="草系辅助">
+          <option value="light_gather">光能聚集（光能汇聚）</option>
+          <option value="fragrant_bloom">芬芳绽放（环境）</option>
+          <option value="parasitic_seed">寄生之种</option>
+          <option value="nutrient_absorption">养分汲取（治疗）</option>
+        </optgroup>
+        <optgroup label="水系攻击">
+          <option value="water_jet">水流冲击（浸透）</option>
+          <option value="hydro_pump">水炮（虚弱）</option>
+          <option value="abyss_vortex">漩涡（溺水）</option>
+          <option value="scald">热水（蒸汽灼伤30%）</option>
+          <option value="muddy_water">浊流（浑浊30%）</option>
+        </optgroup>
+        <optgroup label="水系防御">
+          <option value="aqua_shield">水之守护</option>
+          <option value="clear_spring">清泉护盾</option>
+        </optgroup>
+        <optgroup label="水系辅助">
+          <option value="healing_wave">治愈波动（治疗25%）</option>
+          <option value="aqua_therapy">水疗之术（治疗+流水）</option>
+          <option value="rainy_day">雨天（天气）</option>
+        </optgroup>
+      </select>
+      ` : ''}
       <button class="custom-battle-remove-btn" onclick="removeCustomPlayer(${index})">&times;</button>
     </div>
   `}).join('');
@@ -309,7 +366,8 @@ function addCustomPlayer() {
     templateId: template.id,
     name: template.name,
     element: template.element,
-    level: 60
+    level: 60,
+    testSkill: null  // 测试技能注入
   });
   renderCustomEditor();
 }
@@ -372,6 +430,16 @@ function changePlayerLevel(index, level) {
   customPlayerConfig[index] = {
     ...customPlayerConfig[index],
     level: parseInt(level)
+  };
+  renderCustomEditor();
+}
+
+// 设置/变更测试技能（仅限第一个伙伴）
+function changeTestSkill(index, skillId) {
+  if (index !== 0) return;
+  customPlayerConfig[0] = {
+    ...customPlayerConfig[0],
+    testSkill: skillId || null
   };
   renderCustomEditor();
 }

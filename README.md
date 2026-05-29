@@ -242,6 +242,7 @@ npx vitest run src/battle/BattleDemo.ts
 - [冰属性减速流技能设计](./docs/冰属性减速流技能设计.md)
 - [地属性天气流技能设计](./docs/地属性天气流技能设计.md)
 - [生物系统设计说明](./docs/生物系统设计说明.md)
+- [测试指南（Playwright E2E 测试）](./docs/TESTING_GUIDE.md)
 
 ## License
 

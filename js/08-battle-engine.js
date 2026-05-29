@@ -282,6 +282,54 @@ async function finishRoundMode3() {
       }
     }
 
+    // 处理枯萎状态 - 每回合固定伤害
+    const witherDebuff = unit.debuffs.find(d => d.type === 'wither');
+    if (witherDebuff && witherDebuff.stacks > 0) {
+      const witherDamage = witherDebuff.stacks * (witherDebuff.damageByAttributePower || 10);
+      unit.currentHp = Math.max(0, unit.currentHp - witherDamage);
+      showDamageNumber(unit.id, witherDamage, 'damage');
+      updateHpBar(unit);
+      addLog(`${unit.name} 受到「枯萎」伤害 ${witherDamage} HP（${witherDebuff.stacks}层）`, 'damage');
+
+      witherDebuff.stacks = Math.max(1, Math.floor(witherDebuff.stacks / 2));
+      witherDebuff.remainingDuration--;
+
+      if (witherDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'wither');
+        addLog(`${unit.name} 的「枯萎」状态消失了`);
+      }
+    }
+
+    // 处理寄生种子 - 回合结束时对目标造成伤害并回复自身
+    const parasiticSeedDebuff = unit.debuffs?.find(d => d.type === 'parasitic_seed');
+    if (parasiticSeedDebuff && parasiticSeedDebuff.remainingDuration > 0 && parasiticSeedDebuff.caster) {
+      // 找到释放寄生种子的单位（caster是对象引用）
+      const sourceUnit = parasiticSeedDebuff.caster;
+
+      if (sourceUnit && sourceUnit.currentHp > 0) {
+        const drainDamage = Math.floor(unit.maxHp * (parasiticSeedDebuff.drainPercent || 0.06));
+        const healAmount = drainDamage;
+
+        // 对目标造成伤害
+        unit.currentHp = Math.max(0, unit.currentHp - drainDamage);
+        showDamageNumber(unit.id, drainDamage, 'damage');
+        updateHpBar(unit);
+        addLog(`寄生种子吸取 ${unit.name} 的 ${drainDamage} HP`, 'damage');
+
+        // 为释放者回复HP
+        sourceUnit.currentHp = Math.min(sourceUnit.maxHp, sourceUnit.currentHp + healAmount);
+        showDamageNumber(sourceUnit.id, healAmount, 'heal');
+        updateHpBar(sourceUnit);
+        addLog(`${sourceUnit.name} 回复 ${healAmount} HP`, 'heal');
+      }
+
+      parasiticSeedDebuff.remainingDuration--;
+      if (parasiticSeedDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'parasitic_seed');
+        addLog(`${unit.name} 的「寄生种子」效果消失了`);
+      }
+    }
+
     // 处理燃尽印记
     if (unit.combustionStacks > 0 && unit.currentHp > 0) {
       unit.combustionTurnsLeft--;
@@ -396,6 +444,51 @@ async function finishRoundMode3() {
       }
     }
 
+    // 处理扎根状态（每回合回复8%HP）
+    const rootBoundBuff1 = unit.buffs?.find(b => b.type === 'root_bound');
+    if (rootBoundBuff1 && rootBoundBuff1.remainingDuration > 0) {
+      const rootBoundHeal1 = Math.floor(unit.maxHp * 0.08);
+      unit.currentHp = Math.min(unit.maxHp, unit.currentHp + rootBoundHeal1);
+      showDamageNumber(unit.id, rootBoundHeal1, 'heal');
+      updateHpBar(unit);
+      addLog(`${unit.name} 的「扎根」回复 ${rootBoundHeal1} HP`, 'heal');
+
+      rootBoundBuff1.remainingDuration--;
+      if (rootBoundBuff1.remainingDuration <= 0) {
+        unit.buffs = unit.buffs.filter(b => b.type !== 'root_bound');
+        unit.speedStage = (unit.speedStage || 0) + 1; // 恢复速度
+        addLog(`${unit.name} 的「扎根」状态消失了`);
+      }
+    }
+
+    // 处理流沙地狱状态（每回合伤害）
+    const sandTombDebuff1 = unit.debuffs?.find(d => d.type === 'sand_tomb');
+    if (sandTombDebuff1 && sandTombDebuff1.remainingDuration > 0) {
+      const sandTombDamage1 = Math.floor(unit.maxHp * (sandTombDebuff1.damagePercent || 0.04));
+      unit.currentHp = Math.max(0, unit.currentHp - sandTombDamage1);
+      showDamageNumber(unit.id, sandTombDamage1, 'damage');
+      updateHpBar(unit);
+      addLog(`${unit.name} 受到「流沙地狱」伤害 ${sandTombDamage1} HP`, 'damage');
+
+      sandTombDebuff1.remainingDuration--;
+      if (sandTombDebuff1.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'sand_tomb');
+        addLog(`${unit.name} 的「流沙地狱」状态消失了`);
+      }
+    }
+
+    // 处理沙暴天气伤害（非地面/岩/钢属性）
+    if (globalWeather && globalWeather.type === 'sandstorm' && globalWeather.duration > 0) {
+      const elemental = unit.element?.toLowerCase() || '';
+      if (!['ground', 'rock', 'steel'].includes(elemental)) {
+        const sandstormDamage1 = Math.floor(unit.maxHp * 0.0625);
+        unit.currentHp = Math.max(0, unit.currentHp - sandstormDamage1);
+        showDamageNumber(unit.id, sandstormDamage1, 'damage');
+        updateHpBar(unit);
+        addLog(`${unit.name} 受到沙暴伤害 ${sandstormDamage1} HP`, 'damage');
+      }
+    }
+
     // 处理流水状态（速度+1级）
     const flowBuff1 = unit.buffs?.find(b => b.type === 'flow');
     if (flowBuff1 && flowBuff1.remainingDuration > 0) {
@@ -403,6 +496,17 @@ async function finishRoundMode3() {
       if (flowBuff1.remainingDuration <= 0) {
         unit.buffs = unit.buffs.filter(b => b.type !== 'flow');
         addLog(`${unit.name} 的「流水」状态消失了`);
+      }
+    }
+
+    // 处理灼伤印记buff（清除burnMark属性）
+    const burnMarkBuff1 = unit.buffs?.find(b => b.type === 'burn_mark');
+    if (burnMarkBuff1 && burnMarkBuff1.remainingDuration > 0) {
+      burnMarkBuff1.remainingDuration--;
+      if (burnMarkBuff1.remainingDuration <= 0) {
+        unit.buffs = unit.buffs.filter(b => b.type !== 'burn_mark');
+        unit.burnMark = false;
+        addLog(`${unit.name} 的「灼伤印记」消失了`);
       }
     }
 
@@ -508,6 +612,12 @@ async function executePlayerActionAndContinue(caster, skill, targetId) {
 
   // 清除高亮
   if (el) el.classList.remove('selected');
+
+  // 玩家行动后立即检查战斗结束
+  if (checkBattleEnd()) {
+    isRoundExecuting = false;
+    return;
+  }
 
   await delay(200);
 
@@ -722,6 +832,54 @@ async function startCombatPhaseMode2() {
       }
     }
 
+    // 处理枯萎状态 - 每回合固定伤害
+    const witherDebuff = unit.debuffs.find(d => d.type === 'wither');
+    if (witherDebuff && witherDebuff.stacks > 0) {
+      const witherDamage = witherDebuff.stacks * (witherDebuff.damageByAttributePower || 10);
+      unit.currentHp = Math.max(0, unit.currentHp - witherDamage);
+      showDamageNumber(unit.id, witherDamage, 'damage');
+      updateHpBar(unit);
+      addLog(`${unit.name} 受到「枯萎」伤害 ${witherDamage} HP（${witherDebuff.stacks}层）`, 'damage');
+
+      witherDebuff.stacks = Math.max(1, Math.floor(witherDebuff.stacks / 2));
+      witherDebuff.remainingDuration--;
+
+      if (witherDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'wither');
+        addLog(`${unit.name} 的「枯萎」状态消失了`);
+      }
+    }
+
+    // 处理寄生种子 - 回合结束时对目标造成伤害并回复自身
+    const parasiticSeedDebuff = unit.debuffs?.find(d => d.type === 'parasitic_seed');
+    if (parasiticSeedDebuff && parasiticSeedDebuff.remainingDuration > 0 && parasiticSeedDebuff.caster) {
+      // 找到释放寄生种子的单位（caster是对象引用）
+      const sourceUnit = parasiticSeedDebuff.caster;
+
+      if (sourceUnit && sourceUnit.currentHp > 0) {
+        const drainDamage = Math.floor(unit.maxHp * (parasiticSeedDebuff.drainPercent || 0.06));
+        const healAmount = drainDamage;
+
+        // 对目标造成伤害
+        unit.currentHp = Math.max(0, unit.currentHp - drainDamage);
+        showDamageNumber(unit.id, drainDamage, 'damage');
+        updateHpBar(unit);
+        addLog(`寄生种子吸取 ${unit.name} 的 ${drainDamage} HP`, 'damage');
+
+        // 为释放者回复HP
+        sourceUnit.currentHp = Math.min(sourceUnit.maxHp, sourceUnit.currentHp + healAmount);
+        showDamageNumber(sourceUnit.id, healAmount, 'heal');
+        updateHpBar(sourceUnit);
+        addLog(`${sourceUnit.name} 回复 ${healAmount} HP`, 'heal');
+      }
+
+      parasiticSeedDebuff.remainingDuration--;
+      if (parasiticSeedDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'parasitic_seed');
+        addLog(`${unit.name} 的「寄生种子」效果消失了`);
+      }
+    }
+
     // 处理燃尽印记
     if (unit.combustionStacks > 0 && unit.currentHp > 0) {
       unit.combustionTurnsLeft--;
@@ -838,6 +996,17 @@ async function startCombatPhaseMode2() {
         addLog(`${unit.name} 的「流水」状态消失了`);
       }
     }
+
+    // 处理灼伤印记buff（清除burnMark属性）
+    const burnMarkBuff = unit.buffs?.find(b => b.type === 'burn_mark');
+    if (burnMarkBuff && burnMarkBuff.remainingDuration > 0) {
+      burnMarkBuff.remainingDuration--;
+      if (burnMarkBuff.remainingDuration <= 0) {
+        unit.buffs = unit.buffs.filter(b => b.type !== 'burn_mark');
+        unit.burnMark = false;
+        addLog(`${unit.name} 的「灼伤印记」消失了`);
+      }
+    }
   }
 
   await delay(500);
@@ -947,6 +1116,54 @@ async function startCombatPhase() {
       if (burnDebuff.remainingDuration <= 0) {
         unit.debuffs = unit.debuffs.filter(d => d.type !== 'burn');
         addLog(`${unit.name} 的灼烧状态消失了`);
+      }
+    }
+
+    // 处理枯萎状态 - 每回合固定伤害
+    const witherDebuff = unit.debuffs.find(d => d.type === 'wither');
+    if (witherDebuff && witherDebuff.stacks > 0) {
+      const witherDamage = witherDebuff.stacks * (witherDebuff.damageByAttributePower || 10);
+      unit.currentHp = Math.max(0, unit.currentHp - witherDamage);
+      showDamageNumber(unit.id, witherDamage, 'damage');
+      updateHpBar(unit);
+      addLog(`${unit.name} 受到「枯萎」伤害 ${witherDamage} HP（${witherDebuff.stacks}层）`, 'damage');
+
+      witherDebuff.stacks = Math.max(1, Math.floor(witherDebuff.stacks / 2));
+      witherDebuff.remainingDuration--;
+
+      if (witherDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'wither');
+        addLog(`${unit.name} 的「枯萎」状态消失了`);
+      }
+    }
+
+    // 处理寄生种子 - 回合结束时对目标造成伤害并回复自身
+    const parasiticSeedDebuff = unit.debuffs?.find(d => d.type === 'parasitic_seed');
+    if (parasiticSeedDebuff && parasiticSeedDebuff.remainingDuration > 0 && parasiticSeedDebuff.caster) {
+      // 找到释放寄生种子的单位（caster是对象引用）
+      const sourceUnit = parasiticSeedDebuff.caster;
+
+      if (sourceUnit && sourceUnit.currentHp > 0) {
+        const drainDamage = Math.floor(unit.maxHp * (parasiticSeedDebuff.drainPercent || 0.06));
+        const healAmount = drainDamage;
+
+        // 对目标造成伤害
+        unit.currentHp = Math.max(0, unit.currentHp - drainDamage);
+        showDamageNumber(unit.id, drainDamage, 'damage');
+        updateHpBar(unit);
+        addLog(`寄生种子吸取 ${unit.name} 的 ${drainDamage} HP`, 'damage');
+
+        // 为释放者回复HP
+        sourceUnit.currentHp = Math.min(sourceUnit.maxHp, sourceUnit.currentHp + healAmount);
+        showDamageNumber(sourceUnit.id, healAmount, 'heal');
+        updateHpBar(sourceUnit);
+        addLog(`${sourceUnit.name} 回复 ${healAmount} HP`, 'heal');
+      }
+
+      parasiticSeedDebuff.remainingDuration--;
+      if (parasiticSeedDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'parasitic_seed');
+        addLog(`${unit.name} 的「寄生种子」效果消失了`);
       }
     }
 
@@ -1074,6 +1291,62 @@ async function startCombatPhase() {
       }
     }
 
+    // 处理扎根状态（每回合回复8%HP）
+    const rootBoundBuff = unit.buffs?.find(b => b.type === 'root_bound');
+    if (rootBoundBuff && rootBoundBuff.remainingDuration > 0) {
+      const rootBoundHeal = Math.floor(unit.maxHp * 0.08);
+      unit.currentHp = Math.min(unit.maxHp, unit.currentHp + rootBoundHeal);
+      showDamageNumber(unit.id, rootBoundHeal, 'heal');
+      updateHpBar(unit);
+      addLog(`${unit.name} 的「扎根」回复 ${rootBoundHeal} HP`, 'heal');
+
+      rootBoundBuff.remainingDuration--;
+      if (rootBoundBuff.remainingDuration <= 0) {
+        unit.buffs = unit.buffs.filter(b => b.type !== 'root_bound');
+        unit.speedStage = (unit.speedStage || 0) + 1;
+        addLog(`${unit.name} 的「扎根」状态消失了`);
+      }
+    }
+
+    // 处理流沙地狱状态（每回合伤害）
+    const sandTombDebuff = unit.debuffs?.find(d => d.type === 'sand_tomb');
+    if (sandTombDebuff && sandTombDebuff.remainingDuration > 0) {
+      const sandTombDamage = Math.floor(unit.maxHp * (sandTombDebuff.damagePercent || 0.04));
+      unit.currentHp = Math.max(0, unit.currentHp - sandTombDamage);
+      showDamageNumber(unit.id, sandTombDamage, 'damage');
+      updateHpBar(unit);
+      addLog(`${unit.name} 受到「流沙地狱」伤害 ${sandTombDamage} HP`, 'damage');
+
+      sandTombDebuff.remainingDuration--;
+      if (sandTombDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'sand_tomb');
+        addLog(`${unit.name} 的「流沙地狱」状态消失了`);
+      }
+    }
+
+    // 处理沙暴天气伤害（非地面/岩/钢属性）
+    if (globalWeather && globalWeather.type === 'sandstorm' && globalWeather.duration > 0) {
+      const elemental = unit.element?.toLowerCase() || '';
+      if (!['ground', 'rock', 'steel'].includes(elemental)) {
+        const sandstormDamage = Math.floor(unit.maxHp * 0.0625);
+        unit.currentHp = Math.max(0, unit.currentHp - sandstormDamage);
+        showDamageNumber(unit.id, sandstormDamage, 'damage');
+        updateHpBar(unit);
+        addLog(`${unit.name} 受到沙暴伤害 ${sandstormDamage} HP`, 'damage');
+      }
+    }
+
+    // 处理灼伤印记buff（清除burnMark属性）
+    const burnMarkBuff = unit.buffs?.find(b => b.type === 'burn_mark');
+    if (burnMarkBuff && burnMarkBuff.remainingDuration > 0) {
+      burnMarkBuff.remainingDuration--;
+      if (burnMarkBuff.remainingDuration <= 0) {
+        unit.buffs = unit.buffs.filter(b => b.type !== 'burn_mark');
+        unit.burnMark = false;
+        addLog(`${unit.name} 的「灼伤印记」消失了`);
+      }
+    }
+
     // 处理雨天天气
     if (globalWeather && globalWeather.type === 'rainy' && globalWeather.duration > 0) {
       globalWeather.duration--;
@@ -1174,6 +1447,8 @@ async function executeActionMode3(action, actionIndex, totalActions) {
     showDamageNumber(action.caster.id, burnMarkDamage, 'damage');
     updateHpBar(action.caster);
     addLog(`${action.caster.name} 的「灼伤印记」触发，受到 ${burnMarkDamage} ${damageTypeText}伤害！`, 'damage');
+    // 触发后清除灼伤印记属性
+    action.caster.burnMark = false;
   }
 
   await delay(400);
@@ -1334,6 +1609,8 @@ async function executeAction(action) {
     showDamageNumber(action.caster.id, burnMarkDamage, 'damage');
     updateHpBar(action.caster);
     addLog(`${action.caster.name} 的「灼伤印记」触发，受到 ${burnMarkDamage} ${damageTypeText}伤害！`, 'damage');
+    // 触发后清除灼伤印记属性
+    action.caster.burnMark = false;
   }
 
   await delay(400);
@@ -1980,6 +2257,54 @@ async function finishRound() {
       }
     }
 
+    // 处理枯萎状态 - 每回合固定伤害
+    const witherDebuff = unit.debuffs.find(d => d.type === 'wither');
+    if (witherDebuff && witherDebuff.stacks > 0) {
+      const witherDamage = witherDebuff.stacks * (witherDebuff.damageByAttributePower || 10);
+      unit.currentHp = Math.max(0, unit.currentHp - witherDamage);
+      showDamageNumber(unit.id, witherDamage, 'damage');
+      updateHpBar(unit);
+      addLog(`${unit.name} 受到「枯萎」伤害 ${witherDamage} HP（${witherDebuff.stacks}层）`, 'damage');
+
+      witherDebuff.stacks = Math.max(1, Math.floor(witherDebuff.stacks / 2));
+      witherDebuff.remainingDuration--;
+
+      if (witherDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'wither');
+        addLog(`${unit.name} 的「枯萎」状态消失了`);
+      }
+    }
+
+    // 处理寄生种子 - 回合结束时对目标造成伤害并回复自身
+    const parasiticSeedDebuff = unit.debuffs?.find(d => d.type === 'parasitic_seed');
+    if (parasiticSeedDebuff && parasiticSeedDebuff.remainingDuration > 0 && parasiticSeedDebuff.caster) {
+      // 找到释放寄生种子的单位（caster是对象引用）
+      const sourceUnit = parasiticSeedDebuff.caster;
+
+      if (sourceUnit && sourceUnit.currentHp > 0) {
+        const drainDamage = Math.floor(unit.maxHp * (parasiticSeedDebuff.drainPercent || 0.06));
+        const healAmount = drainDamage;
+
+        // 对目标造成伤害
+        unit.currentHp = Math.max(0, unit.currentHp - drainDamage);
+        showDamageNumber(unit.id, drainDamage, 'damage');
+        updateHpBar(unit);
+        addLog(`寄生种子吸取 ${unit.name} 的 ${drainDamage} HP`, 'damage');
+
+        // 为释放者回复HP
+        sourceUnit.currentHp = Math.min(sourceUnit.maxHp, sourceUnit.currentHp + healAmount);
+        showDamageNumber(sourceUnit.id, healAmount, 'heal');
+        updateHpBar(sourceUnit);
+        addLog(`${sourceUnit.name} 回复 ${healAmount} HP`, 'heal');
+      }
+
+      parasiticSeedDebuff.remainingDuration--;
+      if (parasiticSeedDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'parasitic_seed');
+        addLog(`${unit.name} 的「寄生种子」效果消失了`);
+      }
+    }
+
     // 处理燃尽印记
     if (unit.combustionStacks > 0 && unit.currentHp > 0) {
       unit.combustionTurnsLeft--;
@@ -2096,6 +2421,62 @@ async function finishRound() {
       if (flowBuff.remainingDuration <= 0) {
         unit.buffs = unit.buffs.filter(b => b.type !== 'flow');
         addLog(`${unit.name} 的「流水」状态消失了`);
+      }
+    }
+
+    // 处理扎根状态（每回合回复8%HP）
+    const rootBoundBuff = unit.buffs?.find(b => b.type === 'root_bound');
+    if (rootBoundBuff && rootBoundBuff.remainingDuration > 0) {
+      const rootBoundHeal = Math.floor(unit.maxHp * 0.08);
+      unit.currentHp = Math.min(unit.maxHp, unit.currentHp + rootBoundHeal);
+      showDamageNumber(unit.id, rootBoundHeal, 'heal');
+      updateHpBar(unit);
+      addLog(`${unit.name} 的「扎根」回复 ${rootBoundHeal} HP`, 'heal');
+
+      rootBoundBuff.remainingDuration--;
+      if (rootBoundBuff.remainingDuration <= 0) {
+        unit.buffs = unit.buffs.filter(b => b.type !== 'root_bound');
+        unit.speedStage = (unit.speedStage || 0) + 1;
+        addLog(`${unit.name} 的「扎根」状态消失了`);
+      }
+    }
+
+    // 处理流沙地狱状态（每回合伤害）
+    const sandTombDebuff = unit.debuffs?.find(d => d.type === 'sand_tomb');
+    if (sandTombDebuff && sandTombDebuff.remainingDuration > 0) {
+      const sandTombDamage = Math.floor(unit.maxHp * (sandTombDebuff.damagePercent || 0.04));
+      unit.currentHp = Math.max(0, unit.currentHp - sandTombDamage);
+      showDamageNumber(unit.id, sandTombDamage, 'damage');
+      updateHpBar(unit);
+      addLog(`${unit.name} 受到「流沙地狱」伤害 ${sandTombDamage} HP`, 'damage');
+
+      sandTombDebuff.remainingDuration--;
+      if (sandTombDebuff.remainingDuration <= 0) {
+        unit.debuffs = unit.debuffs.filter(d => d.type !== 'sand_tomb');
+        addLog(`${unit.name} 的「流沙地狱」状态消失了`);
+      }
+    }
+
+    // 处理沙暴天气伤害（非地面/岩/钢属性）
+    if (globalWeather && globalWeather.type === 'sandstorm' && globalWeather.duration > 0) {
+      const elemental = unit.element?.toLowerCase() || '';
+      if (!['ground', 'rock', 'steel'].includes(elemental)) {
+        const sandstormDamage = Math.floor(unit.maxHp * 0.0625);
+        unit.currentHp = Math.max(0, unit.currentHp - sandstormDamage);
+        showDamageNumber(unit.id, sandstormDamage, 'damage');
+        updateHpBar(unit);
+        addLog(`${unit.name} 受到沙暴伤害 ${sandstormDamage} HP`, 'damage');
+      }
+    }
+
+    // 处理灼伤印记buff（清除burnMark属性）
+    const burnMarkBuff = unit.buffs?.find(b => b.type === 'burn_mark');
+    if (burnMarkBuff && burnMarkBuff.remainingDuration > 0) {
+      burnMarkBuff.remainingDuration--;
+      if (burnMarkBuff.remainingDuration <= 0) {
+        unit.buffs = unit.buffs.filter(b => b.type !== 'burn_mark');
+        unit.burnMark = false;
+        addLog(`${unit.name} 的「灼伤印记」消失了`);
       }
     }
 
