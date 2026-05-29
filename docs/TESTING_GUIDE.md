@@ -85,7 +85,7 @@ npx playwright install chromium
 ### 运行测试
 
 ```bash
-# 测试全部 9 个火系技能
+# 测试全部技能（包括火系、水系、草系等）
 node test-inject.cjs
 
 # 测试单个技能
@@ -102,7 +102,18 @@ node test-inject.cjs blaze_will
 # [PASS] 蓄焰 (flame_charge_skill)
 # [PASS] 燃尽 (combustion)
 # [PASS] 炎之意志 (blaze_will)
-# ========== 结果: 9 通过, 0 失败 ==========
+# [PASS] 水流冲击 (water_jet)
+# [PASS] 水炮 (hydro_pump)
+# [PASS] 漩涡 (abyss_vortex)
+# [PASS] 热水 (scald)
+# [PASS] 浊流 (muddy_water)
+# [PASS] 水之守护 (aqua_shield)
+# [PASS] 清泉护盾 (clear_spring)
+# [PASS] 治愈波动 (healing_wave)
+# [PASS] 水疗之术 (aqua_therapy)
+# [PASS] 雨天 (rainy_day)
+# ...（草系技能略）
+# ========== 结果: 31 通过, 0 失败 ==========
 ```
 
 ### 测试脚本核心逻辑
@@ -159,9 +170,37 @@ node test-inject.cjs blaze_will
 | `combustion` | 燃尽 | 3回合后扣30%HP | `燃尽3回合` | `target.debuffs[combustion]` |
 | `blaze_will` | 炎之意志 | 攻击+1、特攻+1、火伤+25% | `炎意3回合` | `target.buffs[blaze_will]` |
 
----
+### 水系技能
 
-## 测试覆盖清单
+| 技能 ID | 技能名 | 效果描述 | 标签显示 | 状态所在 |
+|---------|--------|---------|---------|---------|
+| `water_jet` | 水流冲击 | 特防-1级/层浸透 | `浸透2回合` | `target.debuffs[water_soak]` |
+| `hydro_pump` | 水炮 | 施法者虚弱2回合 | `虚弱2回合` | `caster.debuffs[weakness]` |
+| `abyss_vortex` | 漩涡 | 溺水状态 | `溺水3回合` | `target.debuffs[drowning]` |
+| `scald` | 热水 | 30%概率蒸汽灼伤 | `蒸汽灼伤` | `target.debuffs[steam_burn]` |
+| `muddy_water` | 浊流 | 命中率-1级/层浑浊 | `浑浊1层` | `target.debuffs[muddy]` |
+| `aqua_shield` | 水之守护 | 减伤70%，被攻击时反击者获得浸透 | `水之守护` | `unit.buffs[aqua_shield]` |
+| `clear_spring` | 清泉护盾 | 每回合回复10%HP并清除1个负面状态 | `清泉3回合` | `unit.buffs[clear_spring]` |
+| `healing_wave` | 治愈波动 | 治疗目标25%HP | `回复25%` | HP增加验证 |
+| `aqua_therapy` | 水疗之术 | 治疗全体15%HP + 速度+1级 | `流水2回合` | `unit.buffs[flow]` |
+| `rainy_day` | 雨天 | 创造雨天环境（持续3回合） | 天气设置 | `battleEnvironment === 'rainy'` |
+
+### 草系技能
+
+| 技能 ID | 技能名 | 效果描述 | 标签显示 | 状态所在 |
+|---------|--------|---------|---------|---------|
+| `leaf_beam` | 叶绿光束 | 80威力+枯萎1层 | `枯萎` | `target.debuffs[wither]` |
+| `bloom_dance` | 绽放之舞 | 90威力+必定暴击 | 无特定标签 | 技能正常执行 |
+| `fiber_weave` | 纤维化 | 40威力+光能汇聚1层 | `光能×1` | `caster.lightGatherStacks` |
+| `solar_detonation` | 光能爆轰 | 消耗光能+威力100+60×层 | 无特定标签 | 技能正常执行 |
+| `splendor` | 韶光 | 140威力+芬芳环境 | `芬芳` | `battleEnvironment='fragrant'` |
+| `root_bound` | 扎根之躯 | 每回合回复8%HP+速度-1 | `扎根` | `unit.rootBound = true` |
+| `vine_armor` | 藤蔓护甲 | 减伤50%+缠绕攻击者 | `藤蔓` | `unit.entangleOnHit = true` |
+| `grass_counter_stance` | 防反之姿 | 反弹60%伤害+先手 | `防反` | `unit.counterStance = true` |
+| `light_gather` | 光能聚集 | 光能汇聚1层 | `光能×1` | `caster.lightGatherStacks` |
+| `fragrant_bloom` | 芬芳绽放 | 芬芳环境+草伤+25% | `芬芳` | `unit.fragrantBloom = true` |
+| `parasitic_seed` | 寄生之种 | 每回合6%HP流失+施法者回复 | `寄生种子` | `target.debuffs[parasitic_seed]` |
+| `nutrient_absorption` | 养分汲取 | 回复20%HP+4点能量 | `回复20%` | `target.buffs[heal_buff]` |
 
 ### 三层测试模型
 
@@ -209,16 +248,35 @@ DOM 标签显示
 
 ### 问题 2：执行层 `effect === 'xxx'` 条件不匹配
 
-**原因**：`skills-db.js` 的 `statusId` 是 snake_case（如 `'burn_mark'`），但执行层检查的是 camelCase（如 `'burnMark'`）
+**原因 1**：`skills-db.js` 的 `statusId` 是 snake_case（如 `'burn_mark'`），但 `STATUS_EFFECT_MAP` 中 `effect` 字段是 camelCase（如 `'burnMark'`）。`Object.assign` 覆盖后，handler 找不到。
 
-**排查**：在浏览器控制台直接打印 `skill.effect` 值，看实际是什么字符串
+**排查**：在浏览器控制台直接打印 `skill.effect` 值：
 
 ```javascript
 // 在 test-inject.cjs 的调试块中
 console.log('skill.effect:', skill.effect);
 ```
 
-### 问题 3：虚弱、灼伤印记等 debuff 在错误的单位上
+**解决**：确保 `STATUS_EFFECT_MAP` 中的 `effect` 值与执行层 handler 检查的字符串一致（使用 underscore 命名）。
+
+**原因 2**：`skills-db.js` 的 `statusId` 与执行层 handler 检查的 `effect` 值名称不匹配。例如 `aqua_shield` 技能用 `statusId: 'defense_up'` 但执行层检查 `'water_guard'`。
+
+**排查**：打印 skill 的所有属性，找到 `effect` 的实际值，然后与 handler 中的 `===` 检查比较。
+
+**原因 3**：handler 在错误的分支中（如 `ally` 分支而非 `self` 分支）。`aqua_shield` 是 `self` 目标但 handler 只在 `ally` 分支中。
+
+### 问题 3：治疗技能不生效（healPercent 值太小）
+
+**原因**：`skills-db.js` 中 `percent` 使用小数表示（如 `0.0025` 表示 0.25%，`0.0015` 表示 0.15%）。`parseSingleEffect` 中 `heal` 分支直接使用此值，导致治疗量极小。
+
+**解决**：在 `js/03-skill-effects.js` 的 `case 'heal':` 中，将 `percent` 乘以 100：
+
+```javascript
+result.healPercent = (effect.percent || 0) * 100;
+// 结果 0.25 表示治疗 25% HP
+```
+
+### 问题 4：虚弱、灼伤印记等 debuff 在错误的单位上
 
 **原因**：不同技能的效果生效位置不同
 

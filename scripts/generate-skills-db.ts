@@ -261,6 +261,11 @@ function convertSkill(skill: Skill, element: string): OldSkill {
         effects.push({ type: 'add_status', statusId: 'nutrient', value: buff.value });
       } else if (buffType === BuffType.ELECTRIC_FIELD_BUFF) {
         effects.push({ type: 'add_status', statusId: 'electric_field_buff', value: buff.value });
+      } else if (buffType === 'mind_body') {
+        // 心智护盾：精神免疫+减伤
+        effects.push({ type: 'add_status', statusId: 'mind_body' });
+        effects.push({ type: 'shield', amount: buff.value ? 30 : 30, duration: buff.duration ?? 1 });
+        effects.push({ type: 'resistance', element: 'psychic', value: 1.0, duration: buff.duration ?? 1 });
       } else {
         effects.push({ type: 'add_status', statusId: buffType });
       }
@@ -285,7 +290,8 @@ function convertSkill(skill: Skill, element: string): OldSkill {
     }
 
     if (effect.healing) {
-      effects.push({ type: 'heal', percent: (effect.healing.percent ?? 0) / 100 });
+      // 保持原始百分比值（不除以100），让执行层自行判断是否要除以100
+      effects.push({ type: 'heal', percent: effect.healing.percent ?? 0 });
     }
 
     if (effect.cleanse) {
@@ -299,7 +305,6 @@ function convertSkill(skill: Skill, element: string): OldSkill {
 
     if (effect.special) {
       const sp = effect.special;
-      // 记录 special 类型供后续识别
       effects.push({ type: 'special', specialType: sp.type, value: sp.value });
     }
 

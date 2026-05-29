@@ -39,6 +39,7 @@ import {
   PsychicTerrainBuff,
   ProphecyMarkBuff
 } from '../effects';
+import { BuffType, DebuffType } from '../types';
 import { CombatUnit } from '../battle/CombatUnit';
 
 // ==================== 技能倾向工厂函数 ====================
@@ -137,13 +138,28 @@ export const MIND_PIERCE: Skill = (() => {
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
-    effects: [{
-      damage: {
-        basePower: 60,
-        damageType: DamageType.PHYSICAL,
-        element: ElementType.PSYCHIC
+    effects: [
+      {
+        damage: {
+          basePower: 60,
+          damageType: DamageType.PHYSICAL,
+          element: ElementType.PSYCHIC
+        }
+      },
+      {
+        applyBuff: {
+          buffType: BuffType.PROPHECY_MARK,
+          stacks: 1,
+          duration: 999
+        }
+      },
+      {
+        applyDebuff: {
+          debuffType: DebuffType.MIND_WOUND,
+          duration: 2
+        }
       }
-    }],
+    ],
     category: '超能奥秘流·攻击',
     tags: ['超能', '奥秘流', '攻击', '预言标记']
   };
@@ -164,13 +180,20 @@ export const PSYCHIC_HIT: Skill = (() => {
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
-    effects: [{
-      damage: {
-        basePower: 80,
-        damageType: DamageType.MIXED,
-        element: ElementType.PSYCHIC
+    effects: [
+      {
+        damage: {
+          basePower: 80,
+          damageType: DamageType.MIXED,
+          element: ElementType.PSYCHIC
+        }
+      },
+      {
+        special: {
+          type: 'pierce_shield' as any
+        }
       }
-    }],
+    ],
     category: '超能奥秘流·攻击',
     tags: ['超能', '奥秘流', '攻击', '无视护盾', '破盾']
   };
@@ -191,13 +214,22 @@ export const STORED_POWER: Skill = (() => {
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
-    effects: [{
-      damage: {
-        basePower: 20,
-        damageType: DamageType.SPECIAL,
-        element: ElementType.PSYCHIC
+    effects: [
+      {
+        damage: {
+          basePower: 20,
+          damageType: DamageType.SPECIAL,
+          element: ElementType.PSYCHIC
+        }
+      },
+      {
+        // 标记为预言标记加成技能，执行层会检查 caster.prop 动态计算威力
+        special: {
+          type: 'prophecy_mark_bonus' as any,
+          value: 20  // 每层+20威力
+        }
       }
-    }],
+    ],
     category: '超能奥秘流·攻击',
     tags: ['超能', '奥秘流', '攻击', '累积强化', '预言标记']
   };
@@ -214,22 +246,28 @@ export const VOID_PROPECY: Skill = (() => {
   const definition: SkillDefinition = {
     id: 'void_prophecy',
     name: '虚空预言',
-    description: '蓄力1回合后发动，造成140威力特殊伤害并附加「禁忌」（所有能力等级-2，持续2回合）【蓄力可被打断】',
+    description: '对目标造成140威力特殊伤害并附加「禁忌」（所有能力等级-2，持续2回合）',
     type: 'action',
     energyCost: EnergyCost.ULTIMATE,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
-    chargeTurns: 1,
-    canBeInterrupted: true,
-    effects: [{
-      damage: {
-        basePower: 140,
-        damageType: DamageType.SPECIAL,
-        element: ElementType.PSYCHIC
+    effects: [
+      {
+        damage: {
+          basePower: 140,
+          damageType: DamageType.SPECIAL,
+          element: ElementType.PSYCHIC
+        }
+      },
+      {
+        applyDebuff: {
+          debuffType: DebuffType.FORBIDDEN,
+          duration: 2
+        }
       }
-    }],
+    ],
     category: '超能奥秘流·攻击',
-    tags: ['超能', '奥秘流', '攻击', '蓄力', '能力下降']
+    tags: ['超能', '奥秘流', '攻击', '能力下降']
   };
   return new Skill(definition);
 })();
@@ -248,13 +286,27 @@ export const FUTURE_SIGHT: Skill = (() => {
     energyCost: EnergyCost.ULTIMATE,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.ATTACK,
-    effects: [{
-      damage: {
-        basePower: 120,
-        damageType: DamageType.SPECIAL,
-        element: ElementType.PSYCHIC
+    effects: [
+      {
+        damage: {
+          basePower: 120,
+          damageType: DamageType.SPECIAL,
+          element: ElementType.PSYCHIC
+        }
+      },
+      {
+        applyDebuff: {
+          debuffType: DebuffType.FORBIDDEN,
+          duration: 2
+        }
+      },
+      {
+        special: {
+          type: 'future_sight' as any,
+          value: 120
+        }
       }
-    }],
+    ],
     category: '超能奥秘流·攻击',
     tags: ['超能', '奥秘流', '攻击', '延迟触发', '禁忌']
   };
@@ -278,13 +330,28 @@ export const MIND_SHIELD_SKILL: Skill = (() => {
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
-    effects: [{
-      applyBuff: {
-        buffType: 'mind_body' as any,
-        duration: 1,
-        value: 0.5  // 50%减伤
+    effects: [
+      {
+        applyBuff: {
+          buffType: 'mind_body' as any,
+          duration: 1,
+          value: 0.5
+        }
+      },
+      {
+        shield: {
+          amount: 30,
+          duration: 1
+        }
+      },
+      {
+        resistance: {
+          element: 'psychic',
+          value: 1.0,
+          duration: 1
+        }
       }
-    }],
+    ],
     category: '超能奥秘流·防御',
     tags: ['超能', '奥秘流', '防御', '减伤', '精神免疫']
   };
@@ -305,7 +372,14 @@ export const MIRROR_REFLECT: Skill = (() => {
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
-    effects: [],
+    effects: [
+      {
+        special: {
+          type: 'mirror_reflect' as any,
+          value: 1.8
+        }
+      }
+    ],
     category: '超能奥秘流·防御',
     tags: ['超能', '奥秘流', '防御', '反射', '反击']
   };
@@ -326,7 +400,14 @@ export const MIST_BODY: Skill = (() => {
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SELF,
     tendency: SkillTendency.DEFENSE,
-    effects: [],
+    effects: [
+      {
+        special: {
+          type: 'mist_body' as any,
+          value: 0.7
+        }
+      }
+    ],
     category: '超能奥秘流·防御',
     tags: ['超能', '奥秘流', '防御', '闪避', '加速']
   };
@@ -376,7 +457,13 @@ export const PSYCHO_SHIFT: Skill = (() => {
     energyCost: EnergyCost.MEDIUM,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.SUPPORT,
-    effects: [],
+    effects: [
+      {
+        special: {
+          type: 'psycho_shift' as any
+        }
+      }
+    ],
     category: '超能奥秘流·辅助',
     tags: ['超能', '奥秘流', '辅助', '状态转移', '净化']
   };
@@ -449,7 +536,13 @@ export const MIND_SYNC: Skill = (() => {
     energyCost: EnergyCost.HIGH,
     target: SkillTarget.ALLY,
     tendency: SkillTendency.SUPPORT,
-    effects: [],
+    effects: [
+      {
+        special: {
+          type: 'mind_sync' as any
+        }
+      }
+    ],
     category: '超能奥秘流·辅助',
     tags: ['超能', '奥秘流', '辅助', '状态交换', '净化']
   };
@@ -460,7 +553,7 @@ export const MIND_SYNC: Skill = (() => {
  * 【辅助倾向6】命运编织
  * 指定1个敌方目标，3回合后触发「预言」效果
  * 预言效果：造成100点真实伤害+使目标所有能力等级-2
- * 
+ *
  * 高风险高回报的终极布局技能
  */
 export const FATE_WEAVE: Skill = (() => {
@@ -472,13 +565,27 @@ export const FATE_WEAVE: Skill = (() => {
     energyCost: EnergyCost.MEGA,
     target: SkillTarget.SINGLE,
     tendency: SkillTendency.SUPPORT,
-    effects: [{
-      damage: {
-        basePower: 100,
-        damageType: DamageType.TRUE,
-        element: ElementType.PSYCHIC
+    effects: [
+      {
+        damage: {
+          basePower: 100,
+          damageType: DamageType.TRUE,
+          element: ElementType.PSYCHIC
+        }
+      },
+      {
+        applyDebuff: {
+          debuffType: DebuffType.FORBIDDEN,
+          duration: 2
+        }
+      },
+      {
+        special: {
+          type: 'fate_weave' as any,
+          value: 100
+        }
       }
-    }],
+    ],
     category: '超能奥秘流·辅助',
     tags: ['超能', '奥秘流', '辅助', '延迟效果', '真实伤害', '终极技能']
   };

@@ -74,14 +74,10 @@ function parseSingleEffect(effect) {
       break;
 
     case 'heal':
-      // 修复：skills-db 中 percent 使用小数表示（如 0.25 表示 25%，即 0.0025 在 eff 字符串中）
-      // 但在 effects 数组中，0.0025 表示 0.25% 治疗（太小了，无意义）
-      // 实际意图应该是 25%，需要乘以 100
-      // 对于所有值都乘以 100，这样：
-      //   - 0.0025 (skills-db 新格式) → 0.25 (25%)
-      //   - 25 (旧格式) → 2500 (超出100%，但 Math.min 会限制到 100%)
-      // 结果值 0.25 表示 25% 治疗
-      result.healPercent = (effect.percent || 0) * 100;
+      // 执行层统一规则：percent < 1 时直接使用（表示小数），percent >= 1 时除以 100（表示百分比）
+      // 例如：0.5 → 50%，25 → 0.25
+      const rawPercent = effect.percent || 0;
+      result.healPercent = rawPercent < 1 ? rawPercent : rawPercent / 100;
       result.type = 'heal';
       break;
 
@@ -89,6 +85,9 @@ function parseSingleEffect(effect) {
       result.type = 'shield';
       if (effect.reduction !== undefined) {
         result.damageReduction = effect.reduction;
+      }
+      if (effect.amount !== undefined) {
+        result.power = effect.amount;
       }
       break;
 
@@ -107,6 +106,7 @@ function parseSingleEffect(effect) {
         if (effect.stats.spAtk !== undefined) result.spAtkBoost = effect.stats.spAtk;
         if (effect.stats.speed !== undefined) result.speedBoost = effect.stats.speed;
         if (effect.stats.defense !== undefined) result.defenseBoost = effect.stats.defense;
+        if (effect.stats.dragon_blood !== undefined) result.dragonBlood = effect.stats.dragon_blood;
       }
       if (effect.attack !== undefined) result.attackBoost = effect.attack;
       if (effect.spAtk !== undefined) result.spAtkBoost = effect.spAtk;
@@ -154,6 +154,47 @@ function parseSingleEffect(effect) {
         result.effect = 'fragrantEnvironment';
       } else if (effect.statusId === 'light_gather') {
         result.lightGather = 1;
+      } else if (effect.statusId === 'burn_mark') {
+        result.effect = 'burn_mark';
+      } else if (effect.statusId === 'water_guard') {
+        result.effect = 'water_guard';
+      } else if (effect.statusId === 'static_body') {
+        result.paralysis = true;
+      } else if (effect.statusId === 'paralysis') {
+        result.paralysis = true;
+      } else if (effect.statusId === 'electric_deflect') {
+        result.electricDeflect = true;
+      } else if (effect.statusId === 'charge') {
+        result.charge = true;
+      } else if (effect.statusId === 'electric_field_buff') {
+        result.electricFieldEffect = true;
+      } else if (effect.statusId === 'static') {
+        result.staticMark = true;
+      } else if (effect.statusId === 'frost') {
+        result.frost = true;
+      } else if (effect.statusId === 'extreme_cold_mark') {
+        result.extremeColdMark = true;
+      } else if (effect.statusId === 'ice_armor') {
+        result.effect = 'frost_armor';
+      } else if (effect.statusId === 'ice_wall') {
+        result.effect = 'ice_wall';
+      } else if (effect.statusId === 'frost_mark') {
+        result.frostMark = true;
+      } else if (effect.statusId === 'frozen_land_env') {
+        result.effect = 'frozen_land';
+      } else if (effect.statusId === 'prophecy_mark') {
+        // 预言标记：累积层数，增强存储力量等技能威力
+        result.prophecyMark = true;
+        result.prophecyMarkStacks = effect.stacks || 1;
+      } else if (effect.statusId === 'mind_wound') {
+        // 心灵创伤：攻击命中率下降
+        result.mindWound = true;
+      } else if (effect.statusId === 'forbidden') {
+        // 禁忌：所有能力等级下降
+        result.forbidden = true;
+      } else if (effect.statusId === 'mind_body') {
+        // 心灵护体：减伤+精神免疫
+        result.mindShield = true;
       }
       break;
 
@@ -185,6 +226,7 @@ function parseSingleEffect(effect) {
 
     case 'clear_debuff':
       result.clearDebuff = true;
+      result.clearBuff = true;
       break;
 
     case 'energy_restore':
@@ -211,6 +253,9 @@ function parseSingleEffect(effect) {
       if (effect.statusId === 'weakness') {
         result.weaknessEffect = true;
       }
+      if (effect.statusId === 'dragon_power_loss') {
+        result.dragonPowerLoss = true;
+      }
       if (effect.stats) {
         if (effect.stats.attack !== undefined) result.attackBoost = -Math.abs(effect.stats.attack);
         if (effect.stats.spAtk !== undefined) result.spAtkBoost = -Math.abs(effect.stats.spAtk);
@@ -229,6 +274,7 @@ function parseSingleEffect(effect) {
         if (effect.stats.speed !== undefined) result.speedBoost = effect.stats.speed;
         if (effect.stats.defense !== undefined) result.defenseBoost = effect.stats.defense;
         if (effect.stats.grass_power !== undefined) result.lightGather = 1;
+        if (effect.stats.dragon_blood !== undefined) result.dragonBlood = effect.stats.dragon_blood;
       }
       break;
 
@@ -248,6 +294,58 @@ function parseSingleEffect(effect) {
       if (effect.specialType === 'weakness_debuff') {
         result.weaknessEffect = true;
       }
+      if (effect.specialType === 'dragon_crush') {
+        result.dragonCrush = true;
+      }
+      if (effect.specialType === 'dragon_oblivion') {
+        result.dragonOblivion = true;
+      }
+      if (effect.specialType === 'meteor_fall') {
+        result.meteorFall = true;
+      }
+      if (effect.specialType === 'dragon_resonance_ultimate') {
+        result.dragonResonanceUltimate = true;
+      }
+      if (effect.specialType === 'dragon_scales_shield') {
+        result.dragonScalesShield = true;
+      }
+      // 超能系特殊效果
+      if (effect.specialType === 'prophecy_mark_bonus') {
+        result.prophecyMarkBonus = true;
+        result.prophecyMarkBonusValue = effect.value || 20;
+      }
+      if (effect.specialType === 'pierce_shield') {
+        result.pierceShield = true;
+      }
+      if (effect.specialType === 'mirror_reflect') {
+        result.mirrorReflect = true;
+        result.mirrorReflectDamage = effect.value || 1.8;
+      }
+      if (effect.specialType === 'mist_body') {
+        result.mistBody = true;
+        result.mistBodyChance = effect.value || 0.7;
+      }
+      if (effect.specialType === 'psycho_shift') {
+        result.psychoShift = true;
+      }
+      if (effect.specialType === 'mind_sync') {
+        result.mindSync = true;
+      }
+      if (effect.specialType === 'future_sight') {
+        result.futureSight = true;
+        result.futureSightPower = effect.value || 120;
+      }
+      if (effect.specialType === 'fate_weave') {
+        result.fateWeave = true;
+        result.fateWeaveDamage = effect.value || 100;
+      }
+      break;
+
+    case 'resistance':
+      result.type = 'resistance';
+      if (effect.element) result.element = effect.element;
+      if (effect.value !== undefined) result.resistanceValue = effect.value;
+      if (effect.duration !== undefined) result.duration = effect.duration;
       break;
 
     case 'remove_buff':
@@ -383,11 +481,49 @@ function convertSkillToBattleFormat(skillData, element) {
   let fireBodyEffect = false;
   let fireShield = false;
   let vineBody = false;
+  let paralysis = false;
+  let electricDeflect = false;
+  let charge = false;
+  let electricFieldEffect = false;
+  let staticMark = false;
+  let frost = false;
+  let extremeColdMark = false;
+  let frostArmor = false;
+  let iceWall = false;
+  let frostMark = false;
+  let frozenLandEffect = false;
+  let dragonCrush = false;
+  let dragonOblivion = false;
+  let meteorFall = false;
+  let dragonResonanceUltimate = false;
+  let dragonScalesShield = false;
+  let dragonPowerLoss = false;
+  let dragonBlood = 0;
+  let resistances = [];  // 收集所有属性抗性效果 [{element, value, duration}]
+  // 超能系新字段
+  let prophecyMark = false;
+  let prophecyMarkBonus = false;
+  let prophecyMarkBonusValue = 20;
+  let mindWound = false;
+  let forbidden = false;
+  let mindShield = false;
+  let pierceShield = false;
+  let mirrorReflect = false;
+  let mirrorReflectDamage = 1.8;
+  let mistBody = false;
+  let mistBodyChance = 0.7;
+  let psychoShift = false;
+  let mindSync = false;
+  let futureSight = false;
+  let futureSightPower = 120;
+  let fateWeave = false;
+  let fateWeaveDamage = 100;
 
   // 解析冷却时间
   let cooldown = skillData.cooldown || 0;
 
-  if (skillData.effects && Array.isArray(skillData.effects)) {
+  // 只有当 effects 数组非空时才进行效果解析
+  if (skillData.effects && Array.isArray(skillData.effects) && skillData.effects.length > 0) {
     for (const effectItem of skillData.effects) {
       const parsed = parseSingleEffect(effectItem);
       Object.assign(
@@ -398,7 +534,11 @@ function convertSkillToBattleFormat(skillData, element) {
           drowningEffect, drowningDuration, weaknessEffect, weaknessDuration, muddyEffect,
           muddyMaxStacks, flowEffect, clearSpringEffect, clearSpringDuration, rainyDayEffect,
           rainyDayDuration, rainyDayPowerBoost, steamBurnChance, effect, burnStacks, burnChance,
-          burnMarkPower, type, combustionMark, flameCharge, blazeWillEffect },
+          burnMarkPower, type, combustionMark, flameCharge, blazeWillEffect, dragonBlood,
+          prophecyMark, prophecyMarkBonus, prophecyMarkBonusValue, mindWound, forbidden,
+          mindShield, pierceShield, mirrorReflect, mirrorReflectDamage, mistBody, mistBodyChance,
+          psychoShift, mindSync, futureSight, futureSightPower, fateWeave, fateWeaveDamage,
+          resistances },
         parsed
       );
       if (parsed.attackBoost !== undefined) attackBoost = parsed.attackBoost;
@@ -451,6 +591,49 @@ function convertSkillToBattleFormat(skillData, element) {
       if (parsed.fireBodyEffect !== undefined) fireBodyEffect = parsed.fireBodyEffect;
       if (parsed.fireShield !== undefined) fireShield = parsed.fireShield;
       if (parsed.vineBody !== undefined) vineBody = parsed.vineBody;
+      if (parsed.paralysis !== undefined) paralysis = parsed.paralysis;
+      if (parsed.electricDeflect !== undefined) electricDeflect = parsed.electricDeflect;
+      if (parsed.charge !== undefined) charge = parsed.charge;
+      if (parsed.electricFieldEffect !== undefined) electricFieldEffect = parsed.electricFieldEffect;
+      if (parsed.staticMark !== undefined) staticMark = parsed.staticMark;
+      if (parsed.frost !== undefined) frost = parsed.frost;
+      if (parsed.extremeColdMark !== undefined) extremeColdMark = parsed.extremeColdMark;
+      if (parsed.frostArmor !== undefined) frostArmor = parsed.frostArmor;
+      if (parsed.iceWall !== undefined) iceWall = parsed.iceWall;
+      if (parsed.frostMark !== undefined) frostMark = parsed.frostMark;
+      if (parsed.frozenLandEffect !== undefined) frozenLandEffect = parsed.frozenLandEffect;
+      if (parsed.dragonCrush !== undefined) dragonCrush = parsed.dragonCrush;
+      if (parsed.dragonOblivion !== undefined) dragonOblivion = parsed.dragonOblivion;
+      if (parsed.meteorFall !== undefined) meteorFall = parsed.meteorFall;
+      if (parsed.dragonResonanceUltimate !== undefined) dragonResonanceUltimate = parsed.dragonResonanceUltimate;
+      if (parsed.dragonScalesShield !== undefined) dragonScalesShield = parsed.dragonScalesShield;
+      if (parsed.dragonPowerLoss !== undefined) dragonPowerLoss = parsed.dragonPowerLoss;
+      if (parsed.dragonBlood !== undefined) dragonBlood = parsed.dragonBlood;
+      if (parsed.prophecyMark !== undefined) prophecyMark = parsed.prophecyMark;
+      if (parsed.prophecyMarkBonus !== undefined) prophecyMarkBonus = parsed.prophecyMarkBonus;
+      if (parsed.prophecyMarkBonusValue !== undefined) prophecyMarkBonusValue = parsed.prophecyMarkBonusValue;
+      if (parsed.mindWound !== undefined) mindWound = parsed.mindWound;
+      if (parsed.forbidden !== undefined) forbidden = parsed.forbidden;
+      if (parsed.mindShield !== undefined) mindShield = parsed.mindShield;
+      if (parsed.pierceShield !== undefined) pierceShield = parsed.pierceShield;
+      if (parsed.mirrorReflect !== undefined) mirrorReflect = parsed.mirrorReflect;
+      if (parsed.mirrorReflectDamage !== undefined) mirrorReflectDamage = parsed.mirrorReflectDamage;
+      if (parsed.mistBody !== undefined) mistBody = parsed.mistBody;
+      if (parsed.mistBodyChance !== undefined) mistBodyChance = parsed.mistBodyChance;
+      if (parsed.psychoShift !== undefined) psychoShift = parsed.psychoShift;
+      if (parsed.mindSync !== undefined) mindSync = parsed.mindSync;
+      if (parsed.futureSight !== undefined) futureSight = parsed.futureSight;
+      if (parsed.futureSightPower !== undefined) futureSightPower = parsed.futureSightPower;
+      if (parsed.fateWeave !== undefined) fateWeave = parsed.fateWeave;
+      if (parsed.fateWeaveDamage !== undefined) fateWeaveDamage = parsed.fateWeaveDamage;
+      if (parsed.resistanceValue !== undefined) {
+        // 从 parsed 对象收集抗性（因为 resistance case 可能设置了 element/value/duration）
+        resistances.push({
+          element: parsed.element || 'unknown',
+          value: parsed.resistanceValue,
+          duration: parsed.duration || 1
+        });
+      }
     }
   } else if (skillData.eff) {
     if (skillData.eff.includes('攻击+1级') || skillData.eff.includes('攻击+1')) {
@@ -662,6 +845,35 @@ function convertSkillToBattleFormat(skillData, element) {
     if (skillData.eff.includes('治疗') || skillData.eff.includes('回复')) {
       type = 'heal';
     }
+    if (skillData.eff.includes('混乱')) {
+      effect = 'confusion';
+    }
+    if (skillData.eff.includes('龙之气息')) {
+      const dragonBloodMatch = skillData.eff.match(/获得(\d+)层.*龙之气息/);
+      if (dragonBloodMatch) {
+        dragonBlood = parseInt(dragonBloodMatch[1]);
+      } else {
+        dragonBlood = 2; // default
+      }
+    }
+    if (skillData.eff.includes('龙之终焉')) {
+      dragonOblivion = true;
+    }
+    if (skillData.eff.includes('流星陨落')) {
+      meteorFall = true;
+    }
+    if (skillData.eff.includes('龙之碾压')) {
+      dragonCrush = true;
+    }
+    if (skillData.eff.includes('龙属共鸣') && skillData.eff.includes('极')) {
+      dragonResonanceUltimate = true;
+    }
+    if (skillData.eff.includes('龙鳞守护')) {
+      dragonScalesShield = true;
+    }
+    if (skillData.eff.includes('龙威减退') || skillData.eff.includes('攻击/特攻-2级')) {
+      dragonPowerLoss = true;
+    }
   }
 
   return {
@@ -723,6 +935,43 @@ function convertSkillToBattleFormat(skillData, element) {
     fireBodyEffect: fireBodyEffect,
     fireShield: fireShield,
     vineBody: vineBody,
+    paralysis: paralysis,
+    electricDeflect: electricDeflect,
+    charge: charge,
+    electricFieldEffect: electricFieldEffect,
+    staticMark: staticMark,
+    frost: frost,
+    extremeColdMark: extremeColdMark,
+    frostArmor: frostArmor,
+    iceWall: iceWall,
+    frostMark: frostMark,
+    frozenLandEffect: frozenLandEffect,
+    dragonCrush: dragonCrush,
+    dragonOblivion: dragonOblivion,
+    meteorFall: meteorFall,
+    dragonResonanceUltimate: dragonResonanceUltimate,
+    dragonScalesShield: dragonScalesShield,
+    dragonPowerLoss: dragonPowerLoss,
+    dragonBlood: dragonBlood,
+    // 超能系新字段
+    prophecyMark: prophecyMark,
+    prophecyMarkBonus: prophecyMarkBonus,
+    prophecyMarkBonusValue: prophecyMarkBonusValue,
+    mindWound: mindWound,
+    forbidden: forbidden,
+    mindShield: mindShield,
+    pierceShield: pierceShield,
+    mirrorReflect: mirrorReflect,
+    mirrorReflectDamage: mirrorReflectDamage,
+    mistBody: mistBody,
+    mistBodyChance: mistBodyChance,
+    psychoShift: psychoShift,
+    mindSync: mindSync,
+    futureSight: futureSight,
+    futureSightPower: futureSightPower,
+    fateWeave: fateWeave,
+    fateWeaveDamage: fateWeaveDamage,
+    resistances: resistances,
     cooldown: cooldown,
     description: skillData.eff || generateSkillDescription(skillData.effects, skillData)
   };
@@ -1001,6 +1250,7 @@ const STATUS_NAMES = {
   parasite:          '寄生种子',
   nutrient:          '养分',
   static_body:       '蓄电护体',
+  static_charge:     '蓄电护体',
   electric_deflect:  '电磁偏转',
   charge:            '蓄电',
   electric_field_buff: '电场',
@@ -1008,6 +1258,7 @@ const STATUS_NAMES = {
   frost:             '冰霜',
   extreme_cold_mark: '极寒印记',
   ice_armor:         '冰霜护甲',
+  frost_armor:       '冰霜护甲',
   ice_wall:          '冰墙',
   frost_mark:        '冰霜印记',
   frozen_land_env:   '冻土',

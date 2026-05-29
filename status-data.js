@@ -293,6 +293,54 @@ const STATUS = {
     duration: 2
   },
 
+  // 心灵创伤 - 攻击命中率下降
+  mind_wound: {
+    id: 'mind_wound',
+    name: '心灵创伤',
+    type: 'debuff',
+    accuracyDebuff: 0.5,
+    duration: 2
+  },
+
+  // 禁忌 - 所有能力等级下降
+  forbidden: {
+    id: 'forbidden',
+    name: '禁忌',
+    type: 'debuff',
+    statReduction: 2,
+    duration: 2
+  },
+
+  // 心灵护体 - 减伤+精神免疫
+  mind_body: {
+    id: 'mind_body',
+    name: '心灵护体',
+    type: 'buff',
+    damageReduction: 0.5,
+    psychicImmune: true,
+    duration: 1
+  },
+
+  // 预知未来（待触发）
+  future_sight_pending: {
+    id: 'future_sight_pending',
+    name: '预知未来',
+    type: 'debuff',
+    delayedDamage: true,
+    triggerTime: 'after_3_turns',
+    duration: 3
+  },
+
+  // 命运编织（待触发）
+  fate_weave_pending: {
+    id: 'fate_weave_pending',
+    name: '命运编织',
+    type: 'debuff',
+    delayedDamage: true,
+    triggerTime: 'after_3_turns',
+    duration: 3
+  },
+
   // 混乱 - 可能攻击自己
   confusion: {
     id: 'confusion',
@@ -351,13 +399,31 @@ const STATUS = {
     duration: 3
   },
 
-  // 龙之气息 - 蓄力用
-  dragon_aura: {
-    id: 'dragon_aura',
+  // 龙之气息 - 蓄力用（血脉压制核心机制）
+  dragon_blood: {
+    id: 'dragon_blood',
     name: '龙之气息',
     type: 'stack',
-    stacks: 1,
+    stacks: 0,
     maxStacks: 99,
+    duration: 999
+  },
+
+  // 混乱 - 可能攻击自己
+  confusion: {
+    id: 'confusion',
+    name: '混乱',
+    type: 'debuff',
+    selfAttackChance: 0.5,
+    duration: 3
+  },
+
+  // 龙威减退 - 攻击/特攻永久下降
+  dragon_power_loss: {
+    id: 'dragon_power_loss',
+    name: '龙威减退',
+    type: 'debuff',
+    stats: { attack: -2, spAtk: -2 },
     duration: 999
   },
 
@@ -400,6 +466,17 @@ const STATUS = {
     type: 'special',
     reflectDamage: 1.8,
     preserveOnMiss: true,
+    duration: 1
+  },
+
+  // 龙鳞守护状态
+  dragon_guard: {
+    id: 'dragon_guard',
+    name: '龙鳞守护',
+    type: 'special',
+    damageReduction: 0.75,
+    counterDamage: 30,
+    shieldPerStack: 15,
     duration: 1
   }
 };

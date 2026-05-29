@@ -147,6 +147,12 @@ function renderPlayerUnits() {
     if (unit.lightGatherStacks && unit.lightGatherStacks > 0) {
       buffTags += `<div class="buff-tag light_gather" title="光能汇聚：草系技能+${60 * unit.lightGatherStacks}威力">光能×${unit.lightGatherStacks}</div>`;
     }
+    if (unit.dragonBloodStacks && unit.dragonBloodStacks > 0) {
+      buffTags += `<div class="buff-tag dragon_blood" title="龙之气息：龙系技能+${15 * unit.dragonBloodStacks}威力">龙息×${unit.dragonBloodStacks}</div>`;
+    }
+    if (unit.dragonGuardCounter) {
+      buffTags += `<div class="buff-tag dragon_guard" title="龙鳞守护：减伤75%，受击反击30威力">龙鳞守护</div>`;
+    }
     if (unit.comboCharge) {
       buffTags += `<div class="buff-tag combo" title="连击充能：下次攻击享受增伤">连击充能</div>`;
     }
@@ -159,6 +165,21 @@ function renderPlayerUnits() {
           buffTags += `<div class="buff-tag clear_spring" title="清泉护盾：每回合回复10%HP并清除1个负面状态">清泉${b.remainingDuration}回合</div>`;
         } else if (b.type === 'flow') {
           buffTags += `<div class="buff-tag flow" title="流水：速度+1级">流水${b.remainingDuration}回合</div>`;
+        } else if (b.type === 'heal_buff') {
+          const pct = Math.round((b.healPercent || 0) * 100);
+          buffTags += `<div class="buff-tag heal" title="治疗回复${pct}HP">回复${pct}%</div>`;
+        } else if (b.type === 'static_charge') {
+          buffTags += `<div class="buff-tag electric" title="蓄电护体：受伤时攻击者受到电属性伤害">蓄电${b.remainingDuration}回合</div>`;
+        } else if (b.type === 'electric_deflect') {
+          buffTags += `<div class="buff-tag electric" title="电磁偏转：闪避+30%">电磁${b.remainingDuration}回合</div>`;
+        } else if (b.type === 'charge') {
+          buffTags += `<div class="buff-tag electric" title="蓄电：电系技能+威力">蓄电${b.remainingDuration}回合</div>`;
+        } else if (b.type === 'frost_armor') {
+          buffTags += `<div class="buff-tag ice" title="冰霜护甲：减伤50%，受伤时使攻击者冻结">冰护${b.remainingDuration}回合</div>`;
+        } else if (b.type === 'ice_wall') {
+          buffTags += `<div class="buff-tag ice" title="冰墙：护盾+40">冰墙${b.remainingDuration}回合</div>`;
+        } else if (b.type === 'frost_mark') {
+          buffTags += `<div class="buff-tag ice" title="霜印：冰系技能+威力">霜印${b.remainingDuration}回合</div>`;
         }
       });
     }
@@ -312,6 +333,12 @@ function renderEnemyUnits() {
     if (unit.lightGatherStacks && unit.lightGatherStacks > 0) {
       buffTags += `<div class="buff-tag light_gather" title="光能汇聚：草系技能+${60 * unit.lightGatherStacks}威力">光能×${unit.lightGatherStacks}</div>`;
     }
+    if (unit.dragonBloodStacks && unit.dragonBloodStacks > 0) {
+      buffTags += `<div class="buff-tag dragon_blood" title="龙之气息：龙系技能+${15 * unit.dragonBloodStacks}威力">龙息×${unit.dragonBloodStacks}</div>`;
+    }
+    if (unit.dragonGuardCounter) {
+      buffTags += `<div class="buff-tag dragon_guard" title="龙鳞守护：减伤75%，受击反击30威力">龙鳞守护</div>`;
+    }
     if (unit.comboCharge) {
       buffTags += `<div class="buff-tag combo" title="连击充能：下次攻击享受增伤">连击充能</div>`;
     }
@@ -324,6 +351,21 @@ function renderEnemyUnits() {
           buffTags += `<div class="buff-tag clear_spring" title="清泉护盾：每回合回复10%HP并清除1个负面状态">清泉${b.remainingDuration}回合</div>`;
         } else if (b.type === 'flow') {
           buffTags += `<div class="buff-tag flow" title="流水：速度+1级">流水${b.remainingDuration}回合</div>`;
+        } else if (b.type === 'heal_buff') {
+          const pct = Math.round((b.healPercent || 0) * 100);
+          buffTags += `<div class="buff-tag heal" title="治疗回复${pct}HP">回复${pct}%</div>`;
+        } else if (b.type === 'static_charge') {
+          buffTags += `<div class="buff-tag electric" title="蓄电护体：受伤时攻击者受到电属性伤害">蓄电${b.remainingDuration}回合</div>`;
+        } else if (b.type === 'electric_deflect') {
+          buffTags += `<div class="buff-tag electric" title="电磁偏转：闪避+30%">电磁${b.remainingDuration}回合</div>`;
+        } else if (b.type === 'charge') {
+          buffTags += `<div class="buff-tag electric" title="蓄电：电系技能+威力">蓄电${b.remainingDuration}回合</div>`;
+        } else if (b.type === 'frost_armor') {
+          buffTags += `<div class="buff-tag ice" title="冰霜护甲：减伤50%，受伤时使攻击者冻结">冰护${b.remainingDuration}回合</div>`;
+        } else if (b.type === 'ice_wall') {
+          buffTags += `<div class="buff-tag ice" title="冰墙：护盾+40">冰墙${b.remainingDuration}回合</div>`;
+        } else if (b.type === 'frost_mark') {
+          buffTags += `<div class="buff-tag ice" title="霜印：冰系技能+威力">霜印${b.remainingDuration}回合</div>`;
         }
       });
     }

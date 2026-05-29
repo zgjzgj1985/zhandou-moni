@@ -3,6 +3,17 @@
 
 // 执行玩家命令
 async function executePlayerCommand(caster, skill, targetId) {
+  // 冻结状态检查
+  if (caster.frozen) {
+    addLog(`${caster.name} 被冻结了，无法行动！`);
+    caster.frozenTurns = Math.max(0, caster.frozenTurns - 1);
+    if (caster.frozenTurns <= 0) {
+      caster.frozen = false;
+      addLog(`${caster.name} 的冻结解除了！`);
+    }
+    return;
+  }
+
   const target = [...enemyUnits, ...playerUnits].find(u => u.id === targetId);
   if (!target || target.currentHp <= 0) return;
 
@@ -27,10 +38,47 @@ async function executePlayerCommand(caster, skill, targetId) {
 
   if (skill.target === 'single_enemy') {
     // 攻击技能
+    // 挖洞免疫：目标在地下时免疫地面攻击
+    if (target.immuneGround && skill.element === 'ground') {
+      addLog(`${target.name} 正在地下，免疫了地面攻击！`, 'buff');
+      return;
+    }
+    // 精神免疫：目标免疫精神类攻击
+    if (target.psychicResist && skill.element === 'psychic') {
+      addLog(`${target.name} 的「精神免疫」效果发动，免疫了超能属性攻击！`, 'buff');
+      return;
+    }
+    // 迷雾之躯：闪避判定（70%概率闪避任意攻击）
+    if (target.mistBody && target.mistBodyTurns > 0) {
+      const dodgeChance = target.mistBodyChance || 0.7;
+      if (Math.random() < dodgeChance) {
+        addLog(`${target.name} 的「迷雾之躯」效果发动，闪避了这次攻击！`, 'buff');
+        target.speedBoost = (target.speedBoost || 0) + 1;
+        target.speedBoostTurns = 3;
+        addLog(`${target.name} 闪避成功后速度提升1级！`, 'buff');
+        return;
+      }
+    }
+    // 冰霜印记加成：消耗所有层数，每层+15%威力
+    let frostMarkBonus = 0;
+    if (skill.element === 'ice' && caster.frostMarkStacks && caster.frostMarkStacks > 0) {
+      frostMarkBonus = Math.floor((skill.power || 0) * 0.15 * caster.frostMarkStacks);
+      addLog(`${caster.name} 消耗 ${caster.frostMarkStacks} 层冰霜印记，冰系技能威力+${frostMarkBonus}！`, 'buff');
+      caster.frostMarkStacks = 0;
+    }
+    // 命中率检定：基础95%，目标命中率降低（accuracyBoost为负值时降低命中率）
+    const baseAccuracy = 0.95;
+    const accuracyStage = 1 + (target.accuracyBoost || 0) * 0.1;
+    const finalAccuracy = Math.max(0.3, Math.min(1.0, baseAccuracy * accuracyStage));
+    if (Math.random() > finalAccuracy) {
+      addLog(`${target.name} 躲开了 ${caster.name} 的 ${skill.name}！`, 'miss');
+      return;
+    }
     let totalDamage = 0;
 
     // 检查蓄焰增伤buff（蓄焰是给队友的buff，所以检查target）
     let powerBonus = 0;
+    powerBonus += frostMarkBonus;
     if (target.flameCharge && target.flameChargeTurns > 0 && skill.element === 'fire') {
       powerBonus = target.flameChargePower || (target.energy * 10);
       addLog(`${target.name} 的蓄焰效果生效，火属性攻击威力+${powerBonus}！`, 'buff');
@@ -62,14 +110,58 @@ async function executePlayerCommand(caster, skill, targetId) {
     }
     powerBonus += lightGatherBonus;
 
+    // 检查龙之气息增伤（龙系技能：每层+15威力，流星陨落每2层+30）
+    let dragonBloodBonus = 0;
+    if (caster.dragonBloodStacks && caster.dragonBloodStacks > 0 && skill.element === 'dragon') {
+      if (skill.meteorFall) {
+        // 流星陨落：每2层龙之气息+30威力
+        const bonusStacks = Math.floor(caster.dragonBloodStacks / 2);
+        dragonBloodBonus = bonusStacks * 30;
+        addLog(`${caster.name} 消耗 ${caster.dragonBloodStacks} 层龙之气息（流星陨落加成），龙系攻击威力+${dragonBloodBonus}！`, 'buff');
+        caster.dragonBloodStacks = 0;
+      } else {
+        // 其他龙系技能：每层+15威力
+        dragonBloodBonus = caster.dragonBloodStacks * 15;
+        addLog(`${caster.name} 消耗 ${caster.dragonBloodStacks} 层龙之气息，龙系攻击威力+${dragonBloodBonus}！`, 'buff');
+        caster.dragonBloodStacks = 0;
+      }
+    }
+    powerBonus += dragonBloodBonus;
+
     // 检查芬芳环境增伤（草系技能）
     if (battleEnvironment === 'fragrant' && skill.element === 'grass') {
       powerBonus += Math.floor(skill.power * 0.25);
       addLog(`芬芳环境影响，草系技能威力+25%！`, 'buff');
     }
 
+    // 检查预言标记加成（超能系：存储力量等技能）
+    if (skill.prophecyMarkBonus && caster.prophecyMarkStacks && caster.prophecyMarkStacks > 0) {
+      const prophecyBonus = caster.prophecyMarkStacks * (skill.prophecyMarkBonusValue || 20);
+      powerBonus += prophecyBonus;
+      addLog(`${caster.name} 的预言标记效果生效！共${caster.prophecyMarkStacks}层，威力+${prophecyBonus}！`, 'buff');
+      // 存储力量消耗预言标记
+      if (skill.id === 'stored_power') {
+        caster.prophecyMarkStacks = 0;
+      }
+    }
+
+    // 精神场地环境：超能系技能威力+30%
+    if (battleEnvironment === 'psychic' && skill.element === 'psychic') {
+      const terrainBonus = Math.floor((skill.power || 0) * 0.3);
+      powerBonus += terrainBonus;
+      addLog(`精神场地环境影响，超能技能威力+30%（+${terrainBonus}）！`, 'buff');
+    }
+
     // 雷霆连击：多段攻击
     if (skill.effect === 'combo') {
+      // 命中率检定（多段攻击只判定一次）
+      const baseAccuracy = 0.95;
+      const accuracyStage = 1 + (target.accuracyBoost || 0) * 0.1;
+      const finalAccuracy = Math.max(0.3, Math.min(1.0, baseAccuracy * accuracyStage));
+      if (Math.random() > finalAccuracy) {
+        addLog(`${target.name} 躲开了 ${caster.name} 的 ${skill.name}！`, 'miss');
+        return;
+      }
       const hits = skill.comboHits || 3;
       const powerPerHit = skill.comboPower || Math.floor(skill.power / hits);
       let comboCount = caster.comboCount || 0;
@@ -123,6 +215,26 @@ async function executePlayerCommand(caster, skill, targetId) {
               });
             }
             addLog(`${target.name} 受到「水之守护」反击，${caster.name} 获得1层「浸透」！`, 'debuff');
+          }
+        }
+
+        // 冰霜护甲：受到伤害时使攻击者冻结1回合（多段攻击）
+        if (target.frostArmor && hitDamage > 0) {
+          const existingFrost = caster.debuffs.find(d => d.type === 'frost' || d.type === 'frozen');
+          if (existingFrost) {
+            existingFrost.remainingDuration = 1;
+          } else {
+            caster.debuffs = caster.debuffs || [];
+            caster.debuffs.push({ type: 'frozen', remainingDuration: 1 });
+          }
+          addLog(`${target.name} 受到「冰霜护甲」反击，${caster.name} 被冻结1回合！`, 'debuff');
+        }
+
+        // 冰霜印记：受到冰属性攻击时25%概率附加冰霜（多段攻击）
+        if (target.buffs?.some(b => b.type === 'frost_mark') && skill.element === 'ice' && hitDamage > 0) {
+          if (Math.random() < 0.25) {
+            target.frostMarkStacks = (target.frostMarkStacks || 0) + 1;
+            addLog(`${target.name} 的「冰霜印记」被触发，获得1层「冰霜」！`, 'buff');
           }
         }
 
@@ -213,8 +325,22 @@ async function executePlayerCommand(caster, skill, targetId) {
 
     } else {
       // 普通单次攻击 - 使用宝可梦公式
-      const result = calculatePokemonDamage(caster, target, { ...skill, power: skill.power + powerBonus });
+      // 震级：随机威力（等级1-8对应威力10-150）
+      let actualPower = skill.power;
+      if (skill.id === 'magnitude') {
+        const magnitudes = [10, 30, 50, 70, 90, 110, 130, 150];
+        const magLevel = Math.floor(Math.random() * 8) + 1;
+        actualPower = magnitudes[magLevel - 1];
+        addLog(`震级变化！当前等级 ${magLevel}，威力 ${actualPower}！`, 'info');
+      }
+      const result = calculatePokemonDamage(caster, target, { ...skill, power: actualPower + powerBonus });
       let damage = result.damage;
+
+      // 冰爆：目标冻结时3倍伤害
+      if (skill.id === 'ice_explosion' && target.frozen) {
+        damage = Math.floor(damage * 3);
+        addLog(`${target.name} 处于冻结状态！冰爆造成3倍伤害！`, 'damage');
+      }
 
       // 检查目标的减伤效果
       if (target.damageReduction && target.damageReduction > 0) {
@@ -267,6 +393,26 @@ async function executePlayerCommand(caster, skill, targetId) {
         }
       }
 
+      // 冰霜护甲：受到伤害时使攻击者冻结1回合
+      if (target.frostArmor && damage > 0) {
+        const existingFrost = caster.debuffs.find(d => d.type === 'frost' || d.type === 'frozen');
+        if (existingFrost) {
+          existingFrost.remainingDuration = 1;
+        } else {
+          caster.debuffs = caster.debuffs || [];
+          caster.debuffs.push({ type: 'frozen', remainingDuration: 1 });
+        }
+        addLog(`${caster.name} 受到「冰霜护甲」反击，被冻结1回合！`, 'debuff');
+      }
+
+      // 冰霜印记：受到冰属性攻击时25%概率附加冰霜（给被攻击者）
+      if (target.buffs?.some(b => b.type === 'frost_mark') && skill.element === 'ice' && damage > 0) {
+        if (Math.random() < 0.25) {
+          target.frostMarkStacks = (target.frostMarkStacks || 0) + 1;
+          addLog(`${target.name} 的「冰霜印记」被触发，获得1层「冰霜」！`, 'buff');
+        }
+      }
+
       // 绽放之舞：必定暴击效果（×1.5）
       if (skill.guaranteedCrit) {
         addLog(`${skill.name} 本回合必定暴击！`);
@@ -277,6 +423,139 @@ async function executePlayerCommand(caster, skill, targetId) {
       if (result.hasStab) logMsg += '【STAB】';
       if (result.typeMultiplier !== 1) logMsg += `【${result.typeMultiplier >= 2 ? '效果拔群' : '效果微弱'}×${result.typeMultiplier}】`;
       addLog(logMsg, 'damage');
+
+      // 大地之力：伤害后自特攻+1级
+      if (skill.id === 'earth_power') {
+        caster.spAtkBoost = (caster.spAtkBoost || 0) + 1;
+        caster.spAtkBoostTurns = 3;
+        addLog(`${caster.name} 的大地之力涌动，特攻提升1级！`, 'buff');
+      }
+
+      // 地震：全体敌人速度-1级
+      if (skill.id === 'earthquake') {
+        enemyUnits.forEach(e => {
+          if (e.currentHp <= 0) return;
+          e.speedBoost = (e.speedBoost || 0) - 1;
+          e.speedBoostTurns = 3;
+        });
+        addLog(`地震波动影响了所有敌人，敌方全体速度降低1级！`, 'debuff');
+      }
+
+      // 冰锤：伤害后自降速度1级
+      if (skill.id === 'ice_hammer') {
+        caster.speedBoost = (caster.speedBoost || 0) - 1;
+        addLog(`${caster.name} 被冰锤的寒气反噬，速度降低1级！`, 'debuff');
+      }
+
+      // 龙之终焉：混乱效果（2-3回合，层数≥5时共鸣抵消）
+      if (skill.dragonOblivion) {
+        const confusionTurns = 2 + Math.floor(Math.random() * 2);
+        const casterDragonBlood = caster.dragonBloodStacks || 0;
+        if (casterDragonBlood >= 5) {
+          addLog(`${caster.name} 的龙属共鸣激活，「龙之终焉」的混乱被抵消！`, 'buff');
+        } else {
+          target.debuffs = target.debuffs || [];
+          target.debuffs = target.debuffs.filter(d => d.type !== 'confusion');
+          target.debuffs.push({
+            type: 'confusion',
+            remainingDuration: confusionTurns,
+            selfAttackChance: 0.5
+          });
+          addLog(`${target.name} 陷入混乱状态！（${confusionTurns}回合，50%概率攻击自身）`, 'debuff');
+        }
+      }
+
+      // 龙之碾压：HP条件增伤（HP<50%时+50%威力，HP<30%时必定暴击）
+      if (skill.dragonCrush) {
+        const targetHpPercent = target.currentHp / target.maxHp;
+        if (targetHpPercent < 0.5) {
+          // 追伤：额外造成50%威力的追加伤害
+          const bonusDamage = Math.floor(result.damage * 0.5);
+          target.currentHp = Math.max(0, target.currentHp - bonusDamage);
+          showDamageNumber(target.id, bonusDamage, 'damage', { isSuperEffective: false });
+          updateHpBar(target);
+          addLog(`${target.name} HP<50%！龙之碾压追加+50%伤害（+${bonusDamage}）！`, 'damage');
+        }
+        if (targetHpPercent < 0.3 && !result.isCrit) {
+          // 必定暴击：实际补上1.5倍暴击伤害
+          const critBonusDamage = Math.floor(result.damage * 0.5);
+          target.currentHp = Math.max(0, target.currentHp - critBonusDamage);
+          showDamageNumber(target.id, critBonusDamage, 'critical', { isSuperEffective: false });
+          updateHpBar(target);
+          totalDamage += critBonusDamage;
+          addLog(`${target.name} HP<30%！龙之碾压必定暴击！（追加+50%暴击伤害 +${critBonusDamage}）`, 'damage');
+        }
+      }
+
+      // 流星陨落：使用后自身攻击/特攻-2级
+      if (skill.meteorFall) {
+        caster.attackBoost = (caster.attackBoost || 0) - 2;
+        caster.spAtkBoost = (caster.spAtkBoost || 0) - 2;
+        addLog(`${caster.name} 使用流星陨落，自身攻击/特攻-2级！`, 'debuff');
+      }
+
+      // === 超能系技能效果 ===
+      // 迷心刺：附加预言标记和心灵创伤
+      if (skill.prophecyMark) {
+        // 给自身添加预言标记
+        caster.prophecyMarkStacks = (caster.prophecyMarkStacks || 0) + 1;
+        addLog(`${caster.name} 获得1层「预言标记」！（共${caster.prophecyMarkStacks}层，增强存储力量等技能威力）`, 'buff');
+      }
+      if (skill.mindWound) {
+        target.debuffs = target.debuffs || [];
+        target.debuffs = target.debuffs.filter(d => d.type !== 'mind_wound');
+        target.debuffs.push({ type: 'mind_wound', remainingDuration: 2 });
+        addLog(`${target.name} 陷入「心灵创伤」状态！（攻击命中率50%击中自己，持续2回合）`, 'debuff');
+      }
+
+      // 精神冲击：无视护盾（穿透效果已通过 pierceShield 标记，这里额外破坏护盾）
+      if (skill.pierceShield && target.shield && target.shield > 0) {
+        addLog(`${target.name} 的护盾被「精神冲击」穿透！`);
+        target.shield = 0;
+      }
+
+      // 虚空预言：附加禁忌
+      if (skill.id === 'void_prophecy' || skill.voidProphecy || skill.forbidden) {
+        const statReduction = skill.forbidden ? 2 : 2;
+        target.debuffs = target.debuffs || [];
+        target.debuffs = target.debuffs.filter(d => d.type !== 'forbidden');
+        target.debuffs.push({ type: 'forbidden', remainingDuration: 2, statReduction: 2 });
+        // 立即应用能力下降
+        target.attackBoost = (target.attackBoost || 0) - 2;
+        target.spAtkBoost = (target.spAtkBoost || 0) - 2;
+        target.defenseBoost = (target.defenseBoost || 0) - 2;
+        target.spDefenseBoost = (target.spDefenseBoost || 0) - 2;
+        target.speedBoost = (target.speedBoost || 0) - 2;
+        addLog(`${target.name} 陷入「禁忌」状态！（所有能力等级-2，持续2回合）`, 'debuff');
+      }
+
+      // 预知未来：3回合后触发伤害（记录到目标身上）
+      if (skill.futureSight) {
+        target.debuffs = target.debuffs || [];
+        target.debuffs.push({
+          type: 'future_sight_pending',
+          remainingDuration: 3,
+          damage: skill.futureSightPower || 120,
+          damageType: 'special',
+          casterId: caster.id,
+          name: skill.name
+        });
+        addLog(`${caster.name} 施展「预知未来」！3回合后将对 ${target.name} 造成 ${skill.futureSightPower || 120} 威力特殊伤害并附加「禁忌」！`, 'debuff');
+      }
+
+      // 命运编织：3回合后触发真伤（记录到目标身上）
+      if (skill.fateWeave) {
+        target.debuffs = target.debuffs || [];
+        target.debuffs.push({
+          type: 'fate_weave_pending',
+          remainingDuration: 3,
+          damage: skill.fateWeaveDamage || 100,
+          damageType: 'true',
+          casterId: caster.id,
+          name: skill.name
+        });
+        addLog(`${caster.name} 施展「命运编织」！3回合后将对 ${target.name} 造成 ${skill.fateWeaveDamage || 100} 点真实伤害并使其所有能力等级-2！`, 'debuff');
+      }
 
       // 枯萎效果（叶绿光束）
       if (skill.wither) {
@@ -294,6 +573,52 @@ async function executePlayerCommand(caster, skill, targetId) {
         }
         const witherStacks = existingWither ? existingWither.stacks + 1 : 1;
         addLog(`${target.name} 陷入枯萎状态！（+1层，每层每回合受到自身属性${skill.witherPower || 10}点威力伤害）`, 'debuff');
+      }
+
+      // 麻痹效果（雷击）
+      if (skill.paralysis || skill.effect === 'paralyze') {
+        target.debuffs = target.debuffs || [];
+        target.debuffs = target.debuffs.filter(d => d.type !== 'paralysis');
+        target.debuffs.push({ type: 'paralysis', remainingDuration: 2 });
+        addLog(`${target.name} 陷入麻痹状态！（速度-50%）`, 'debuff');
+      }
+
+      // 静电标记（静电释放）
+      if (skill.staticMark) {
+        target.debuffs = target.debuffs || [];
+        target.debuffs = target.debuffs.filter(d => d.type !== 'static');
+        target.debuffs.push({ type: 'static', remainingDuration: 3 });
+        addLog(`${target.name} 被标记静电！`, 'debuff');
+      }
+
+      // 冰霜效果（冰射击）
+      if (skill.frost || skill.effect === 'freeze') {
+        target.debuffs = target.debuffs || [];
+        target.debuffs = target.debuffs.filter(d => d.type !== 'frost');
+        target.debuffs.push({ type: 'frost', remainingDuration: 2 });
+        addLog(`${target.name} 陷入冰霜状态！`, 'debuff');
+      }
+
+      // 极端寒冷印记（霜冻吐息）
+      if (skill.extremeColdMark) {
+        target.debuffs = target.debuffs || [];
+        target.debuffs = target.debuffs.filter(d => d.type !== 'extreme_cold_mark');
+        target.debuffs.push({ type: 'extreme_cold_mark', remainingDuration: 2 });
+        addLog(`${target.name} 陷入极端寒冷！`, 'debuff');
+      }
+
+      // 霜印（frost_mark）
+      if (skill.frostMark) {
+        target.debuffs = target.debuffs || [];
+        target.debuffs.push({ type: 'frost_mark', remainingDuration: 3 });
+        addLog(`${target.name} 获得「霜印」！（下次使用冰系技能威力+30%）`, 'debuff');
+      }
+
+      // 静电释放/蓄电护体
+      if (skill.effect === 'static_charge') {
+        target.debuffs = target.debuffs || [];
+        target.debuffs.push({ type: 'static_charge', remainingDuration: 2 });
+        addLog(`${target.name} 被蓄电！`, 'debuff');
       }
     }
 
@@ -543,7 +868,7 @@ async function executePlayerCommand(caster, skill, targetId) {
     updateHpBar(target);
     if (target.currentHp <= 0) addLog(`${target.name} 倒下了！`);
 
-    // 火盾反伤 + 附加灼烧（玩家攻击敌人时触发）
+    // 火盾反伤 + 龙鳞守护反击
     if (target.fireShield && target.reflectDamage > 0 && target.currentHp > 0) {
       const reflectDmg = Math.floor(target.reflectDamage * (0.8 + Math.random() * 0.4));
       caster.currentHp = Math.max(0, caster.currentHp - reflectDmg);
@@ -570,6 +895,16 @@ async function executePlayerCommand(caster, skill, targetId) {
       if (caster.currentHp <= 0) addLog(`${caster.name} 倒下了！`);
     }
 
+    // 龙鳞守护反击：护盾存在期间受击反击30威力
+    if (target.dragonGuardCounter && target.dragonGuardCounterDamage > 0 && target.currentHp > 0 && damage > 0) {
+      const counterDmg = target.dragonGuardCounterDamage;
+      caster.currentHp = Math.max(0, caster.currentHp - counterDmg);
+      showDamageNumber(caster.id, counterDmg, 'damage', { isSuperEffective: false });
+      updateHpBar(caster);
+      addLog(`${target.name} 的龙鳞守护触发，对 ${caster.name} 反击 ${counterDmg} 威力龙属性伤害！`, 'damage');
+      if (caster.currentHp <= 0) addLog(`${caster.name} 倒下了！`);
+    }
+
     // 光能汇聚：fiber_weave 等既有伤害又有 self_buff (grass_power) 的技能，在伤害后处理光能汇聚
     if (skill.lightGather && skill.lightGather > 0) {
       caster.lightGatherStacks = (caster.lightGatherStacks || 0) + skill.lightGather;
@@ -592,6 +927,22 @@ async function executePlayerCommand(caster, skill, targetId) {
     // 在伤害动画播放完成后再渲染
     setTimeout(renderTargetUnits, 900);
 
+  } else if (skill.target === 'single_enemy') {
+    // 超能系：精神转移（将自身负面状态转移给敌人）
+    if (skill.psychoShift) {
+      if (caster.debuffs && caster.debuffs.length > 0) {
+        const debuffsToTransfer = [...caster.debuffs];
+        caster.debuffs = [];
+        target.debuffs = target.debuffs || [];
+        debuffsToTransfer.forEach(d => {
+          const newDebuff = { ...d, remainingDuration: d.remainingDuration || 2 };
+          target.debuffs.push(newDebuff);
+        });
+        addLog(`${caster.name} 将 ${debuffsToTransfer.length} 个负面状态转移给敌人 ${target.name}！`, 'debuff');
+      } else {
+        addLog(`${caster.name} 没有需要转移的负面状态！`, 'info');
+      }
+    }
   } else if (skill.target === 'ally') {
     // 队友目标
     if (skill.type === 'shield') {
@@ -630,14 +981,24 @@ async function executePlayerCommand(caster, skill, targetId) {
       let heal = 0;
       // 检查是否有治疗百分比
       if (skill.healPercent && skill.healPercent > 0) {
-        heal = Math.floor(target.maxHp * skill.healPercent);
+        if (target.debuffs?.some(d => d.type === 'psychic_noise')) {
+          addLog(`${target.name} 处于「精神噪音」状态，无法恢复HP！`, 'debuff');
+        } else {
+          heal = Math.floor(target.maxHp * skill.healPercent);
+        }
       } else {
-        heal = Math.floor(skill.power * (0.8 + Math.random() * 0.4));
+        if (!target.debuffs?.some(d => d.type === 'psychic_noise')) {
+          heal = Math.floor(skill.power * (0.8 + Math.random() * 0.4));
+        } else {
+          addLog(`${target.name} 处于「精神噪音」状态，无法恢复HP！`, 'debuff');
+        }
       }
-      target.currentHp = Math.min(target.maxHp, target.currentHp + heal);
-      showDamageNumber(target.id, heal, 'heal');
-      updateHpBar(target);
-      addLog(`${caster.name} 使用 ${skill.name}，恢复 ${target.name} ${heal} HP`, 'heal');
+      if (heal > 0) {
+        target.currentHp = Math.min(target.maxHp, target.currentHp + heal);
+        showDamageNumber(target.id, heal, 'heal');
+        updateHpBar(target);
+        addLog(`${caster.name} 使用 ${skill.name}，恢复 ${target.name} ${heal} HP`, 'heal');
+      }
 
       // 流水效果（水疗之术：速度+1级）
       if (skill.flowEffect) {
@@ -648,6 +1009,14 @@ async function executePlayerCommand(caster, skill, targetId) {
           remainingDuration: 2
         });
         addLog(`${target.name} 获得「流水」状态！（速度+1级，持续2回合）`, 'buff');
+      } else if (skill.healPercent && skill.healPercent > 0) {
+        // 治疗技能（养分汲取等）：添加治疗buff标签用于DOM显示
+        target.buffs = target.buffs || [];
+        target.buffs.push({
+          type: 'heal_buff',
+          healPercent: skill.healPercent,
+          remainingDuration: 1
+        });
       }
     }
 
@@ -674,14 +1043,18 @@ async function executePlayerCommand(caster, skill, targetId) {
       addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得火盾效果（受伤时攻击者附加灼烧）`, 'buff');
     }
 
-    // 养分汲取：回复HP并增加能量
-    if (skill.healPercent && skill.healPercent > 0) {
-      const healAmount = Math.floor(target.maxHp * skill.healPercent);
-      target.currentHp = Math.min(target.maxHp, target.currentHp + healAmount);
-      showDamageNumber(target.id, healAmount, 'heal');
-      updateHpBar(target);
-      addLog(`${caster.name} 使用 ${skill.name}，为 ${target.name} 回复 ${healAmount} HP（${Math.round(skill.healPercent * 100)}%最大HP）`, 'heal');
-    }
+      // 养分汲取：回复HP并增加能量
+      if (skill.healPercent && skill.healPercent > 0) {
+        if (target.debuffs?.some(d => d.type === 'psychic_noise')) {
+          addLog(`${target.name} 处于「精神噪音」状态，无法恢复HP！`, 'debuff');
+        } else {
+          const healAmount = Math.floor(target.maxHp * skill.healPercent);
+          target.currentHp = Math.min(target.maxHp, target.currentHp + healAmount);
+          showDamageNumber(target.id, healAmount, 'heal');
+          updateHpBar(target);
+          addLog(`${caster.name} 使用 ${skill.name}，为 ${target.name} 回复 ${healAmount} HP（${Math.round(skill.healPercent * 100)}%最大HP）`, 'heal');
+        }
+      }
 
     // 养分汲取：回复能量
     if (skill.energyRestore && skill.energyRestore > 0) {
@@ -692,7 +1065,7 @@ async function executePlayerCommand(caster, skill, targetId) {
     }
 
     // 防御类技能效果（现已改为ally目标）
-    if (skill.type === 'buff' || skill.effect) {
+    if (skill.type === 'buff' || skill.type === 'special' || skill.effect || skill.vineBody) {
       // 扎根之躯：每回合回复最大HP的8%，但速度-1级
       if (skill.effect === 'rootBound') {
         target.rootBound = true;
@@ -701,8 +1074,32 @@ async function executePlayerCommand(caster, skill, targetId) {
         addLog(`${caster.name} 使用 ${skill.name}，${target.name} 进入扎根状态（持续${target.rootBoundTurns}回合），每回合回复8%HP，但速度-1级`, 'buff');
       }
 
+      // 蓄电/电荷蓄能
+      if (skill.charge) {
+        target.chargeStacks = (target.chargeStacks || 0) + 2;
+        target.buffs = target.buffs || [];
+        target.buffs.push({ type: 'charge', remainingDuration: 3 });
+        addLog(`${target.name} 积蓄2层电荷！`, 'buff');
+      }
+
+      // 冰墙
+      if (skill.effect === 'ice_wall') {
+        target.shield = (target.shield || 0) + (skill.power || 40);
+        target.iceWallTurns = 2;
+        target.buffs = target.buffs || [];
+        target.buffs.push({ type: 'ice_wall', remainingDuration: 2 });
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 创造冰墙屏障！（护盾+40）`, 'buff');
+      }
+
       // 藤蔓护甲：减伤+缠绕攻击者
-      if (skill.effect === 'entangle_on_hit' || skill.damageReduction > 0) {
+      if (skill.vineBody) {
+        target.damageReduction = (target.damageReduction || 0) + 0.5;
+        target.damageReductionTurns = 1;
+        target.entangleOnHit = true;
+        target.buffs = target.buffs || [];
+        target.buffs.push({ type: 'vine_body', remainingDuration: 2 });
+        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得藤蔓护体！（减伤50%，受伤时缠绕攻击者）`, 'buff');
+      } else if (skill.effect === 'entangle_on_hit' || skill.damageReduction > 0) {
         target.damageReduction = (target.damageReduction || 0) + (skill.damageReduction || 0.5);
         target.damageReductionTurns = 1;
         target.entangleOnHit = true; // 标记受到攻击时缠绕攻击者
@@ -747,6 +1144,9 @@ async function executePlayerCommand(caster, skill, targetId) {
       if (skill.effect === 'water_guard') {
         target.damageReduction = (target.damageReduction || 0) + 0.7;
         target.damageReductionTurns = 1;
+        target.aquaShield = true;
+        target.buffs = target.buffs || [];
+        target.buffs.push({ type: 'aqua_shield', remainingDuration: 1 });
         addLog(`${caster.name} 使用 ${skill.name}，${target.name} 降低70%伤害`, 'buff');
       }
 
@@ -755,6 +1155,8 @@ async function executePlayerCommand(caster, skill, targetId) {
         target.damageReduction = (target.damageReduction || 0) + 0.5;
         target.damageReductionTurns = 1;
         target.frostArmor = true;
+        target.buffs = target.buffs || [];
+        target.buffs.push({ type: 'frost_armor', remainingDuration: 1 });
         addLog(`${caster.name} 使用 ${skill.name}，${target.name} 降低50%伤害，受伤时使攻击者冻结1回合`, 'buff');
       }
 
@@ -774,32 +1176,93 @@ async function executePlayerCommand(caster, skill, targetId) {
         addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得电磁偏转状态（70%闪避并反击20伤害）`, 'buff');
       }
 
-      // 心智护盾：护盾
-      if (skill.effect === 'mind_shield') {
+      // 心智护盾：减伤50% + 护盾 + 精神免疫
+      if (skill.mindShield || skill.effect === 'mind_shield') {
+        target.damageReduction = (target.damageReduction || 0) + 0.5;
+        target.damageReductionTurns = 1;
         target.shield = (target.shield || 0) + (skill.power || 30);
-        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得心智护盾`, 'buff');
+        target.psychicResist = true;
+        // 应用属性抗性效果（如精神免疫：psychic 属性减伤100%）
+        if (skill.resistances) {
+          skill.resistances.forEach(r => {
+            target.resistances = target.resistances || {};
+            target.resistances[r.element] = (target.resistances[r.element] || 0) + r.value;
+            target.resistanceTurns = target.resistanceTurns || {};
+            target.resistanceTurns[r.element] = r.duration || 1;
+          });
+        }
+        target.buffs = target.buffs || [];
+        target.buffs.push({ type: 'mind_body', remainingDuration: skill.duration || 1 });
+        addLog(`${caster.name} 使用 ${skill.name}，进入心灵护体状态（减伤50%+护盾${skill.power || 30}+精神免疫）！`, 'buff');
       }
 
-      // 灵镜反照：反弹伤害
-      if (skill.effect === 'mirror_reflect') {
+      // 灵镜反照：反弹伤害×1.8
+      if (skill.mirrorReflect || skill.effect === 'mirror_reflect') {
         target.mirrorReflect = true;
         target.mirrorReflectTurns = 1;
-        target.reflectDamage = 1.8;
-        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 进入灵镜状态（反弹180%伤害）`, 'buff');
+        target.mirrorReflectDamage = skill.mirrorReflectDamage || 1.8;
+        target.buffs = target.buffs || [];
+        target.buffs.push({ type: 'mirror_reflect', remainingDuration: 1 });
+        addLog(`${caster.name} 使用 ${skill.name}，进入灵镜状态（反弹${Math.round((skill.mirrorReflectDamage || 1.8) * 100)}%伤害，未被攻击时保留1次）！`, 'buff');
       }
 
       // 迷雾之躯：闪避
-      if (skill.effect === 'mist_body') {
+      if (skill.mistBody || skill.effect === 'mist_body') {
         target.mistBody = true;
         target.mistBodyTurns = skill.duration || 2;
-        target.evasionBonus = 0.7;
-        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 进入迷雾之躯状态（70%闪避，闪避后速度+1级）`, 'buff');
+        target.mistBodyChance = skill.mistBodyChance || 0.7;
+        target.buffs = target.buffs || [];
+        target.buffs.push({ type: 'mist_body', remainingDuration: skill.duration || 2 });
+        addLog(`${caster.name} 使用 ${skill.name}，进入迷雾之躯状态（${Math.round((skill.mistBodyChance || 0.7) * 100)}%闪避，闪避成功后速度+1级）！`, 'buff');
       }
 
-      // 龙鳞守护：护盾
-      if (skill.effect === 'dragon_guard') {
-        target.shield = (target.shield || 0) + (skill.power || 50);
-        addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得龙鳞守护`, 'buff');
+      // 龙鳞守护：减伤75% + 护盾（基于龙之气息层数，每层15点）+ 反击30威力
+      if (skill.effect === 'dragon_guard' || skill.dragonScalesShield) {
+        // 减伤75%（持续1回合）
+        target.damageReduction = (target.damageReduction || 0) + 0.75;
+        target.damageReductionTurns = 1;
+        // 基于龙之气息层数的护盾
+        const dragonBloodStacks = target.dragonBloodStacks || 0;
+        const shieldAmount = 15 * dragonBloodStacks;
+        target.shield = (target.shield || 0) + shieldAmount;
+        // 设置龙鳞守护反击标记（受击时反击30威力）
+        target.dragonGuardCounter = true;
+        target.dragonGuardCounterDamage = 30;
+        target.buffs = target.buffs || [];
+        target.buffs.push({ type: 'dragon_guard', remainingDuration: 1 });
+        addLog(`${caster.name} 使用 ${skill.name}，获得龙鳞守护（减伤75%，护盾+${shieldAmount}，受击反击30威力）`, 'buff');
+      }
+
+      // 龙属共鸣·极：终极技，消耗所有龙之气息（每层：威力+15、护盾+10、减伤+10%）；层数≥10时全体敌人攻击-2级
+      if (skill.dragonResonanceUltimate) {
+        const dragonBloodStacks = caster.dragonBloodStacks || 0;
+        if (dragonBloodStacks === 0) {
+          addLog(`${caster.name} 没有龙之气息层数，龙属共鸣·极无法发挥效果！`, 'debuff');
+        } else {
+          // 消耗所有龙之气息
+          caster.dragonBloodStacks = 0;
+          addLog(`${caster.name} 消耗 ${dragonBloodStacks} 层龙之气息！`, 'buff');
+          // 护盾加成（每层+10）
+          const resonanceShield = dragonBloodStacks * 10;
+          caster.shield = (caster.shield || 0) + resonanceShield;
+          addLog(`${caster.name} 获得龙属共鸣护盾 +${resonanceShield}！`, 'buff');
+          // 减伤加成（每层+10%，持续1回合）
+          const resonanceDR = Math.min(dragonBloodStacks * 0.10, 1.0);
+          caster.damageReduction = (caster.damageReduction || 0) + resonanceDR;
+          caster.damageReductionTurns = 1;
+          addLog(`${caster.name} 获得龙属共鸣减伤 +${Math.round(resonanceDR * 100)}%（持续1回合）！`, 'buff');
+          // 层数≥10：全体敌人攻击-2级
+          if (dragonBloodStacks >= 10) {
+            enemyUnits.forEach(e => {
+              if (e.currentHp <= 0) return;
+              e.attackBoost = (e.attackBoost || 0) - 2;
+              e.buffs = e.buffs || [];
+              e.buffs = e.buffs.filter(b => b.type !== 'dragon_intimidate');
+              e.buffs.push({ type: 'dragon_intimidate', remainingDuration: 3 });
+            });
+            addLog(`${caster.name} 的龙之气息达到${dragonBloodStacks}层！全体敌人攻击力-2级！`, 'debuff');
+          }
+        }
       }
 
       // 清泉护盾：每回合回复HP并清除负面状态
@@ -812,6 +1275,19 @@ async function executePlayerCommand(caster, skill, targetId) {
           remainingDuration: skill.clearSpringDuration || 3
         });
         addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得「清泉护盾」状态！（每回合回复10%HP并清除1个负面状态，持续${skill.clearSpringDuration || 3}回合）`, 'buff');
+      }
+
+      // 超能系：心智同步（与目标交换所有强化/弱化状态）
+      if (skill.mindSync) {
+        const casterBuffs = [...(caster.buffs || [])];
+        const casterDebuffs = [...(caster.debuffs || [])];
+        const targetBuffs = [...(target.buffs || [])];
+        const targetDebuffs = [...(target.debuffs || [])];
+        caster.buffs = targetBuffs;
+        caster.debuffs = targetDebuffs;
+        target.buffs = casterBuffs;
+        target.debuffs = casterDebuffs;
+        addLog(`${caster.name} 与 ${target.name} 交换了所有状态！`, 'buff');
       }
     }
 
@@ -863,11 +1339,37 @@ async function executePlayerCommand(caster, skill, targetId) {
       addLog(`${caster.name} 使用 ${skill.name}，自身进入炎体状态（受伤时攻击者附加灼烧）`, 'buff');
     }
 
-    if (skill.type === 'buff') {
+    if (skill.type === 'buff' || skill.type === 'special' || skill.effect || skill.vineBody) {
+      // 水之守护：受伤减70%，被攻击时反击者获得浸透
+      if (skill.effect === 'water_guard') {
+        target.damageReduction = (target.damageReduction || 0) + 0.7;
+        target.damageReductionTurns = 1;
+        target.aquaShield = true;
+        target.buffs = target.buffs || [];
+        target.buffs.push({ type: 'aqua_shield', remainingDuration: 1 });
+        addLog(`${caster.name} 使用 ${skill.name}，降低70%伤害（持续1回合）`, 'buff');
+      }
+
+      // 藤蔓护甲：减伤+缠绕攻击者
+      if (skill.vineBody) {
+        target.damageReduction = (target.damageReduction || 0) + (skill.damageReduction || 0.5);
+        target.damageReductionTurns = 1;
+        target.entangleOnHit = true; // 标记受到攻击时缠绕攻击者
+        target.buffs = target.buffs || [];
+        target.buffs.push({ type: 'vine_body', remainingDuration: 2 });
+        addLog(`${caster.name} 使用 ${skill.name}，获得藤蔓护体！（减伤${Math.round((skill.damageReduction || 0.5) * 100)}%，受伤时缠绕攻击者）`, 'buff');
+      }
       // 充能加速：速度+2级
       if (skill.speedBoost) {
         target.speedBoost = (target.speedBoost || 0) + skill.speedBoost;
         addLog(`${caster.name} 使用 ${skill.name}，速度提升 ${skill.speedBoost} 级！`, 'buff');
+      }
+      // 电荷蓄能
+      if (skill.charge) {
+        target.chargeStacks = (target.chargeStacks || 0) + 2;
+        target.buffs = target.buffs || [];
+        target.buffs.push({ type: 'charge', remainingDuration: 3 });
+        addLog(`${target.name} 积蓄2层电荷！`, 'buff');
       }
       // 连击充能
       if (skill.comboCharge) {
@@ -894,11 +1396,13 @@ async function executePlayerCommand(caster, skill, targetId) {
       }
 
       // 藤蔓护甲：减伤+缠绕攻击者
-      if (skill.damageReduction && skill.damageReduction > 0) {
-        target.damageReduction = (target.damageReduction || 0) + skill.damageReduction;
+      if (skill.vineBody || (skill.damageReduction && skill.damageReduction > 0)) {
+        target.damageReduction = (target.damageReduction || 0) + (skill.damageReduction || 0.5);
         target.damageReductionTurns = 1;
         target.entangleOnHit = true; // 标记受到攻击时缠绕攻击者
-        addLog(`${caster.name} 使用 ${skill.name}，获得 ${Math.round(skill.damageReduction * 100)}% 减伤（本回合），受到攻击时缠绕攻击者（速度-2级）`, 'buff');
+        target.buffs = target.buffs || [];
+        target.buffs.push({ type: 'vine_body', remainingDuration: 2 });
+        addLog(`${caster.name} 使用 ${skill.name}，获得 ${Math.round((skill.damageReduction || 0.5) * 100)}% 减伤（本回合），受到攻击时缠绕攻击者`, 'buff');
       }
 
       // 防反之姿：反弹伤害+先手
@@ -932,6 +1436,65 @@ async function executePlayerCommand(caster, skill, targetId) {
         remainingDuration: 2
       });
       addLog(`${caster.name} 获得「流水」状态！（速度+1级，持续2回合）`, 'buff');
+    }
+
+    // 藤蔓护甲（self 目标）：减伤+缠绕攻击者
+    if (skill.vineBody) {
+      target.damageReduction = (target.damageReduction || 0) + 0.5;
+      target.damageReductionTurns = 1;
+      target.entangleOnHit = true;
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'vine_body', remainingDuration: 2 });
+      addLog(`${caster.name} 使用 ${skill.name}，获得藤蔓护体！（减伤50%，受伤时缠绕攻击者）`, 'buff');
+    }
+
+    // 冰霜护甲（self 目标）：减伤+反击冻结
+    if (skill.effect === 'frost_armor') {
+      target.damageReduction = (target.damageReduction || 0) + 0.5;
+      target.damageReductionTurns = 1;
+      target.frostArmor = true;
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'frost_armor', remainingDuration: 1 });
+      addLog(`${caster.name} 使用 ${skill.name}，获得冰霜护体！（减伤50%，受伤时使攻击者冻结1回合）`, 'buff');
+    }
+
+    // 冰墙（self 目标）：护盾+减伤
+    if (skill.effect === 'ice_wall') {
+      target.shield = (target.shield || 0) + (skill.power || 40);
+      target.damageReduction = (target.damageReduction || 0) + 0.5;
+      target.damageReductionTurns = 2;
+      target.iceWallTurns = 2;
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'ice_wall', remainingDuration: 2 });
+      addLog(`${caster.name} 使用 ${skill.name}，创造冰墙屏障！（护盾+40，减伤50%）`, 'buff');
+    }
+
+    // 寒气凝聚：防御+1级
+    if (skill.effect === 'cold_aura' || skill.id === 'cold_aura') {
+      target.defenseBoost = (target.defenseBoost || 0) + 1;
+      target.defenseBoostTurns = skill.duration || 2;
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'cold_aura', remainingDuration: skill.duration || 2 });
+      addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得「寒气凝聚」！（防御+1级，持续${skill.duration || 2}回合）`, 'buff');
+    }
+
+    // 蓄电护体（self 目标）
+    if (skill.effect === 'static_charge') {
+      target.chargeStacks = (target.chargeStacks || 0) + 1;
+      target.electricDefense = true;
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'static_charge', remainingDuration: 2 });
+      addLog(`${caster.name} 使用 ${skill.name}，获得蓄电护体！（受攻击时攻击者受到电属性伤害）`, 'buff');
+    }
+
+    // 电磁偏转（self 目标）
+    if (skill.effect === 'electric_deflect') {
+      target.electricDeflect = true;
+      target.dodgeChance = (target.dodgeChance || 0) + 0.3;
+      target.electricDeflectTurns = 1;
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'electric_deflect', remainingDuration: 1 });
+      addLog(`${caster.name} 使用 ${skill.name}，获得电磁偏转！（闪避+30%，持续1回合）`, 'buff');
     }
   } else if (skill.target === 'all_ally') {
     // 全体队友目标
@@ -1033,6 +1596,33 @@ async function executePlayerCommand(caster, skill, targetId) {
       addLog(`${target.name} 获得「静电标记」！（受到电属性攻击时额外受到伤害）`, 'debuff');
     }
 
+    // 电系：电磁偏转
+    if (skill.electricDeflect || skill.effect === 'electric_deflect') {
+      target.electricDeflect = true;
+      target.dodgeChance = (target.dodgeChance || 0) + 0.3;
+      target.electricDeflectTurns = 1;
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'electric_deflect', remainingDuration: 1 });
+      addLog(`${caster.name} 使用 ${skill.name}，获得电磁偏转！（闪避+30%，持续1回合）`, 'buff');
+    }
+
+    // 电系：蓄电护体（静电释放）
+    if (skill.effect === 'static_charge') {
+      target.chargeStacks = (target.chargeStacks || 0) + 1;
+      target.electricDefense = true;
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'static_charge', remainingDuration: 2 });
+      addLog(`${caster.name} 使用 ${skill.name}，获得蓄电护体！（受攻击时攻击者受到电属性伤害）`, 'buff');
+    }
+
+    // 冰系：霜印
+    if (skill.frostMark) {
+      target.frostMarkStacks = (target.frostMarkStacks || 0) + 1;
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'frost_mark', remainingDuration: 3 });
+      addLog(`${target.name} 获得「霜印」！（冰系技能威力+15%/层，持续3回合）`, 'buff');
+    }
+
     // 冰系：极寒印记
     if (skill.extremeColdMark) {
       target.debuffs = target.debuffs || [];
@@ -1043,8 +1633,21 @@ async function executePlayerCommand(caster, skill, targetId) {
     // 冰系：冰墙
     if (skill.effect === 'ice_wall') {
       target.shield = (target.shield || 0) + (skill.power || 40);
+      target.damageReduction = (target.damageReduction || 0) + 0.5;
+      target.damageReductionTurns = 2;
       target.iceWallTurns = 2;
-      addLog(`${caster.name} 使用 ${skill.name}，${target.name} 创造冰墙屏障！（护盾+40）`, 'buff');
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'ice_wall', remainingDuration: 2 });
+      addLog(`${caster.name} 使用 ${skill.name}，${target.name} 创造冰墙屏障！（护盾+40，减伤50%）`, 'buff');
+    }
+
+    // 冰系：寒气凝聚
+    if (skill.effect === 'cold_aura' || skill.id === 'cold_aura') {
+      target.defenseBoost = (target.defenseBoost || 0) + 1;
+      target.defenseBoostTurns = skill.duration || 2;
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'cold_aura', remainingDuration: skill.duration || 2 });
+      addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得「寒气凝聚」！（防御+1级，持续${skill.duration || 2}回合）`, 'buff');
     }
 
     // 冰系：冻土环境
@@ -1065,8 +1668,15 @@ async function executePlayerCommand(caster, skill, targetId) {
     // 超能系：精神场地
     if (skill.psychicTerrain) {
       battleEnvironment = 'psychic';
-      battleEnvironmentTurns = skill.duration || 4;
-      addLog(`${caster.name} 使用 ${skill.name}，召唤精神场地！（超能属性技能威力+30%，持续${skill.duration || 4}回合）`, 'buff');
+      battleEnvironmentTurns = skill.duration || 5;
+      // 精神场地保护：己方全体免疫优先度攻击（优先度攻击目前无实现，跳过）
+      // TODO: 当系统支持优先度攻击时，在此添加优先度免疫检查
+      playerUnits.forEach(unit => {
+        if (unit.currentHp <= 0) return;
+        unit.psychicTerrainProtected = true;
+        unit.psychicTerrainProtectedTurns = battleEnvironmentTurns;
+      });
+      addLog(`${caster.name} 使用 ${skill.name}，召唤精神场地！（超能技能威力+30%，持续${battleEnvironmentTurns}回合）`, 'buff');
     }
 
     // 超能系：精神噪音
@@ -1079,17 +1689,36 @@ async function executePlayerCommand(caster, skill, targetId) {
       addLog(`${caster.name} 使用 ${skill.name}，全体敌人受到精神噪音干扰！（无法通过任何方式恢复HP）`, 'debuff');
     }
 
-    // 地系：沙暴
+    // 地系：沙暴降临
     if (skill.sandstormEffect) {
       battleEnvironment = 'sandstorm';
       battleEnvironmentTurns = skill.duration || 5;
-      addLog(`${caster.name} 使用 ${skill.name}，召唤沙暴天气！（持续${skill.duration || 5}回合）`, 'buff');
+      // 沙暴：岩/地/钢系特防+50%
+      const sandstormBoostUnits = [...playerUnits, ...enemyUnits].filter(u =>
+        u.currentHp > 0 && (u.element === 'ground' || u.element === 'rock' || u.element === 'steel')
+      );
+      sandstormBoostUnits.forEach(u => {
+        u.spDefenseBoost = (u.spDefenseBoost || 0) + 0.5;
+        u.spDefenseBoostTurns = skill.duration || 5;
+      });
+      addLog(`${caster.name} 使用 ${skill.name}，召唤沙暴天气！（持续${skill.duration || 5}回合，岩/地/钢系特防+50%）`, 'buff');
+    }
+
+    // 地系：泼沙 - 命中率-1级
+    if (skill.id === 'sand_attack') {
+      target.accuracyBoost = (target.accuracyBoost || 0) - 1;
+      target.accuracyBoostTurns = skill.duration || 2;
+      target.debuffs = target.debuffs || [];
+      target.debuffs.push({ type: 'sand_attack', remainingDuration: skill.duration || 2 });
+      addLog(`${caster.name} 使用 ${skill.name}，向${target.name}泼沙！命中率降低1级！`, 'debuff');
     }
 
     // 地系：挖洞
     if (skill.undergroundEffect) {
       target.buffs = target.buffs || [];
       target.buffs.push({ type: 'underground', remainingDuration: 1, evasionBonus: 1.0 });
+      target.immuneGround = true;
+      target.nextTurnPriority = true;
       addLog(`${caster.name} 使用 ${skill.name}，${target.name} 进入地下！（免疫地面攻击，下回合必定先手）`, 'buff');
     }
 
@@ -1113,6 +1742,37 @@ async function executePlayerCommand(caster, skill, targetId) {
       target.attackBoost = (target.attackBoost || 0) - 2;
       target.spAtkBoost = (target.spAtkBoost || 0) - 2;
       addLog(`${target.name} 陷入「龙威减退」！（攻击-2级、特攻-2级）`, 'debuff');
+    }
+
+    // 地系：耕地 - 治疗全体25%HP+清除所有异常状态
+    if (skill.id === 'cultivate') {
+      playerUnits.forEach(unit => {
+        if (unit.currentHp <= 0) return;
+        const heal = Math.floor(unit.maxHp * 0.25);
+        unit.currentHp = Math.min(unit.maxHp, unit.currentHp + heal);
+        showDamageNumber(unit.id, heal, 'heal');
+        updateHpBar(unit);
+        // 清除所有异常状态
+        if (unit.debuffs && unit.debuffs.length > 0) {
+          const clearedTypes = unit.debuffs.map(d => d.type).join('、');
+          unit.debuffs = [];
+          addLog(`${unit.name} 的异常状态已清除（${clearedTypes}）`, 'buff');
+        }
+      });
+      addLog(`${caster.name} 使用 ${skill.name}，耕地滋养全体队友！（治疗25%HP，清除所有异常状态）`, 'heal');
+    }
+
+    // 地系：玩泥巴 - 特攻+1/特防+1/速度+1
+    if (skill.id === 'mud_sport') {
+      target.spAtkBoost = (target.spAtkBoost || 0) + 1;
+      target.spAtkBoostTurns = 3;
+      target.spDefenseBoost = (target.spDefenseBoost || 0) + 1;
+      target.spDefenseBoostTurns = 3;
+      target.speedBoost = (target.speedBoost || 0) + 1;
+      target.speedBoostTurns = 3;
+      target.buffs = target.buffs || [];
+      target.buffs.push({ type: 'mud_sport', remainingDuration: 3 });
+      addLog(`${caster.name} 使用 ${skill.name}，${target.name} 获得「玩泥巴」效果！（特攻+1、特防+1、速度+1，持续3回合）`, 'buff');
     }
 
     // 水系全体队友效果
@@ -1153,12 +1813,10 @@ async function executePlayerCommand(caster, skill, targetId) {
   // 水系天气效果
   // 雨天效果（雨天：所有生物水属性技能威力+50%）
   if (skill.rainyDayEffect) {
-    // 设置全局天气效果
-    globalWeather = globalWeather || {};
-    globalWeather.type = 'rainy';
-    globalWeather.duration = skill.rainyDayDuration || 3;
-    globalWeather.powerBoost = skill.rainyDayPowerBoost || 0.5; // 50%加成
-    addLog(`${caster.name} 使用 ${skill.name}，创造雨天环境！（持续${globalWeather.duration}回合，所有水属性技能威力+${Math.round(globalWeather.powerBoost * 100)}%）`, 'buff');
+    // 设置雨天环境效果
+    battleEnvironment = 'rainy';
+    battleEnvironmentTurns = skill.rainyDayDuration || 3;
+    addLog(`${caster.name} 使用 ${skill.name}，创造雨天环境！（持续${battleEnvironmentTurns}回合，所有水属性技能威力+${Math.round((skill.rainyDayPowerBoost || 0.5) * 100)}%）`, 'buff');
   }
 
   // 炎之意志（全体己方）

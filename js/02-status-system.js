@@ -2,7 +2,7 @@
 const STATUS_EFFECT_MAP = {
   // === 原生条目 ===
   'burn':             { effect: 'burn',              burnStacks: 5, burnChance: null },
-  'burn_mark':        { effect: 'burnMark',          burnMarkPower: 40 },
+  'burn_mark':        { effect: 'burn_mark',         burnMarkPower: 40 },
   'flow':             { flowEffect: true,            speedBoost: 1, duration: 2 },
   'clear_spring':     { clearSpringEffect: true,    clearSpringDuration: 3 },
   'water_soak':       { waterSoakEffect: true,      waterSoakPower: 1, waterSoakDuration: 2, waterSoakMaxStacks: 6 },
@@ -26,14 +26,14 @@ const STATUS_EFFECT_MAP = {
   'combustion_mark':  { effect: 'combustionMark' },
   'entangle_on_hit':  { effect: 'entangleOnHit' },
   'drowning':         { effect: 'drowning' },
-  'water_guard':      { effect: 'waterGuard' },
+  'water_guard':      { effect: 'water_guard' },
   'steam_burn':       { effect: 'steamBurn',         steamBurnPower: 30 },
   'flame_charge':     { effect: 'flameCharge' },
   'freeze_tag':       { effect: 'freezeTag' },
   'wet':              { effect: 'wet',               waterSoakEffect: true, waterSoakPower: 1, waterSoakDuration: 2, waterSoakMaxStacks: 6 },
 
   // === 火系负面效果 ===
-  'overheat_penalty': { effect: 'weaknessEffect',   weaknessEffect: true, weaknessDuration: 2 },
+  'overheat_penalty': { effect: 'weaknessEffect', weaknessEffect: true, weaknessDuration: 2 },
 
   // === 草系 ===
   'flame_body':       { effect: 'flame_body',       fireBodyEffect: true },
@@ -47,13 +47,17 @@ const STATUS_EFFECT_MAP = {
   // === 电系 ===
   'electric_field_buff': { electricFieldEffect: true },
   'static':            { staticMark: true },
+  'static_body':       { paralysis: true, effect: 'static_charge' },  // 静电释放
+  'charge':            { charge: true },                               // 蓄电
+  'electric_deflect':  { electricDeflect: true, effect: 'electric_deflect' }, // 电磁偏转
 
   // === 冰系 ===
   'extreme_cold_mark': { extremeColdMark: true },
-  'ice_armor':         { effect: 'frost_armor',      frostArmor: true },
-  'ice_wall':          { effect: 'ice_wall' },
-  'frost_mark':        { effect: 'frost_mark' },
-  'frozen_land_env':   { frozenLandEffect: true },
+  'ice_armor':         { frostArmor: true, effect: 'frost_armor' },   // 冰霜护甲
+  'ice_wall':          { iceWall: true, effect: 'ice_wall' },         // 冰墙
+  'frost_mark':        { frostMark: true, effect: 'frost_mark' },     // 霜印
+  'frost':             { frost: true, effect: 'freeze' },             // 冰霜
+  'frozen_land_env':   { frozenLandEffect: true, effect: 'frozen_land' }, // 冻土环境
 
   // === 超能系 ===
   'mind_body':         { effect: 'mind_shield',      mindShield: true },
@@ -62,20 +66,13 @@ const STATUS_EFFECT_MAP = {
 
   // === 地系 ===
   'sandstorm':         { sandstormEffect: true },
-  'underground':       { undergroundEffect: true },
+  'underground':       { undergroundEffect: true, immuneGround: true },
   'sand_tomb':         { sandTombEffect: true,       sandTombDamage: 0.04 },
 
   // === 龙系 ===
   'dragon_power_loss': { dragonPowerLoss: true },
 
-  // === 通用/其他 ===
-  'overheat_penalty':  { weaknessEffect: true,        weaknessDuration: 2 },
-
-  // === 补漏（映射到已有执行分支） ===
-  'static_body':       { effect: 'static_charge' },   // static_charge 执行逻辑已存在于 skill-execution.js
-  'charge':            { chargeEffect: true },
-  'electric_deflect':  { effect: 'electric_deflect' }, // electric_deflect 执行逻辑已存在
-  'frost':            { effect: 'freeze' },
+  // === 补漏 ===
   'dragon_guard':     { effect: 'dragon_guard' }      // dragon_guard 执行逻辑已存在
 };
 
@@ -96,23 +93,25 @@ function applyAddStatusEffect(effectData) {
     return result;
   }
 
-  // 合并状态配置（必须保留 effect / blazeWillEffect / fireBodyEffect 等执行标记）
-  Object.assign(result, statusConfig);
-
-  // 确保 statusConfig.effect 被正确传递（如 combustion_mark → effect:combustionMark）
-  if (statusConfig.effect !== undefined) {
-    result.effect = statusConfig.effect;
-  }
-
-  // 基于 statusId 设置执行标志（解决 effect 字段为 null 但需要特殊处理的情况）
-  // 这些状态通过执行层的 if (skill.xxx) 分支处理，不依赖 effect 字段
+  // 先执行 switch（设置特定状态的效果类型）
+  // 必须放在 Object.assign 之前，确保 switch 设置的值不被覆盖
   switch (statusId) {
     case 'combustion_mark': result.combustionMark = true; break;
     case 'burn_mark':       result.effect = 'burn_mark'; break;
     case 'flame_charge':    result.flameCharge = true; break;
     case 'blaze_will':      result.blazeWillEffect = true; break;
     case 'overheat_penalty': result.weaknessEffect = true; result.weaknessDuration = effectData.stacks || 2; break;
+    case 'drowning':        result.drowningEffect = true; break;
+    case 'steam_burn':      result.effect = 'steamBurn'; result.steamBurnChance = chance; break;
+    case 'water_guard':     result.effect = 'water_guard'; break;
+    // 修复：添加被遗漏的状态映射
+    case 'grass_power':     result.lightGather = 1; break;            // fiber_weave
+    case 'entangle_on_hit': result.effect = 'entangle_on_hit'; result.damageReduction = 0.5; break;  // vine_armor
+    case 'rainy_day':      result.rainyDayEffect = true; break;      // rainy_day
   }
+
+  // 合并状态配置（必须保留 effect / blazeWillEffect / fireBodyEffect 等执行标记）
+  Object.assign(result, statusConfig);
 
   if (effectData.stacks !== undefined) {
     if (statusConfig.burnStacks !== undefined) {

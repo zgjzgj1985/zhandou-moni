@@ -1,7 +1,7 @@
 ﻿// ===========================================================
 // skills-db.js
 // 由 scripts/generate-skills-db.ts 自动生成，请勿手动修改
-// 生成时间: 2026-05-29T06:30:46.403Z
+// 生成时间: 2026-05-29T10:51:50.032Z
 // 数据来源: src/skills/*.ts
 // ===========================================================
 
@@ -498,7 +498,7 @@ const SKILLS_DB = {
         "effects": [
           {
             "type": "add_status",
-            "statusId": "defense_up"
+            "statusId": "water_guard"
           }
         ],
         "tags": [
@@ -549,7 +549,7 @@ const SKILLS_DB = {
         "effects": [
           {
             "type": "heal",
-            "percent": 0.0025
+            "percent": 0.25
           }
         ],
         "tags": [
@@ -574,7 +574,7 @@ const SKILLS_DB = {
           },
           {
             "type": "heal",
-            "percent": 0.0015
+            "percent": 0.15
           }
         ],
         "tags": [
@@ -884,7 +884,7 @@ const SKILLS_DB = {
         "effects": [
           {
             "type": "heal",
-            "percent": 0.002
+            "percent": 0.2
           },
           {
             "type": "add_status",
@@ -1364,6 +1364,15 @@ const SKILLS_DB = {
         "effects": [
           {
             "type": "damage"
+          },
+          {
+            "type": "add_status",
+            "statusId": "prophecy_mark"
+          },
+          {
+            "type": "add_status",
+            "statusId": "mind_wound",
+            "stacks": 1
           }
         ],
         "tags": [
@@ -1384,6 +1393,10 @@ const SKILLS_DB = {
         "effects": [
           {
             "type": "damage"
+          },
+          {
+            "type": "special",
+            "specialType": "pierce_shield"
           }
         ],
         "tags": [
@@ -1405,6 +1418,11 @@ const SKILLS_DB = {
         "effects": [
           {
             "type": "damage"
+          },
+          {
+            "type": "special",
+            "specialType": "prophecy_mark_bonus",
+            "value": 20
           }
         ],
         "tags": [
@@ -1422,17 +1440,21 @@ const SKILLS_DB = {
         "t": "单体敌人",
         "p": 140,
         "damageType": "special",
-        "eff": "蓄力1回合后发动，造成140威力特殊伤害并附加「禁忌」（所有能力等级-2，持续2回合）【蓄力可被打断】",
+        "eff": "对目标造成140威力特殊伤害并附加「禁忌」（所有能力等级-2，持续2回合）",
         "effects": [
           {
             "type": "damage"
+          },
+          {
+            "type": "add_status",
+            "statusId": "forbidden",
+            "stacks": 1
           }
         ],
         "tags": [
           "超能",
           "奥秘流",
           "攻击",
-          "蓄力",
           "能力下降"
         ]
       },
@@ -1447,6 +1469,16 @@ const SKILLS_DB = {
         "effects": [
           {
             "type": "damage"
+          },
+          {
+            "type": "add_status",
+            "statusId": "forbidden",
+            "stacks": 1
+          },
+          {
+            "type": "special",
+            "specialType": "future_sight",
+            "value": 120
           }
         ],
         "tags": [
@@ -1471,6 +1503,23 @@ const SKILLS_DB = {
           {
             "type": "add_status",
             "statusId": "mind_body"
+          },
+          {
+            "type": "shield",
+            "amount": 30,
+            "duration": 1
+          },
+          {
+            "type": "resistance",
+            "element": "psychic",
+            "value": 1,
+            "duration": 1
+          },
+          {
+            "type": "resistance",
+            "element": "psychic",
+            "value": 1,
+            "duration": 1
           }
         ],
         "tags": [
@@ -1490,7 +1539,13 @@ const SKILLS_DB = {
         "p": 0,
         "damageType": "special",
         "eff": "获得「灵镜反照」状态，反弹下一次攻击（反弹伤害×1.8）【未被攻击时自动保留1次】",
-        "effects": [],
+        "effects": [
+          {
+            "type": "special",
+            "specialType": "mirror_reflect",
+            "value": 1.8
+          }
+        ],
         "tags": [
           "超能",
           "奥秘流",
@@ -1507,7 +1562,13 @@ const SKILLS_DB = {
         "p": 0,
         "damageType": "special",
         "eff": "获得「迷雾闪避」（持续2回合），每回合70%概率闪避攻击，闪避成功后速度+1级",
-        "effects": [],
+        "effects": [
+          {
+            "type": "special",
+            "specialType": "mist_body",
+            "value": 0.7
+          }
+        ],
         "tags": [
           "超能",
           "奥秘流",
@@ -1548,7 +1609,12 @@ const SKILLS_DB = {
         "p": 0,
         "damageType": "special",
         "eff": "将自身所有负面状态转移给目标（净化自身+转移负面状态）",
-        "effects": [],
+        "effects": [
+          {
+            "type": "special",
+            "specialType": "psycho_shift"
+          }
+        ],
         "tags": [
           "超能",
           "奥秘流",
@@ -1591,7 +1657,7 @@ const SKILLS_DB = {
         "effects": [
           {
             "type": "heal",
-            "percent": 0.005
+            "percent": 0.5
           }
         ],
         "tags": [
@@ -1610,7 +1676,12 @@ const SKILLS_DB = {
         "p": 0,
         "damageType": "special",
         "eff": "指定两个己方单位，交换所有强化/弱化状态（净化自身+转移负面状态）",
-        "effects": [],
+        "effects": [
+          {
+            "type": "special",
+            "specialType": "mind_sync"
+          }
+        ],
         "tags": [
           "超能",
           "奥秘流",
@@ -1630,6 +1701,16 @@ const SKILLS_DB = {
         "effects": [
           {
             "type": "damage"
+          },
+          {
+            "type": "add_status",
+            "statusId": "forbidden",
+            "stacks": 1
+          },
+          {
+            "type": "special",
+            "specialType": "fate_weave",
+            "value": 100
           }
         ],
         "tags": [
@@ -1880,7 +1961,7 @@ const SKILLS_DB = {
         "effects": [
           {
             "type": "heal",
-            "percent": 0.25
+            "percent": 25
           },
           {
             "type": "clear_debuff"
